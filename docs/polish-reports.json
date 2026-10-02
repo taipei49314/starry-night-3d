@@ -1,0 +1,424 @@
+[
+ {
+  "key": "T1-strokes",
+  "report": {
+   "module": "M3 strokes (src/strokes/*, harness/strokes*): vortex near-camera survival, minimum footprint, sky edge dissolve, underlay vertexFade, swirl-eye diagnosis",
+   "changes": [
+    "1. VORTEX near the camera (stroke.vert.ts): VORTEX strokes no longer use the upper size fade 1 - smoothstep(180k, 320k, Lpx). They now use a near-lens guard, 1 - smoothstep(0.6*uViewportH, 1.2*uViewportH, Lpx), on top of the existing dist/Lw guard smoothstep(0.8, 2.5, dist/Lw), so one stroke never fills the screen. UNDERPAINT and uAlign keep their exemption. All other classes keep the 180k-320k fade.",
+    "1b. VORTEX streaming size (stroke.vert.ts): L and W are multiplied by vScale = clamp(exp(ln(rmax/r0) * (sig - fract(a3.z))), 0.4, 2.5), which is r(sigma)/r(sigma0) from VORT_GEO. dH and dlnd use the scaled L. At t = 0, sig == fract(a3.z) exactly, so vScale = 1 and the canvas pose does not change. The sigma alpha window is unchanged.",
+    "1c. Bounds (strokeMaterial.ts): the VORTEX chunk sphere pad now uses 2.5x L and W (new constant VORTEX_SCALE_MAX), so frustum culling cannot clip scaled-up strokes.",
+    "2. Minimum footprint (stroke.vert.ts): strokes with record emissive a2.z >= 1.5 (windows, star cores, moon/ring strokes at that level) get at least 1.5 px projected width and 2 px length. CHURCH strokes get at least 1 px width and 1 px length. World sizes come from dist / uPxPerRad at the stroke midpoint. Length is extended along T about the midpoint, so from E the stroke stays on the same canvas line. These strokes are exempt from the Lpx < 0.35 cull and from the smoothstep(1.5, 4, Lpx) low-end fade. I added the CHURCH length minimum and fade exemption myself, beyond the lead's spec of a 1 px minimum width only: without them the 1 px width does nothing at 44 km, because those strokes are culled first.",
+    "3. Sky edge dissolve (stroke.vert.ts): for UNDERPAINT and SKY_BAND, alphaMul *= smoothstep(0, SKY_EDGE_FADE, margin). margin is the distance in canvas fractions from the record centre a0.xy to the nearest SKY_GEN_EXT edge (the generated constants, not hand-copied numbers).",
+    "4. Underlay material (underlay.ts): the signature is now makeUnderlayMaterial(colorHex, u, side = FrontSide, opts?: UnderlayOptions). With opts.vertexFade, define UL_VERTEX_FADE is set. The vertex shader reads 'attribute float aFade' and the fragment shader discards when aFade <= ign(gl_FragCoord.xy): aFade 1 always survives, 0 always goes. Surviving fragments blend toward the ratio-fog colour with smoothstep(0, 0.6, aFade) for a soft edge. The log-depth fwidth moved ahead of any discard so it stays in uniform control flow. The default path computes the same values as before. The material name gets a ':fade' suffix.",
+    "5. Swirl-eye slivers: diagnosed, not in M3. Probe renders at t=0 hid the SWIRL chunks or showed only SWIRL, or only SKY_BAND + UNDERPAINT. With only SWIRL, the eye is a clean round hole. The pale-green triangles are M4's SKY_BAND 'inThroat' eye strokes (src/sky/skyGen.ts, around lines 427-432), seen through that hole. They are straight sticks of L = 0.025-0.06 h inside an eye of radius 1.3*r0 = 0.026 h, so they lie as chords and form a faceted pentagon with a dark gap in the middle. Evidence: shots/m3p-onlyswirl.png, shots/m3p-band.png, shots/m3p-noswirl.png. Reported to M4 (see contract_requests).",
+    "Harness (harness/strokes.ts): gpuCentreCoverage now excludes UNDERPAINT/SKY_BAND debug strokes inside the SKY_EDGE_FADE band, which are faded by design. It also checks that strokes outside SKY_GEN_EXT draw nothing at their centre pixel ('dissolvedLit'). New view=ulfade: two quads, the top one with the default material and the bottom one with vertexFade (aFade 0 to 1, left to right). It logs ulFade.litByColumn."
+   ],
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/glsl/stroke.vert.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/strokeMaterial.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/underlay.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/strokes.ts"
+   ],
+   "api_changes": [
+    "makeUnderlayMaterial(colorHex: number, u: SharedUniforms, side: Side = FrontSide, opts?: UnderlayOptions): ShaderMaterial. The new 4th parameter is optional, so existing callers are unchanged. It fits the contract's UnderlayMaterialFactory as (hex, opts) => makeUnderlayMaterial(hex, u, undefined, opts).",
+    "No change to StrokeLayer, buildStrokeLayer or makeStrokeMaterial signatures. Shader behaviour changed as listed in changes (VORTEX guard and size scaling, minimum footprint, sky dissolve)."
+   ],
+   "integration_notes": [
+    "src/app/composition.ts caches underlay materials by hex alone (materials.get(hex)). Once M6/M7 pass opts.vertexFade, the cache key must include the flag, e.g. key = hex + (opts?.vertexFade ? ':f' : ''), and call makeUnderlayMaterial(hex, u, undefined, opts). The fade variant is a separate program.",
+    "vertexFade materials need geometry that carries 'aFade'. A geometry without that attribute reads aFade = 0 (WebGL default for a disabled attribute) and draws nothing.",
+    "Invariance at E, 1920x1080, t=0: 0.15 % of pixels differ by more than 8/255 between shots/m3b-t0.png (before) and shots/m3a-t0.png (after). Every difference sits on the star and moon ring dashes, where emissive >= 1.5 dashes thinner than 1.5 px now get the minimum width. The structure is identical (crop compared in the scratchpad). VORTEX scaling is exactly 1 at t=0. Two renders of the same build differ by 0 pixels, so the shot is deterministic.",
+    "The sky edge dissolve can only be judged once M4's SKY_GEN_U/V extension lands. In shots/m3a-t31.png and m3a-t89.png the canvas rectangle is still visible, and its edges are not the SKY_GEN_EXT edges. That is M4 generation / backdrop, not this fade.",
+    "Shots in m3a-t31/t89 also show the moon and stars changed against the integration shots. That comes from another module's concurrent edits (src/celestial was mid-edit: tsc errors in moonGen.ts), not from M3.",
+    "tsc --noEmit: clean for my files. The only errors at the time were in src/celestial/moonGen.ts, which belongs to another agent and was mid-edit."
+   ],
+   "contract_requests": [
+    "M4 (swirl-eye slivers, item 5): in skyGen.ts the inThroat SKY_BAND eye strokes (L 0.025-0.06 h) are 1-2.3x the eye radius (1.3*r0 = 0.026 h). Through the round hole in the swirl they read as faceted pale-green triangles with a dark gap in the centre. Suggestion: inside the throat, use L of about 0.3-0.6 x 1.3*r0, set kappa for the curl (bow toward the centre), and add 1-3 short dabs at the very centre so no backdrop shows through. M3 cannot fix this without changing M4's data.",
+    "Lead / spec: document the M3 changes. VORTEX strokes are exempt from the 180k-320k upper fade and use a near-lens guard of 0.6-1.2 viewport heights plus the dist/Lw guard. VORTEX L and W scale by clamp(r(sigma)/r(sigma0), 0.4, 2.5). Strokes with emissive >= 1.5 get at least 1.5 x 2 px and CHURCH strokes at least 1 x 1 px; both skip the sub-pixel cull and the low-end fade. UNDERPAINT/SKY_BAND fade over SKY_EDGE_FADE from the centre-to-SKY_GEN_EXT margin."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : no errors in src/strokes/* or harness/strokes*. The remaining errors were all in src/celestial/moonGen.ts, another agent's file mid-edit.",
+    "Real app on the RTX 5060 (ANGLE D3D11), tier=high, freeze. I rendered t = 0 (1920x1080), 56, 60, 62, 64, 68, 71, plus 31 and 89, and opened every PNG.",
+    "t=0 invariance: shots/m3a-t0.png vs shots/m3b-t0.png differ in 3,027 of 2,073,600 pixels (>8/255), all on thin emissive star and moon ring dashes. Swirls, sky, land and cypress are pixel-identical. The swirl eyes are unchanged; their slivers belong to M4.",
+    "t=62 and t=68: before (m3b-t62/m3b-t68) the funnel was almost empty, or only distant specks. After (m3a-t62, m3a-t68) the c1 funnel wall surrounds the camera and spirals into the throat.",
+    "t=56, 60, 64 (m3a-*): the funnel is continuous, and throat strokes stay throat-sized while streaming. At t=56 the wall is denser and less blocky than in the integration shot app-t56.png.",
+    "t=71: the village window cluster is now visible as lit dots at the steeple's projected position (projected via an --eval probe to (636,362) at 720p; camera 43.7 km away, fov 26). Before, nothing was there. Compare the crop of m3b-t71 vs m3a-t71.",
+    "harness/strokes.html?view=pose: gpuCentreCoverage ok (61/61 hit, 3 dissolved, dissolvedLit 0). Warp invariance unchanged (k=1 0 pixels; k=0.5/1.6/0 at about 0.02 %, the same as before). ulFade check ok: lit fraction by column 0.068 / 0.299 / 0.502 / 0.701 / 0.9 (shots/m3-ulfade.png shows the default quad solid and the fade quad dissolving into fog colour)."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3b-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3a-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3-sheet1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3-sheet2.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3-sheet3.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3a-t56.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3a-t60.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3a-t62.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3a-t64.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3a-t68.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3a-t71.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3b-t62.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3b-t68.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3b-t71.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3p-onlyswirl.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3p-band.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3p-noswirl.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3-ulfade.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m3-harness-pose.png"
+   ],
+   "known_issues": [
+    "Swirl-eye slivers (item 5) are not fixed: the cause is in M4's skyGen inThroat eye strokes (see contract_requests).",
+    "t=71: near the camera, the c1 throat-wall strokes now show as long flat sticks radiating across the frame. Their dry-brush tails show bristle stripes at that scale. They frame the view as asked, but read more like sparse sticks than a closed wall. If the lead prefers fewer giant strokes, lower the VORTEX near-lens guard from 0.6-1.2 H to about 0.35-0.8 H; it is one line in stroke.vert.ts step 9.",
+    "t=71: the steeple is still not readable as a line from 44 km. Church strokes now draw at 1 x 1 px, but their dark roof/blue-grey colours vanish under the dust speckle. Only the lit windows read.",
+    "The emissive >= 1.5 minimum width slightly thickens sub-1.5 px ring dashes at E (0.15 % of pixels at 1080p, structure unchanged).",
+    "The sky edge dissolve has no visible effect until M4 regenerates UNDERPAINT/SKY_BAND over SKY_GEN_U/V. Today's records sit far inside the extent; only the harness debug strokes exercise it.",
+    "Lower tiers (medium/low hashed alpha) were checked only through the harness tierSwitch report, not in app screenshots."
+   ]
+  }
+ },
+ {
+  "key": "T2-sky",
+  "report": {
+   "module": "M4 sky: src/sky/skyGen.ts, src/sky/backdrop.ts, plus harness/sky* (sky.ts coverage mode, the new sky-perf.html + skyPerf.ts timing page, and skyBackdropOld.ts, a copy of the old shader for A/B). dust.ts is unchanged.",
+   "changes": [
+    "Extended sky, UNDERPAINT and SKY_BAND (skyGen.ts): after the unchanged GEN loops, the same rng appends extension strokes over SKY_GEN_U x SKY_GEN_V outside GEN, above the rear ridge (bands from ridgeV-0.012, underpaint from ridgeV-0.03). The GEN strokes are byte-identical to before: same seeds and same rng consumption order. A diff of the 1080p canvas pose against the start of the session shows no change in the sky field, hills or village. The only differences are in the stars and cypress, which other agents changed.",
+    "Extension falloff (exported as SKY_EXT_FALLOFF). Bands: stroke scale s = min(3.5, 1 + delta/0.34), where delta is the distance in h-units outside the GEN rectangle, so strokes grow linearly with no size step at the GEN edge. Coverage goes from 1 to 0.45 of the GEN value with covLen 0.06. That gives about 12,300 seeds, trimmed to 12,000. Underpaint: s = min(1.6, 1 + delta/1.4) at the GEN coverage of about 3.2 layers, about 2,830-2,900 strokes. Seeds come from a new variable-density stratified sampler: a 0.1 x 0.05 h coarse grid aligned to the GEN edges, k x k jittered sub-cells per cell, thinned by an R2 low-discrepancy threshold rather than a coin flip.",
+    "Extension strokes reuse the band law: direction and kappa from a new coarse 0.04 h grid of the exact bandAngleExact over the whole extent (cached), bandColours stripes and palette, the deck depth law clamped inside dRange, and the BAND slide animation. L and W are scaled by s.",
+    "Underpaint colours (skyGen.ts). FIELD and VILLAGE rows are now night earth #14275a / Prussian instead of cypress green. CYPRESS rows use the sky ultramarine-to-Prussian above the ridge and night earth below it. Each still takes one rng draw, so no other stroke moves. From E these rows are covered by the ground underlay, the cypress and the bands. This removes the dark green strip of underpainting seen off-axis at t=45/50.",
+    "Backdrop rewritten (backdrop.ts). Splats now sit on a latitude-ring grid of the world sphere. This removes the fold, the wrap seam and the #050a18 back-hemisphere fade, so every direction gets a full-contrast painted sky. Splat colour comes from coordinates evaluated exactly at each splat centre: inside the SKY_GEN extent this is the canvas (gnomonic) band stream psi plus bandColours weights, two-tone partners and the low/high rules. Outside, it blends within 0.35 h into an azimuth-periodic copy of the same stream (az frequencies 6 and 15, wiggles scaled by cos(el)). The splat shape is an M3-like ribbon: width profile smoothstep(0,0.1,s)(1-0.4s), a bow, up to 4 deg of twist, a dry-brush tail, an impasto crown, and bristles only when they would be at least 2 px. Between splats there is a painterly band-coloured ground. The 0.6 HDR cap is gone; output is capped at 0.95, under the bloom threshold of 1.0.",
+    "Night earth (backdrop.ts). Below the rear ridge in front (near E), and below the horizon elsewhere, the backdrop paints deep ultramarine-Prussian strokes with some cobalt-lifted ones and an outline-blue partner, replacing the murky cypressDark/Prussian green. The ridge line blends to the true horizon as the camera moves 2-30 km from E.",
+    "Backdrop draw (backdrop.ts). It is now a far-plane triangle (z = w) drawn after the opaque scene: renderOrder +1000, depthTest on, depthWrite off. It only shades pixels that no stroke or underlay covered. Splats composite front to back with early exit. Splat layers follow q.backdropLayers directly (2 / 2 / 1). A pcg3d integer hash is used.",
+    "Harness: harness/sky.html?view=coverage&ext=1 maps the whole extended extent flat and reports layer statistics for the extension core. The new harness/sky-perf.html (harness/skyPerf.ts) times the backdrop alone at full screen into a 1920x1080 HalfFloat MSAA4 target with a timer query, A/B against the old shader, with medians over 3 interleaved passes. ?prof=1|2 (BD_PROF define) splits the cost into setup and splat shapes."
+   ],
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/sky/skyGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/sky/backdrop.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/sky.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/sky-perf.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/skyPerf.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/skyBackdropOld.ts"
+   ],
+   "api_changes": [
+    "SKY_COUNTS gains underpaintExt: 3000 and bandExt: 12000 (maximum counts). Totals are now UNDERPAINT about 5,830-5,900 (budget 6,000) and SKY_BAND 44,000 (budget 44,000).",
+    "New skyGen exports: genDistance(x, y) (h-units outside the GEN rectangle), interface ExtFalloff, const SKY_EXT_FALLOFF {band, underpaint}, and extScale(f, delta). Existing exports and their signatures are unchanged.",
+    "createBackdrop(u, q) keeps its signature but its render state changed: mesh.renderOrder is +1000 (was -1000), material.depthTest is true (was false), depthWrite is still false, and the vertex z is on the far plane. setBackdropQuality is unchanged: uBdLayers 2/2/1 now means 2/2/1 splat layers."
+   ],
+   "integration_notes": [
+    "The backdrop now draws after the opaque list with a depth test. Any future opaque-list material that does not write depth would be painted over by it. Today only dust (in the transparent list, still drawn over the backdrop) and the post lens (its own scene) use depthWrite false. composition.ts needs no change.",
+    "T1's SKY_GEN_EXT dissolve in stroke.vert.ts also applies to the GEN underpaint rows below v = 0.27 (SKY_GEN_V[0] 0.15 + SKY_EDGE_FADE). Those rows dissolve; this was confirmed in harness/sky-real.html. From E they sit behind the hills and ground, so the canvas pose is unaffected, and off-axis the backdrop's night earth replaces them. If the GEN sheet should stay intact, the fade could skip strokes inside GEN_U x GEN_V or drop the bottom edge. The extended sky never reaches below the rear ridge.",
+    "With a lit sky behind it, the cypress near-lens dissolve at t=25 now reads as a translucent flame tower. The A/B with the old backdrop shows the same translucency wherever the new extension strokes sit behind the cypress, so this is M6/M3 near-guard behaviour exposed by the brighter sky, not a backdrop artefact. One option for M6/M3 is a denser core or exempting CYPRESS from the dist/Lw guard.",
+    "From E in free mode, M7's ground underlay reaches the horizon in every direction as a flat dark-green plane (shots/sky2/final2-free-back.png). The backdrop's night earth only shows below the horizon where there is no ground geometry, which means far views such as t=36, 45, 50 and 82. M7 may want to tint the ground or end it there.",
+    "Dust motes (dust.ts) still cover only GEN_U x GEN_V.",
+    "Generation time (headless Chrome on this laptop, other agents loading it at the same time). In-app buildWorld 'sky': 128-156 ms cold, versus the 116 ms first run this session and the 99-138 ms in the earlier build report. Harness cold 136-144 ms; warm 83-89 ms with a null sink and 100-106 ms with a recording sink, versus 72-76 ms before. The extension adds roughly 10-15 ms: bands 42-53 to 57-59 ms, underpaint 7 to 9-12 ms. Funnel timings swung 33-61 ms on unchanged code, so these numbers carry noise."
+   ],
+   "contract_requests": [
+    "Lead/T1 (optional): change the SKY_EDGE_FADE dissolve so it does not apply to the bottom edge, or to strokes inside GEN_U x GEN_V. The GEN underpaint below v = 0.27 is currently dissolved, as described in integration_notes."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . reports 0 errors (final run).",
+    "harness/sky.html checks: errors []. Counts: UNDERPAINT 5,826, SKY_BAND 44,000, SWIRL 33,000, EDDY 6,000, WIND_JET 2,400, all within budgetHigh. Depth ranges: UNDERPAINT 230,503-249,499, SKY_BAND 95,201-199,782, SWIRL 39,657-92,878, EDDY 44,636-78,231. All are inside dRange, and the paint order SWIRL/EDDY < SKY_BAND < UNDERPAINT and WIND_JET < SWIRL holds. In the app, assertPaintOrder is silent: every shot run reported '0 error/warning line(s)'.",
+    "GEN coverage from E is unchanged: sky pixels with fewer than 3 layers 0.393%, fewer than 2 layers 0.052%. Extension core coverage (outside GEN and outside the 0.12 dissolve band, above the ridge) with bands + underpaint: under 1 layer 0.27%, under 2 layers 2.4%, under 3 layers 9.6%. Bands alone: 5.5% / 28% / 62% (mean about 2.5-2.9 layers). Underpaint alone: 3.2% / 20% / 52%.",
+    "Canvas pose: shots/sky2/final2-t0-1080.png. A diff against shots/sky2/a1-t0.png and shots/sky2/before-t0.png shows the sky field, hills and village unchanged; differences are only in the stars and cypress (other agents) and in bloom haze from those stars.",
+    "Brightness match from E (free mode, FOV 90, sRGB luminance and stddev after post). Left side: backdrop 86.9/39.1 vs dissolving extension 84.2/41.1. Top: 76.4/36.6 vs 71.3/37.8. On the right side the extension box sat on a darker stripe (89.0 vs 66.1).",
+    "Backdrop GPU cost, in-app at 1080p high, from engine timer deltas with the backdrop on vs off (3 pairs each, noise about +-0.15 ms): t=0 about 0.0 ms, t=25 about 0.13, t=31 about 0.09, t=50 about 0.02-0.21, free mode looking back (sky fills the top half) about 0.27.",
+    "Isolated full-screen backdrop timing (harness/sky-perf.html, 1080p, MSAA4 HalfFloat, nothing in front, which is the worst case). The GPU flipped between two clock states while other agents were running. In the fast state, old backdrop 0.49-0.79 ms vs new about 0.24-0.47 ms. In the slow state, old 1.5-1.7 ms vs new 0.84-1.17 ms. New costs about 0.55-0.72x the old. Cost split in the fast state: setup 0.08-0.11 ms, splat shapes 0.33-0.39 ms. The low tier (1 layer) is about 0.6x of high.",
+    "I opened and looked at every final shot: t=0 (1080p), 10, 25, 31, 36, 45, 50, 82, 89, and free mode at E looking back, right, up (a zenith whorl), down, and wide at FOV 90. The generated-sky rectangle is gone at 31, 36, 82 and 89. The back hemisphere is fully painted. The earth behind the funnels at 45/50 is ultramarine-Prussian. A same-frame A/B with the old backdrop swapped in at runtime (t=25, t=50, free back) isolates the backdrop change."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/compare-before-after.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/final2-t0-1080.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/final2-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/final2-free-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/final-free-back-1080.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/ab-backdrop-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/before-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/before-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/a5-free-wide.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/h-cov-ext-band.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky2/h-real-canvas.png"
+   ],
+   "known_issues": [
+    "Full-screen worst case is not guaranteed to be <= 0.3 ms. With nothing drawn in front, the isolated pass measures about 0.24-0.47 ms in the fast GPU state, against 0.49-0.79 ms for the old backdrop, which was always full-screen. Because of the depth-tested late draw, real loop frames measured 0-0.27 ms. A further cut would mean bigger cells or 1 layer on high.",
+    "Without underpaint, the extension bands leave about 5.5% of pixels uncovered (mean about 2.5-2.9 layers). The underpaint fills these, so the combined uncovered fraction is 0.27%. At very wide FOV the extension therefore looks a little sparser and coarser than the GEN field, by design (larger, sparser strokes).",
+    "Backdrop splats sit on a regular latitude-ring grid. Their twist, bow and length jitter help, but they still read somewhat more regular and flatter (no visible bristles at normal FOVs) than the generated band strokes. Looking straight up shows a concentric whorl around the zenith, from the azimuth-periodic stream.",
+    "The backdrop splat size is a single angular size, 0.038-0.051 x 0.008-0.013 rad. The extension strokes at the SKY_GEN edge are 0.04 rad (sides) to 0.06 rad (top) long, so at the top edge the backdrop strokes are slightly smaller than the dissolving extension strokes.",
+    "Generation is about 10-15 ms slower than before: warm about 83-106 ms, cold about 128-156 ms in the app. The extension strokes and the coarse direction grid account for it.",
+    "Timing numbers are noisy because other agents were using the GPU and CPU during this session."
+   ]
+  }
+ },
+ {
+  "key": "T3-land",
+  "report": {
+   "module": "M7 land: terrain, hills, village (src/earth/terrain.ts, hillsGen.ts, villageGen.ts, harness/land*)",
+   "changes": [
+    "Issue 1, ground island. I removed GROUND_SKIRT, the 60 x 60 km prussian plane with hard edges. It was the dark parallelogram at t=45/50/62/68. The ground underlay is now a tensor grid over x [-8, 8.5] km and z [+3.25, -9.5] km: 125 m cells, with 22 m cells over the cypress knoll so the chord error stays well under the 0.4 m drop. It keeps the 4 distance bands and their colours. Quads whose four corners have faded to 0 are dropped.",
+    "New landFade(x, z), exported from villageGen and re-exported by terrain. It is a fan-shaped island whose half-width grows with depth like the view from E, closed by an ellipse in depth. Its coast has low-frequency lobes, a blotchy value-noise term and horizontal streak noise (the field-swath direction), and it dissolves over rho 0.78 to 0.98. Every ground band carries aFade = landFade, and createLandUnderlays requests these bands with makeMaterial(hex, { vertexFade: true }). Checked numerically: aFade = 1 everywhere on the ground seen from E or the wide near-E shots (u in [-1.6, 2.6], up to the front wall's foot), so the region below the hills stays fully covered.",
+    "Hill underlay (front faces plus rounded backs) now carries aFade and uses the vertexFade material. The front face is 1 across HILL_U_FULL = [-1, 2] and dissolves in streaks through the taper zone. The back slope stays solid over the shoulder and melts toward its foot, so from above or behind the ridges are no longer dark slabs. Columns are 0.005 apart over the canvas and 0.008 beyond; front rows went from 14 to 10 (the face is quadratic in v, so the chord error is under 0.3 m).",
+    "Issue 2, hills extended. HILL_U_FULL = SKY_GEN_U = [-1, 2] is now full height. HILL_U_EXT = [-1.3, 2.3] is a taper zone where the crest sinks to the plain. The foot table now covers [-1.42, 2.42]. Outside the canvas columns [-0.3, 1.3], strokes are sampled at 0.15 of the canvas density and drawn 1.75x larger in length and width (about half the canvas coverage), ramped in over 0.15 u so there is no seam.",
+    "HILL budget stays at 16,500 and dRange is unchanged. To pay for the extension: hidden-from-E keep went from 0.35 to 0.20 (hidden crest strokes from 0.30 to 0.20), and 180 underlayer strokes moved to the crest (HILL_COUNTS is now contour 13,800 / crest 1,380 / underlayer 1,320). Visible-from-E density inside the pose is unchanged within about 2%: 7,878 visible contour strokes against roughly 8,000 before (an estimate from the old distribution and a Monte Carlo visible fraction), and 957 visible crest strokes against roughly 965. Both endpoint depths are now checked before emitting, so no stroke falls outside dRange and no console warning fires.",
+    "Issue 3, village palette. New housePalette(): 55% dark ultramarine-to-cerulean blue-grey, 22% blue-green, 12% dulled ochre, 11% muted cerulean, with tones of 0.5 to 0.9. Wall strokes drift toward ultramarine, the outline colour or each house's accent. Roofs are slate pulled 45 to 75% toward ultramarine and shaded 0.45 to 0.7, with outline and prussian streaks. Outline edges are wider (0.0016 to 0.0024) and darker. Windows add an orange chrome/ochre variant.",
+    "The nave walls are dark ultramarine (tone 0.65). The steeple shaft now uses the outline/prussian palette, with ultramarine/cobalt catch-lights on 12% of the strokes on faces turned toward E. Shaft and spire read as one dark slender needle with a pointed tip; the geometry is unchanged (8 m shaft per spec).",
+    "Fields are dark green, blue and ochre. The greens moved from cypressDark toward groveLight by only 0.1 to 0.6, and only 12% of field swatches (8% on the plain) get a light blue-green dab. Blue goes from 15% to 24% on fields, ochre 14% fields / 12% plain.",
+    "Harness changes. harness/land.ts gains two checks ('island opaque under the E views', 'hill underlay opaque toward E') and a MeshBasic stand-in material that honours vertexFade. harness/landReal.ts passes opts to M3's makeUnderlayMaterial, logs the underlay build time, and has new views alt|wide|side|top|behind. New harness/landApp.html|ts boots the real app (src/app/composition boot) and, only while composition still drops UnderlayOptions, swaps meshes that carry aFade onto makeUnderlayMaterial(hex, u, FrontSide, { vertexFade: true }); ?nofade turns the swap off."
+   ],
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/hillsGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/villageGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/terrain.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/land.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/landReal.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/landApp.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/landApp.html"
+   ],
+   "api_changes": [
+    "createLandUnderlays(makeMaterial: UnderlayMaterialFactory, info: VillageInfo): Group. It now builds 8 meshes (the skirt is gone): ground0..3 and hillWalls carry 'aFade' and are requested with makeMaterial(hex, { vertexFade: true }); houseCores, churchCore and groveCores are requested with makeMaterial(hex). Colours requested with fade: 0x1d2b1f, 0x18262a, 0x132133, 0x0b1a3a, 0x142454. Without fade: 0x26314a, 0x1f2840, 0x17231b. No colour is requested both ways.",
+    "GROUND_SKIRT export removed from villageGen.ts and from terrain.ts's re-exports. Nothing else in src/ or harness/ imported it.",
+    "GROUND_GRID changed shape: { x0: -8000, x1: 8500, z0: 3250, z1: -9500, step: 125, drop: 0.4, fine: { x0: -540, x1: 440, z0: 300, z1: -700, step: 22 } }. The old nx/nz fields are gone.",
+    "New exports. landFade(x, z) from villageGen (re-exported by terrain). From hillsGen: HILL_U_FULL = [-1, 2], hillEndFade(u, x, z), valueNoise2(x, y), streakNoise(x, z). HILL_U_EXT is now [-1.3, 2.3]; HILL_U_CANVAS is unchanged at [-0.3, 1.3]. hillTaper and hillTopV now taper beyond HILL_U_FULL instead of beyond the canvas.",
+    "HILL_COUNTS is now { contour: 13800, crest: 1380, underlayer: 1320 }; the total is still 16,500. buildHillUnderlayGeometry() now carries attribute aFade."
+   ],
+   "integration_notes": [
+    "REQUIRED for issue 1 to show in index.html. In src/app/composition.ts, `mat` still has the signature (hex) => makeUnderlayMaterial(hex, u), so UnderlayOptions are dropped. It should become `(hex: number, opts?: UnderlayOptions) => { const key = `${hex}:${!!opts?.vertexFade}`; ... makeUnderlayMaterial(hex, u, FrontSide, opts) }`, with the materials Map keyed by that string. Without this, the enlarged ground renders opaque with a stair-stepped coast where the dissolved quads were dropped; shots/m7/real-vs-fade-t80.png shows the app as-is next to the wired version. harness/landApp.html shows exactly what the wired version renders. The cypress core call mat(0x0f1712) is unaffected.",
+    "Underlay GPU load: ground ~29k triangles (fully dissolved quads dropped), hill walls ~63k, grove cores 30k, house and church cores under 1k. Build time at boot: about 20 ms warm and 30-54 ms cold. This is not part of the 60 ms stroke-generation budget.",
+    "From E nothing changes outside the intended palette changes. The ground band boundaries are still at 600 / 1,500 / 3,000 m, every ground point seen from E has aFade 1, and the hill front faces are unchanged across the canvas. The only geometric difference under E's view is a finer knoll grid (22 m instead of 44 m).",
+    "Hide the land underlay group while uWarpK != 1. That is unchanged and composition already does it."
+   ],
+   "contract_requests": [
+    "Integrator (src/app/composition.ts): pass UnderlayOptions through to makeUnderlayMaterial and cache by (hex, vertexFade), as described in integration_notes.",
+    "M3 (stroke.frag): the gallery-light specular is added as white, up to 4.0. On E-facing flat solids (HOUSE and CHURCH nave walls) it lifts dark-blue walls to warm grey. For example, a nave wall recorded near #29406e renders as a median of about (106, 95, 96) at the 1080p canvas pose, while the hill walls (#1b2f6e/#2a52be) render about (34, 51, 113). Please consider tinting the specular by the stroke colour, or scaling it down for HOUSE and CHURCH, so the village keeps the painting's dark values. M7 has already darkened the records as far as is sensible."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : 0 errors on the final run. Earlier runs showed only another agent's mid-edit errors in src/sky/skyGen.ts.",
+    "harness/land.html: all checks PASS. Counts GROUND 8000, GROVE 6000, HILL 16500, HOUSE 14000, WINDOW 400, CHURCH 3600. dRange dropped 0 for every class (HILL endpoints 1628-6036 m). Output is deterministic and every normal is unit length. 'island opaque under the E views': min aFade 1.0000 over u [-1.05, 2.05] up to the front wall's foot. 'hill underlay opaque toward E': min front aFade 1 over u [-1, 2]. Steeple tip still pinned (60 strokes, error 1.4e-14 m). Generation warm 48.0 ms (ground 9.8, hills 25.2, village 13.0); cold 93.3 ms.",
+    "A Vite-SSR probe gave the HILL distribution and confirmed min landFade 1.0 over the ground seen from E across u [-1.6, 2.6]. The fade > 0 bounding box is x -7.65 to 8.1 km, z +3.1 to -9.2 km, inside the grid.",
+    "Real app (index.html, unchanged composition) on the RTX 5060 with --dgpu, 0 console errors or warnings: t=0 at 1920x1080, t=62, t=80, t=89.",
+    "Real app booted through harness/landApp.html, which emulates the pending opts wiring, 0 console errors or warnings: t=0 at 1920x1080, then 10, 25, 31, 36, 50, 62, 66, 68, 71, 74, 76, 78, 80, 82, 89. Baseline before any change: shots/m7/pre-t{0,10,25,36,62,68,71,89}.png.",
+    "Looked at every PNG; findings follow.",
+    "t=45/50/62/68: the skirt parallelogram is gone (shots/m7/cmp-alt.png, post-t50).",
+    "t=76-80: the land reads as a dark island whose rim dissolves softly into the painted void (post-t80, zoom-t78).",
+    "Harness views top, side and behind show a rounded fan-shaped island with frayed edges, and hill backs that melt instead of standing as slabs (lr-top.png, lr-side.png, lr-behind.png).",
+    "t=31 and t=89: the three ridges run across the whole frame (post-t31, post-t89).",
+    "t=0, village crop with PIL (cmp-village.png): houses are blue-grey and dark blue with dark roofs, there is one ochre house, and the windows glow chrome/orange.",
+    "t=0 steeple (cmp-steeple.png): a dark slender spire with a pointed tip, no pale shaft.",
+    "t=0 hills (cmp-hills-t0.png): the three layered ridges look as before.",
+    "t=0 fields (cmp-fields-t0.png): dark green, blue and ochre dabs.",
+    "t=36: the lower half is now the painted void beyond the island, because the camera is 1.6 km up past the hills looking away from E."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/pre-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/cmp-village.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/cmp-steeple.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/cmp-hills-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/cmp-fields-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/final-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/cmp-alt.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/real-vs-fade-t80.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t10.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t25.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t31.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t36.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t50.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t62.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t68.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t71.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t80.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/post-t89.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/zoom-t31-ends.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/zoom-t78.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/lr-top.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/lr-side.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/lr-behind.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/real-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/real-t62.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/real-t89.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/m7/pre-sheet.png"
+   ],
+   "known_issues": [
+    "The island dissolve only appears in index.html once composition.ts passes UnderlayOptions through (see contract_requests). Until then the enlarged ground is opaque, with a stair-stepped coast where the dissolved quads were dropped (shots/m7/real-vs-fade-t80.png). Every vertexFade verification frame comes from harness/landApp.html, which emulates that wiring.",
+    "House walls still read mid-dark blue-grey rather than truly dark. M3's white additive specular on E-facing flat walls lifts them; the nave in particular renders warm grey even from #29406e records (request filed with M3). The single ochre house reads warm brown-orange next to its lit windows.",
+    "At t=62/68/71 the land is now almost hidden behind swirl and sky strokes that other agents added concurrently. Island evidence comes from t=76-80 and the harness altitude views. At t=71 the village reads only as a few orange specks.",
+    "At t=31 the left frame edge reaches u ~ -1.5, past HILL_U_FULL. There the range slopes down through the taper (-1.0 to -1.3) at the very edge, about where the extended sky also ends.",
+    "From altitude, the ends of wall k=2 at u ~ 1.8-2.3 (x ~ 7-8 km) reach past the island coast. Their front faces are kept opaque across [-1, 2] for the near-E wide shots; the backs dissolve.",
+    "The underlay material has one flat colour per band, so the band boundaries at z = -600 / -1500 / -3000 are straight colour steps. This was already the case, but it is visible from close off-axis views such as harness landReal view=village.",
+    "Hill density outside the canvas columns is 0.15 of the canvas density with 1.75x larger strokes (about 0.46 of the canvas coverage). The budget was not raised. It was paid for by thinning the hidden-from-E rear-wall strokes and moving 180 underlayer strokes to the crest.",
+    "Cold generation is still 74-93 ms against the 60 ms M7 budget (warm 48 ms). Building the underlays adds about 20 ms warm and 30-54 ms cold at boot. Neither was measured on an idle mid-range machine.",
+    "Lower tiers were not checked visually."
+   ]
+  }
+ },
+ {
+  "key": "T4-celestial-cypress",
+  "report": {
+   "module": "M5 (stars, Venus, moon) + M6 (cypress): visual pass on the canvas pose (moon crescent, ringed star halos, black-flame cypress)",
+   "changes": [
+    "MOON: the crescent is thicker (hollow offset 0.45R toward 225 deg, radius 0.72R, so the limb is 0.73R thick) and is now the brightest element. Its colour runs orange on the concave edge, then chrome, then lemon to near-white on the limb. Emissive is 0.55..0.8 instead of 3.5, so it keeps its hue through Neutral tone mapping and only the limb blooms. The hollow is a dark burnt ochre (ochre x0.3, emissive 0.12), so the crescent shape reads against it. MOON depths are now 0.9825..0.9865 d (crescent) and 0.988..0.992 d (hollow).",
+    "MOON_RING bell: each ring now has two layers. The bands are ~55 % of the ring spacing: rings 1-2 orange, 3-6 chrome, 7-8 chrome/lemon, 9 a pale, sparser fringe. They are drawn at 78 % value with emissive 0.24..0.14, below the bloom threshold. Behind them is a dark-ochre backing (outer gaps lean toward ultramarine). Ring 0 is backing only, on its outer side, so it draws a dark rim around the crescent's limb. The halo stays within rho_9 = 0.1205 h.",
+    "STAR_RING: each ring now has two layers. Bright bands (chrome / lemon / blue-green by k mod 3) take ~55 % of the spacing, at d_k x [0.993, 0.999], with emissive 0.42..0.7 x per-star gain (was 2.2..1.2). Behind them is a dark-ultramarine backing on the INNER side of each ring (q3 < 0) at d_k x [1.012, 1.024]. Each ring's backing fills the gap to the previous ring and sits behind both neighbouring bands, so it can be wide enough to close the gap (the shader tapers stroke width along s) without hiding any band. Ring 0's backing fills the gap between the core and ring 0.",
+    "Stars: per-star LOOK table (positions and ring radii unchanged). The core radius is 0.54..0.62 rho_core, made of small white-hot spikes (emissive still 6, Venus 8). Each star paints 4..6.6 full-strength rings; rings beyond that fade into a sparse, dim fringe with no backing, so apparent sizes now differ (Venus by far the largest; S2/S6/S11 small; S4/S7/S9 large). Band dashes overlap ~2.4x along each row so the rings stay continuous when lower tiers thin them.",
+    "emitHalo is now generic over HaloLayer: explicit per-ring counts, 3-row or single signed-offset row, a length function capped at 0.8 rho, and a depth-factor range. allocate() and RING_BAND_DEPTH / RING_BACK_DEPTH are exported for moonGen and the harness.",
+    "CYPRESS crown: above V_SPLIT = 0.77 the seven tongues regroup into three flames: left {0,1}, main {2,3,4}, right {5,6}. At the split they partition the silhouette 2:3:2, then each narrows, sways and runs to its own tip: left ~(0.141, 0.975), right ~(0.243, 0.95), main (0.197, 1.13) past the top edge, where the jet starts. Sky shows between the flames from v ~0.86. Tubes in one flame converge to the flame's mean depth, and only the main flame leans toward the jet.",
+    "CYPRESS edge licks: 1,100 new strokes (the tube budget drops from 18,000 to 16,900; total stays 19,500 with 1,500 UNDERLAYER). They form ~40 pointed flame tongues along both outer edges. Each tongue is a bundle of 3-segment strands that start on the edge tube's front surface, leave the trunk early and rise to one shared tip. Tips end at most 0.016 beyond CYPRESS_SIL (measured incl. stroke width and writhe: <= 0.024), with much less on the right next to Venus. Licks are OUTLINE-flagged with q2 = pi (left) or 0 (right), which keeps the |cos phi| > 0.85 rule.",
+    "CYPRESS palette: near-black green, the bulk of strokes (cypressDark mixed with voidDeep, plus cypressDark/cypressGreen), with accents: olive ~4-9 % (cypressGreen + 6 % lemon), deep blue 7 %, dark brown 4.5 % (cypressDark + 9 % ochre). Baked tube shading lit is compressed to 0.45..0.9 x tone x stripe.",
+    "CYPRESS core lathe: radius 0.2 x silhouette width (was 0.25), axis set back 6 m (exported CYPRESS_CORE_AXIS_D = 198), closing at v = 0.83 below the crown notches (was 1.0). The old core came in front of the deeper tubes (dd +12/+17 m) and showed from E as a smooth black seam down the trunk; it is now hidden from E and still fills the interior.",
+    "harness/celestial.ts: the ring-placement check now accepts the two depth layers (each within the shader's +-3 % jitter window). New check: per ring, band < backing < next ring's band in depth.",
+    "harness/cypress.ts: the 'silhouette within 0.01' checks are replaced by outline checks on a per-row coverage bitmap: trunk fill within 0.01 of the table for v <= 0.75, licks <= 0.025 beyond the table, and the crown split into >= 3 flames on most rows of v 0.86..0.92, each at t = 0/1.5/3/4.5. The core-lathe normal check now uses CYPRESS_CORE_AXIS_D."
+   ],
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/celestial/starsGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/celestial/moonGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/cypressGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/celestial.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/cypress.ts"
+   ],
+   "api_changes": [
+    "starsGen.ts: HaloStyle is replaced by HaloLayer { counts, rows: 1|3, width, rowOff (signed for 1-row layers), len, colours, emissive, depth }. emitHalo(sink, rng, cls, si, layer) now emits one layer.",
+    "starsGen.ts: new exports allocate(total, weights), RING_BAND_DEPTH = [0.993, 0.999] and RING_BACK_DEPTH = [1.012, 1.024]. mixQ, shadeQ, pushChecked, STAR_CORE_STROKES and STAR_RING_STROKES are unchanged.",
+    "cypressGen.ts: CYPRESS_STROKES is now 16900, plus the new CYPRESS_LICK_STROKES = 1100 (CYPRESS_UNDERLAYER_STROKES 1500 unchanged; total still 19,500 = budgetHigh). New exports V_SPLIT = 0.77 and CYPRESS_CORE_AXIS_D = 198.",
+    "generateStars / generateMoon / generateCypress / createCypressCore signatures are unchanged. CYPRESS_CORE_COLOR is still 0x0f1712, so composition.ts needs no change."
+   ],
+   "integration_notes": [
+    "M3 velocity stretch makes the near cypress translucent. At t=25 under ?freeze, uCamVel = (15.3, 22.1, 7.0), about 27.6 m/s. Step 8 then divides alphaMul by 1 + stretch/Lw (cypress strokes are only 1.5-4 m long), and with alpha-to-coverage the sky shows through the trunk (shots/cc-t25.png). The same frame with uVelStretch = 0 is opaque (shots/cc-dbg-t25-novel.png). This breaks the 'no see-through at the helix climb' requirement for a reason outside my module. Suggestion for M3: exempt CYPRESS (or strokes within ~1 km), or floor that alpha factor at ~0.85.",
+    "M3 wet specular reads as white 'rain' streaks on the now near-black cypress. With uSpecular = 0 they disappear (compare crops in shots/cc-v5-t0.png vs shots/cc-dbg-nospec.png); dust is not the cause (shots/cc-dbg-nodust.png). They were already in the baseline but are more visible on dark paint. Suggestion: a per-class specular weight (CYPRESS ~0.25) or scaling spec by stroke albedo.",
+    "The STAR_RING / MOON_RING backing strokes are ordinary strokes (not UNDERLAYER-flagged), so tiers thin them together with the bands. I tried UNDERLAYER (always drawn): at medium/low the backing then outweighed the thinned bands and the stars turned into dark discs, so I reverted it.",
+    "At the low tier, uWidthComp = 1.69 widens each ring's backing past the inner edge of the next ring's band (the backing is nearer). Low-tier halos therefore read as dark-banded discs with dotted rings (shots/cc-tiers-sheet.png). A per-flag or per-layer width compensation in M3 would fix it; low is acceptable as is.",
+    "The cypress silhouette no longer matches CYPRESS_SIL within 0.01, by request. Licks reach up to 0.024 beyond it and the crown has notches from v ~0.86. Placement holds: base below the bottom edge, main flame past the top edge, right edge u = 0.270 at v = 0.72 (Venus core edge 0.287). The integrator's overlay / self-test should not assert the old 0.01 tolerance.",
+    "Lower ring emissives also remove most of the full-frame bloom haze that the HDR halos used to spread over the sky (compare shots/cc-before-t0.png vs shots/cc-t0.png). Other agents were editing sky / post / land at the same time, so some sky differences in the before/after sheets are not mine. Venus's core bloom still spills onto the cypress edge, as before.",
+    "createCypressCore still returns a world-space Mesh with a computed bounding sphere. It now spans y 4.3..126 m (closes at v 0.83) around the 198 m axis."
+   ],
+   "contract_requests": [
+    "None required.",
+    "Optional, for M3/lead rather than contracts.ts: a per-class specular weight table alongside OUTLINE_W (CYPRESS ~0.25) to stop the specular streaks on dark motifs, and an exemption for CYPRESS from the velocity-stretch alpha division."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . passes with no errors project-wide at the end of the session; earlier, other agents' mid-edit errors were in villageGen/terrain only.",
+    "harness/celestial.html (RTX, headless, 0 console errors): all 11 checks PASS. Deterministic 22,200 records; counts STAR_CORE 2200 / STAR_RING 14000 / MOON 1800 / MOON_RING 4200; dRange STAR_RING [11917, 26207] and MOON_RING [11133, 24442]; paint order core<ring<swirl; ring placement radial error 1.7e-16 with every ring record inside a depth layer (bands 16,516 / backing 1,684); per ring band < backing < next band; landmarks max centroid offset 0.00028 h; generation 8.4 ms warm, 18.6 ms cold (budget 25).",
+    "harness/cypress.html: all checks PASS. Deterministic 19,500 records (underlayer 1,500, outline 7,070); dRange [167.6, 217.0]; outline flag rule 0 mismatches. Outline checks at t = 0/1.5/3/4.5: trunk fill worst 0.003-0.005, licks max 0.0227-0.024 beyond the table, crown split into >= 3 flames on 13/13 rows of v 0.86..0.92. Right edge u = 0.2698 at v = 0.72; core lathe 100 % outward normals; generation 14.0 ms warm, 21.9 ms cold (budget 20, about as before).",
+    "See-through check in the cypress harness on magenta (helix t = 21/23/25/27/29, burst start, side, tip side): no holes inside the trunk. Only fringe specks like the baseline, plus the intended sky between the crown flames.",
+    "Real app, 1920x1080, tier=high, RTX 5060, 0 console errors: t=0, 10, 25, 31, 38.5. At t=0, crops show a bright lemon crescent (lit limb upper-right, dark hollow lower-left) inside a gold ringed bell with dark-ochre gaps and a dark rim. Stars show distinct chrome / lemon / blue-green bands, dark ultramarine gaps, small white cores, and varied sizes. The cypress is near-black green with olive, blue and brown accents, ragged lick tongues on both edges and a crown split into three tips. t=10: same motifs off-axis, with the three crown tips clearly visible. t=31: burst pose, stars and moon read small. t=38.5: the Venus ring tunnel still reads as nested chrome and blue-green hoops with dark backing hoops between.",
+    "Debug renders I used: isolating the moon classes (and a magenta backing) showed the first backing layout left holes at the ring midpoints, which led to the inner-side backing design. Toggling uSpecular and dust identified the white streaks as M3 specular. Toggling uVelStretch at t=25 identified the ghosting as M3 velocity stretch.",
+    "Lower tiers at 1280x720 (shots/cc-tiers-sheet.png, shots/cc-t0-high720.png): medium keeps continuous rings; low degrades to dotted rings (see known issues)."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-before-after-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-before-after-crops.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-before-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-t10.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-t25.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-dbg-t25-novel.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-t31.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-t38.5.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-loop-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-tiers-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-t0-high720.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-cyp-holes-quad.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-cyp-holes-quad2.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-dbg-nospec.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-dbg-nodust.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-v5-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cc-dbg-moononly2.png"
+   ],
+   "known_issues": [
+    "At t=25 (helix) the cypress looks translucent because of M3's velocity-stretch alpha division (see integration notes). It is opaque with uVelStretch = 0. Not fixable from the generator without changing stroke lengths.",
+    "M3 specular adds fine white streaks on the near-black cypress at 1080p (see integration notes).",
+    "Low tier: star halos read as dark discs with dotted rings, because tier thinning and the 1.69x width compensation let the backing overlap the next band's inner edge. Medium is fine.",
+    "Deliberate departures from the spec, at the lead's request: ring emissives (stars 0.42..0.7 vs 2.2..1.2; moon bell 0.24..0.14 vs 1.4..0.9; crescent 0.55..0.8 vs 3.5; hollow 0.12 vs 0.4). Bell band width 0.34 dRho instead of W 0.006. Ring record depths jittered into two layers (within the shader's +-3 % window). Cypress outline outside the 0.01 tolerance (licks, crown split). Core lathe smaller and set back. Cypress pigment shares differ from 10 % olive / 5 % ultramarine.",
+    "Halos are now crisp concentric bands; they may read a little mechanical or target-like compared with the painting's looser dabs. Band dashes carry only small value / width jitter.",
+    "Generation on a cold JIT: cypress 21.9-26 ms against a 20 ms budget (warm 14-16 ms; it was 22-28 ms cold before). Stars + moon 18.6 ms cold, inside 25.",
+    "The before/after comparisons span a period when other agents were also changing sky, post and land. Differences outside the moon, stars and cypress are not from this module."
+   ]
+  }
+ },
+ {
+  "key": "T5-director",
+  "report": {
+   "module": "M8 camera director: src/camera/shots.ts (shots 4, 6 and 7a) and harness/director.ts (framing tests)",
+   "changes": [
+    "Shot 4 'Black Flame' (20-30 s), rewritten in shots.ts so the camera stays on the front arc of the trunk (E's side). The old helix circled 450 degrees and spent about 4 s behind the trunk looking back toward E. The new orbit angle is theta(x) = 20 deg * smootherstep(x) - 58 deg * x^3(1-x)^4 / max, with x = (t-20)/10. The camera swings out to the left flank (theta about -49 deg at 24.3 s), with the swirl, Venus and stars beside the trunk. It then sweeps back across the front while it climbs and closes in.",
+    "Shot 4 height and radius keep the spec's smootherstep climb shape, now 40 -> 158 m and 75 -> 30 m. The orbit is about the leaning trunk axis (-50,10,-200) -> (-51,154,-175), extended linearly past the top so the path stays C1.",
+    "Shot 4 look: aims at the trunk 30 m above the camera, saturating smoothly at the flame tips (smooth min, y 158). It is biased 30% toward Venus and turns fully to Venus over 25.5-30 s.",
+    "Shot 4 bank is -10 deg * theta'/max(theta'). It is zero, with zero rate, at both ends: about +9 deg (bank right) on the left swing and about -10 deg on the sweep back.",
+    "KEYS.BURST0 (where the climb ends and the burst starts) is now computed from the climb: (-40.77, 158, -146.11). That is level with the main flame tip and 30 m in front of it, so at t=30 the tip sits low in frame under Venus. The burst to the unchanged BURST1 passes about 14 m over the tip, and the flame drops away below.",
+    "Shot 6 'Twin Funnels': V6 and V6b move below-left of the funnels. V6 = canvasToWorld(-0.2, 0.33, 46 km) = (-26150, 3033, -46184) and V6b = canvasToWorld(0.08, 0.29, 55 km) = (-18759, 2209, -55468). The old points sat about 30 km above the funnels and looked down into the dark below-horizon backdrop.",
+    "Shot 6 framing: the target is still P_MID. A new lens KEYS.FOV6 = 60 replaces 56 in the pull-out end, the push and the swoop start. From V6 both funnels are whole and seen broadside (sight line 52-54 deg off their axes): c1 above and in front of c2, thin throats on the right flaring to the mouths on the left, with the painted sky decks behind and eddies E1/E2 above as scale cues. The 4 s push to V6b brings the mouths in to fill the left of the frame (sight line 61-63 deg). The van Wijk-Nuij pull-out from the end of the ring tunnel is unchanged apart from its end width and FOV.",
+    "Shot 7a swoop (52-55.5): the P_MID look target now moves with the camera after the first 0.8 s (smoothstep weight). It is still fixed at 52, so the view rate stays C1. Without this, the new swoop passed about 18 km from P_MID at about 17 km/s and whipped the view at 69 deg/s; peak view rate in The Fall is now 47 deg/s.",
+    "Shots 7b/8 (58-73) are unchanged. With T1's vortex-stroke fix and T2's backdrop in place I re-checked them; the framing is correct, so no geometric fix was needed. The camera is inside the streaming c1 wall over 56-64. From 66.5 to 73 it sits on the c1 axis looking at E, so the throat is centred and E plus the village project to the frame centre: church at NDC (-0.01, -0.01) at t=71. The village spans about 10% of the frame width at FOV 26.",
+    "KEYFRAME_CHECKS: the t=25 and t=30 rows are updated to the new climb, and a new t=24.3 row covers the left flank. The t=48 and t=52 rows use the new V6/V6b with FOV 60. KEYS.HELIX_X and KEYS.HELIX_Z were removed (unused).",
+    "harness/director.ts: new testFraming() with 4 checks. (1) Shot 4: the trunk axis is on screen at every 0.25 s from 20 to 29.5 s. (2) Shot 4: the frame centre lands on the painted-canvas continuation (u in [-0.6, 1.6], v in [0.2, 1.6]), never back at E's side. (3) Shot 6 (47-52 s): both funnel mouths are on screen and seen broadside, sight line at least 45 deg. (4) Shot 6: at most 15% of the frame looks below the horizontal. The old poses fail checks 2, 3 and 4."
+   ],
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/shots.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/director.ts"
+   ],
+   "api_changes": [
+    "shots.ts new exports: HELIX (shot 4 tuning constants: r0, r1, y0, y1, thetaEndDeg, swingDeg, lookBias, lookTurn, lookTopY, bankDeg) and trunkAxisAt(y, out?) (a point on the leaning trunk axis line at height y).",
+    "KEYS gains FOV6 (60) and loses HELIX_X and HELIX_Z (no other module used them). KEYS.BURST0, V6 and V6B have new values. All other KEYS are unchanged.",
+    "KEYFRAME_CHECKS: new row t=24.3; changed rows t=25, 30, 48 and 52.",
+    "No change to the Director, paths.ts, freeFly.ts or ui.ts APIs, or to DirectorFrame. The rejoin table is built from the timeline at construction, so it follows the new poses automatically."
+   ],
+   "integration_notes": [
+    "The docs/SPEC.md section 5.1 numbers for shot 4 and shot 6 are now stale; the lead may want to update the spec text. Shot 4: helix formula, t=25 pose and BURST0 (-26,175,-192) -> (-40.77,158,-146.11). Shot 6: V6 (-22600,44000,-31700) -> (-26150,3033,-46184), V6b (-18201,40775,-44746) -> (-18759,2209,-55468), FOV 56 -> 60. Section 9.2 at t=25 ('swirl and stars visible through gaps; house solids below') is now met: swirl, Venus, stars and hills are beside the trunk.",
+    "The new shot 6 frames depend on T2's painted backdrop and decks, and on T1's vortex-stroke fix (funnel walls visible up close). Both had landed when I verified. If either regresses, shot 6 at 47-52 s and The Fall at 56-73 s will show it first.",
+    "Shot 5 jet ride is unaffected: its start offset is computed from BURST1, which did not change.",
+    "Envelopes (bloom, smear and others) are unchanged; the timings are the same."
+   ],
+   "contract_requests": [],
+   "verification": [
+    "npx tsc --noEmit -p . reports 0 errors (whole project at the time of the run).",
+    "node tools/shot.mjs \"harness/director.html?tests\" reports 0 failures out of 82 checks: the previous 77, one new keyframe row and 4 new framing checks.",
+    "Harness keyframes: all rows pass, including t=24.3, 25, 30, 32, 48 and 52 (0.0-0.7 m, look error under 0.003 deg, exact FOV/roll). t=96 == t=0 holds with dp 0 and dq 0.",
+    "Harness continuity and C1: continuity worst ratio 1.09. C1 worst ratios: position 1.05 (t=30), view direction 0.97, roll 0.95, FOV 0.74 (a kink would be above 4). A first iteration failed this test twice: a clamped trunk axis at y=154 kinked velocity at 28.36 s, and a hard min on the look height kinked the view rate at 26.4 s. Both were fixed with the unclamped axis and the smooth min.",
+    "Harness caps: max roll 24.61 deg, max roll rate 19.03 deg/s, max FOV 78.0, calm 12.30 deg / FOV 70, pirouette 32.78 deg/s. Shot 4 maximum view rotation dropped from 72 to 19.7 deg/s and its maximum bank is 10 deg.",
+    "Harness framing: trunk on screen throughout 20-29.5 s (fewest 2 of 30 axis samples, at 29.25). Shot 6 minimum sight-line angle 45.6 deg, mouths on screen, at most 11.1% of the frame below the horizontal.",
+    "Real app, RTX 5060 (--dgpu, tier=high, freeze), 0 console errors in every run, at t = 20, 22, 25, 28, 31, 42, 45, 48, 50, 52, 58, 62, 66, 70 (cam-after-t*.png and cam-after-sheet.png), plus 1080p at t=50. I opened and looked at every frame, with these results.",
+    "Frames 20-27: the cypress towers beside Venus, the swirl and the stars on the painted sky.",
+    "Frames 28-30: the flame tip sits low in frame under Venus with the painting ahead. At t=30.3 it has dropped away.",
+    "Frame 31: Venus dead ahead.",
+    "Frames 45-52: twin twisted horns flaring broadside against bright decks, with eddy E2 above.",
+    "Frames 53-55: the swoop runs under and along c1 into its mouth.",
+    "Frames 58-64: inside the streaming tunnel.",
+    "Frames 66-71: looking up the throat with the village patch at the centre and star horns around it.",
+    "Before/after with the scene held fixed: shots/cam-oldpose-t25/t48/t50.png render the OLD camera poses in the current scene, compared in shots/cam-before-after.png. Old t=25 shows the trunk against plain bands with no Venus, swirl or stars; old t=50 shows thin spikes over the dark below-horizon backdrop."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-before-sheet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-before-after.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-shot4-seq.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-swoop-seq.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-fall-eye-seq.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-hi-t50.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-oldpose-t25.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-oldpose-t48.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-oldpose-t50.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t20.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t22.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t25.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t28.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t31.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t42.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t45.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t48.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t50.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t52.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t58.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t62.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t66.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cam-after-t70.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-tests.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-near-t25.png"
+   ],
+   "known_issues": [
+    "Shot 4 is no longer a continuous 450 deg helix; a full orbit cannot stay on the front arc. It is a wind-up: about 49 deg out to the left flank, a single reversal at about 24.3 s, then a roughly 70 deg climbing sweep back across the front. It reads as circling the flame, not a corkscrew.",
+    "From 28 to 30 s only the main flame tip is in frame (a thin spike at the bottom). This is by design: the flame then drops away during the burst.",
+    "The cam-before-*.png set was rendered at the start of the session, before T1's and T2's fixes, so it mixes their changes with mine. For a camera-only comparison use cam-oldpose-*.png, which renders the old poses in the current scene.",
+    "Shot 6 at V6 (t=48): c1 and c2 are stacked, c1 above, and overlap near the mouths; they separate fully only toward V6b. Land and stars are not in the shot 6 frame (they lie behind the camera from any viewpoint that has the decks behind the funnels). The eddies E1/E2 and the deck strokes are the scale cues.",
+    "Swoop 53-54 s: the camera passes just outside c1's wall before entering the mouth. For about 1 s the frame shows the outer wall and the dark-blue painted below-horizon band, at a peak view rate of 47 deg/s. It is C1 and painted, but not the cleanest frame. Routing the swoop through the open mouth would need a waypoint beyond 90 km, faster flight, and a change to the spec's spiral entry; I did not do this.",
+    "The swoop still crosses the c1 wall near the rim (about 85 km) to reach the spiral start inside the funnel, as the original swoop also did.",
+    "Eye of the Vortex: the village is geometrically centred in the throat. Seen at a 16 deg grazing angle from 44 km it is about 10% of the frame width but only about 3% of its height at FOV 26, so 'tiny'. Window glow there depends on M7 and the post-processing, not the camera.",
+    "Placeholder harness pages (harness/director.html?t=...) still use the simple placeholder scene; I made only numeric changes there."
+   ]
+  }
+ }
+]

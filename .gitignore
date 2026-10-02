@@ -1,0 +1,6 @@
+node_modules
+dist
+dist-single
+# render screenshots: regenerable, and the ones made so far were produced on a work machine (not accepted evidence)
+shots
+.claude

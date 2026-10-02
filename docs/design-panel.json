@@ -1,0 +1,143 @@
+{
+ "tally": {
+  "cosmic-vortex": 23.6,
+  "anamorphic": 24.7,
+  "impasto-matter": 19.5,
+  "one-take-journey": 22.3
+ },
+ "concepts": [
+  {
+   "key": "anamorphic",
+   "title": "PUNCTUM: The Starry Night, 250 Kilometres Deep",
+   "logline": "From one exact point in space, 177,000 sculpted brushstrokes spread across 250 km line up into The Starry Night. Move one metre and the picture tears open into a world of paint: a 125 m cypress built like a flame tower, a 50 km double-helix tornado lying on its side, and golden horns pointed at your eye. Then a storm scatters everything, and the painting re-forms only as the camera flies back into the painter's eye."
+  },
+  {
+   "key": "cosmic-vortex",
+   "title": "ANAMORPHOSIS: Falling Into the Great Swirl",
+   "logline": "From one exact vantage point it is The Starry Night, stroke for stroke. Move one step and the painting tears open into a 250-km-deep universe of living brushstrokes. The camera rides a streamline down the throat of the great swirl, a 20-km twin maelstrom, then pulls back until the whole cosmos folds into 73.7 x 92.1 cm again."
+  },
+  {
+   "key": "impasto-matter",
+   "title": "IMPASTO / 厚塗星夜: The Thirty-Kilometre Painting",
+   "logline": "About a million physical strokes of wet oil paint are spread through a night 30 km deep, placed so they line up into The Starry Night from one exact point only. The camera leaves that point and dives into a single paint ridge that turns out to be a mountain. It rides the Great Swirl as a galaxy of kilometre-long paint slabs, then pulls back until the whole cosmos snaps back into the canvas."
+  },
+  {
+   "key": "one-take-journey",
+   "title": "ANAMORPHOSIS: The Starry Night in One Take",
+   "logline": "One unbroken 108-second shot starts at a candle-lit window, climbs a 190 m black flame of a cypress, flies through a 2 km corkscrew of moving brushstrokes and circles a moon whose phase changes as you pass it. The camera then backs away 11 km while every helix folds into a flat spiral, until the 3D world lines up stroke for stroke with Van Gogh's canvas."
+  }
+ ],
+ "verdicts": [
+  {
+   "lens": "art-director",
+   "best": "cosmic-vortex",
+   "graft": [
+    "Opening hook (impasto-matter): frame 0 is the exact flat painting. Within 0.4-3 s an inflation pressure wave spreads from Venus, raising impasto ridges, switching on wet speculars and dropping shadows into the furrows, so the strongest beat lands inside the first 3 seconds. Optionally precede it with anamorphic's 0.72 s stroke lay-in from the swirl outward, on first boot only.",
+    "Frame tear (cosmic-vortex): at about 5-6 s the 1.25:1 gallery matte slides off both sides, revealing that the painting continues past its frame. A short lateral truck then sweeps the cypress across about 35% of the frame while the sky stays locked, making the 3D undeniable.",
+    "Vertigo dolly-zoom inhale (all concepts): keep the Alpilles/village plane locked while the cypress balloons into a flame tower and streams past the lens.",
+    "Cypress spiral ascent that bursts over the tip with an FOV blowout (about 60 to 84 deg), the black flame dropping away and Venus dead ahead (cosmic-vortex). Combine it with flame-becomes-wind tip lines whose strokes recolour green to cerulean to white and carry the camera out (one-take-journey).",
+    "Venus Gate punch-through (anamorphic): bloom whiteout with an exposure dip, then nine counter-rotating chrome-yellow / blue-green rings expanding around the lens. Build the rings as armillary shells that read as flat concentric rings from the eye and as precessing gyroscopes in flight (cosmic-vortex).",
+    "Isophote halo banding post pass (one-take-journey): every bloom (stars, moon, windows) is re-quantised into concentric stroke rings tangent to its luminance contours, so the glow paints itself in Van Gogh's halo style and Venus/moon whiteouts keep structure.",
+    "Great swirl as twin conical double-helix funnels whose end-on view is the painted spiral, plus a telephoto profile reveal of the two funnels. This is the money 'enormous space' frame, with Saint-Remy hanging below as a floating island whose edges pour off as paint waterfalls into the void (cosmic-vortex).",
+    "Streamline ride down the funnel wall, with roll driven by heading rate (clamped), FOV punch and paint-drag velocity stretch in place of CG motion blur. Then the silent eye of the vortex, looking back up the funnel nave at the tiny lit village framed in the mouth (cosmic-vortex).",
+    "Scale-invariant brushwork so the paint never pixelates at any magnification: camera-anchored fractal stroke octaves (cosmic-vortex) together with the depth-proportional stroke scale law. If budget allows, include a short macro-ridge-to-mountain crane-out beat (impasto-matter) where one stroke is revealed as one of thousands.",
+    "Climax (anamorphic): a curl-noise storm scatters every stroke. Reassembly is gated by camera distance to the eye, with damped-spring snap rippling outward from Venus. Fuse it with the reverse dolly-zoom collapse where helices fold into flat spirals, halo horns flatten into rings and the cypress slides in from the left like a closing curtain (one-take-journey / cosmic-vortex). The last frame equals the first for a seamless loop.",
+    "A brief side view of the whole painting as a luminous cone converging on the painter's eye as a punctuation beat (anamorphic). Keep it short and make sure the near motifs still read, e.g. with a hotter, larger eye ember. Thin Duerer threads are optional.",
+    "Paint order = depth as the layering rule (anamorphic): it guarantees correct occlusion from the eye and gives the outward flight meaning.",
+    "Free-mode delights: an invariance depth-warp at the eye where nothing moves, yet one metre aside the world refolds (anamorphic); stir-the-sky cursor vortex (one-take-journey); wet-paint bow-wave wake (impasto-matter); Space/R flies home and re-locks the painting.",
+    "Physically phased moon that waxes from crescent to full as the camera orbits it (one-take-journey), inside a big sun-like halo bell.",
+    "Palette discipline: OKLab pigment-gamut pull toward the 12 pigments, Neutral tone mapping (not ACES), scale-invariant ratio fog toward ultramarine/Prussian, dark-blue outline strokes on every silhouette, and canvas weave and varnish only when aligned at the eye.",
+    "Runtime target of about 80-100 s, with each shot at most about 15 s and carrying one named set piece, and at least one icon (cypress, Venus, swirl, moon, village lights) always in frame."
+   ],
+   "avoid": [
+    "Static or quiet first seconds: no 8 s locked tableau and no interior room opener. The iconic full composition plus a motion or material event must hit within 3 s.",
+    "Runtime bloat: 130-150 s cuts with 18 s transit shots (village slalom, slow orbits) that sag between set pieces.",
+    "Off-axis confetti: motifs built as loose dispersed strokes or thin sheets that read as noise or cardboard edge-on. Every motif must be a coherent volume (funnel, horn/shell, flame tubes, ridge walls, solid houses) with underpainting surfaces so there are no holes.",
+    "Money shots where the iconic earth motifs (cypress, village, steeple) collapse to a few pixels or leave frame entirely, e.g. a 230 km side view where everything near is a 6 px point.",
+    "Infographic or UI-looking overlays (gold perspective threads with tick beads, reticles, HUD) dominating the cinematic. Keep them subtle or limited to free mode.",
+    "Generic space-sim tropes: random starfields, nebula fog, grey haze, CG motion blur, lens flares. Every pixel must stay brushstroke-structured in the painting's palette.",
+    "Bloom whiteout at Venus, moon and snap pulses that erases ring structure. Use exposure dips and isophote banding.",
+    "ACES or hue-shifting tone mapping that drifts chrome yellow and ultramarine. Use Neutral tone mapping plus a pigment grade.",
+    "Breaking the anamorphic lock with compromises (depth^0.5 house scaling, unmatched TS/GLSL mapping): the final frame must register exactly with the composition.",
+    "Macro or DOF beats that read as a generic clay or terrain rendering demo rather than Van Gogh paint.",
+    "Nausea-inducing camera: uncapped roll, whip reversals, sustained 100 deg FOV kicks with no calm or reduced-motion mode.",
+    "Signature looks that depend on fragile ultra-tier tech (1M-stroke RGBA32F MRT bake, MRT+MSAA+A2C partitions, contact shadows + DOF) and vanish on the Intel tier. The core impact beats must survive Low tier."
+   ]
+  },
+  {
+   "lens": "graphics-engineer",
+   "best": "anamorphic",
+   "graft": [
+    "Single anamorphic mapping P = E + d*M*((2u-1)*A*tanHalf, (2v-1)*tanHalf, -1), with stroke world size proportional to d, in one shared TS function plus GLSL chunk; add a boot self-test that projects 64 random strokes from E with Camera.project and warns above 1e-4 canvas units (anamorphic).",
+    "composition.ts emits the GLSL header (palette in linear space, vortex/star/moon tables, eye pose) as a generated string, so TS generators and shaders can never diverge (one-take).",
+    "Use Mesh + InstancedBufferGeometry per chunk, not InstancedMesh with dummy matrices. Set geometry.boundingSphere by hand per chunk (class x depth band, about 48-150 chunks), inflated by the maximum animation amplitude. Disable or further inflate culling while storm, depth warp or velocity stretch are active. Correct spheres also make three's opaque front-to-back sort work.",
+    "Static instance buffers (StaticDrawUsage) and all animation closed-form in the vertex shader from uniforms. Wrap uTime to the loop length, with every periodic term dividing it, to avoid float32 time drift (cosmic-vortex's 80 s rule).",
+    "Three-part overdraw guard in the vertex shader: sub-pixel or behind-camera collapse to vec4(2,2,2,1); a screen-size alpha window smoothstep(1.5,4,Lpx)*(1-smoothstep(180,320,Lpx)); a scale-invariant near fade smoothstep(0.8,2.5,|C-P|/Lw). Add seed-time corridor carving around scripted camera paths (one-take).",
+    "Render the scene into its own HalfFloat WebGLRenderTarget (samples 4/2/0 by tier) with alphaToCoverage, then run EffectComposer on non-MSAA targets. EffectComposer clones its target for ping-pong, so an MSAA composer target would make every post pass multisampled (one-take).",
+    "Depth: logarithmicDepthBuffer through ShaderMaterial logdepthbuf chunks as the baseline, plus about 0.5% per-stroke depth jitter inside decks. Optionally use reversed-Z when three r186 and EXT_clip_control expose it on the target Chromium; verify on day one before relying on it. If any meshes sit under strokes (underpainting), push them back with polygonOffset rather than offsetting strokes.",
+    "Low tier: hashed alpha with interleaved-gradient-noise discard when samples = 0 (alpha-to-coverage does nothing without MSAA). Medium/High: alpha-to-coverage with depth write so opaque paint keeps depth testing.",
+    "Quality tiers as blue-noise or shuffled prefixes via geometry.instanceCount, with width multiplied by sqrt(N_full/N), so tier switches cost nothing.",
+    "Dynamic resolution: an EMA of frame time (timer query when exposed) choosing quantised scales 0.5-1.0, at most one change every 2 s to avoid render-target reallocation thrash; drop a tier if pinned at the floor for 2 s.",
+    "Analytic generation only (no main-thread RK4 streamline bake), with seeded mulberry32 into typed arrays, targeting under 250 ms init. If anything is time-sliced, upload once at the end or with update ranges.",
+    "Camera maths: log-space speed (proportional to distance to subject or to E), dolly-zoom FOV solver, van Wijk-Nuij zoom-pan, critically damped springs for hand-off. Reset previous-frame matrices and velocity on every cut, key jump and hand-off so the stretch and smear passes do not spike.",
+    "Keep post to RenderPass + UnrealBloomPass + one combined ShaderPass (Painterly Lens: weave, varnish, frame vignette gated by uAlign, radial speed smear, optional isophote halo banding) + OutputPass with NeutralToneMapping. Convert palette hex from sRGB to linear in TS.",
+    "Stock UnrealBloomPass hard-codes 5 mips. For an iGPU bloom, use a lower resolution via its resolution vector, or fork a 3-mip copy as a deliberate module task.",
+    "Pick the starting tier from the renderer string plus a short benchmark of the opening frame. No workers, blob URLs, pointer lock or fetches. Wrap storage in try/catch. Inline GLSL via ?raw plus vite-plugin-singlefile."
+   ],
+   "avoid": [
+    "Writing data (log depth, ids) into the colour alpha channel when alpha-to-coverage or MSAA resolve is in use (impasto-matter).",
+    "MSAA MRT id or height buffers that get averaged at resolve, and any design that requires every scene material to write layout(location=1) (cosmic-vortex).",
+    "A plain 24-bit depth buffer across a 0.5 m to 2,000 km frustum, or near 0.05 m with far 40 km while strokes sit on meshes, without log depth, reversed-Z or per-shot near/far.",
+    "Letting three.js compute bounding spheres from the base ribbon or from identity instance matrices; leaving frustum culling on while storm or warp displaces strokes.",
+    "Creating EffectComposer with a multisampled render target (every ping-pong pass becomes MSAA).",
+    "Per-fragment loops and multi-tap analytic re-evaluation on million-stroke overdraw: 12 point lights, 9x fbm height taps, Voronoi craquelure, GGX on every stroke.",
+    "Multi-range depth partition passes with per-frame Layer reassignment and discard-based straddle fixes.",
+    "Camera-anchored toroidal fractal stroke octaves keyed to a camUV that is singular at the eye point.",
+    "6M+ vertices per frame with dependent vertex texture fetches; about 1M-stroke budgets.",
+    "Main-thread RK4 streamline bakes with full 8.5 MB DataTexture re-uploads per slice; GPU float readback or RGBA32F MRT as a hard requirement.",
+    "Per-frame CPU work proportional to stroke count, or per-frame instance attribute uploads.",
+    "Unclamped velocity stretch or speed smear on cuts and hand-offs; uncapped camera roll and FOV kicks with no calm or reduced-motion option.",
+    "More than about one custom fullscreen pass plus bloom on the iGPU tier; DOF and full-resolution contact shadows or AO.",
+    "Workers, blob URLs, pointer lock, fullscreen requirements, network fetches or external assets (breaks the sandboxed iframe and the single-file build)."
+   ]
+  },
+  {
+   "lens": "film-art-history",
+   "best": "cosmic-vortex",
+   "graft": [
+    "Spine from cosmic-vortex: open on the exact canvas pose behind a 92.1:73.7 gallery matte with canvas weave and a raking light sweep. Tear the frame open with a small lateral truck (cypress sweeps about 1/3 of frame, sky locked) before any dolly-zoom. Close with a reverse dolly-zoom on the steeple while the matte closes, so the last frame equals the first.",
+    "Motivate the cypress climb with Van Gogh's own idea that the cypress, the tree of death, is the way to reach a star (1888 letters): climb the flame tower and burst over its tip into the open sky with Venus dead ahead.",
+    "Flame becomes wind (one-take): at the cypress tip, tongue strokes peel off along sky streamlines and shift from cypress green to cerulean to zinc white, carrying the camera into the sky. It is a transition the brushwork itself motivates.",
+    "Paint order = depth (anamorphic): star cores, crescent and cypress nearest; swirl and bands behind them; a dark underpainting farthest. This guarantees occlusion at the eye matches the real layering, with star dabs over the swirl, never behind it.",
+    "Every 2D motif is the end-on view of a 3D form: swirl = conical helix funnels whose throat faces the eye; star and moon halos = ring horns stepped in depth that look exactly concentric from the eye. Rings must not precess away from the eye axis.",
+    "The emotional apex from cosmic-vortex: in the calm eye of the vortex, pitch the camera to look back up the funnel and frame the tiny lit village of Saint-Remy in the mouth. This stages the painting's contrast between the quiet human village and the ecstatic sky.",
+    "Reassembly gated by camera position (anamorphic): turbulence or storm amplitude falls with distance to the eye, so the painting can only assemble inside the painter's viewpoint. Finish with a damped-spring snap that ripples outward from Venus, plus a small bloom pulse.",
+    "Collapse beat (one-take): during the final pull-back, the far helices fold into flat spirals first, then the nearer ones; halo horns flatten into rings; the cypress slides in from the left like a closing curtain.",
+    "Opening material beat (impasto-matter): frame 0 is flat paint, then an impasto inflation wave radiates from Venus, raising ridges and switching on wet specular, so the 3D-ness starts in the paint before the camera moves. Run the stroke lay-in over 2-3 s, not 0.7 s, so it can be read.",
+    "Optional macro-to-geography one-take (impasto-matter): skim one hill stroke's bristle furrows, then crane out exponentially until the 'mountain' is one stroke among thousands. Keep it short (8-10 s) and lit by moon and starlight, not a dawn sweep.",
+    "Isophote halo banding in post (one-take): re-quantise bloom into concentric stroke rings tangent to luminance contours, so the glow of stars, moon and windows paints itself in Van Gogh's halo idiom instead of a CG blur.",
+    "Fog by stroke-scale or distance ratio (anamorphic and one-take): zero fog at the eye, so the painting stays pure, tinted toward ultramarine near and Prussian blue far. Keep a hue-preserving tone map (Neutral, or luminance-only Reinhard) so chrome yellow and ultramarine do not shift.",
+    "If perspective threads are kept, re-skin the Duerer threads as Van Gogh's own perspective frame (he built and used one in The Hague in 1882): a string rectangle with diagonals and a centre cross, converging on the eye. Show them only off-axis, and have them fade to zero at the eye.",
+    "Keep at least one icon in every frame (cypress, Venus, moon, steeple and lit windows, swirl arms). Use Prussian-blue contour strokes along ridge, cypress, roofs and halo boundaries in every shot.",
+    "Optional prologue that answers the scholarly hook: the east-facing asylum window at Saint-Paul-de-Mausole before dawn, with the morning star large, as Van Gogh described it in a letter to Theo in 1889. The window must frame the actual canvas composition, so the first second still reads as the painting.",
+    "Steeple as the emotional anchor: scholars read its northern, Dutch-looking spire as a memory of home. Use it as the lock-on subject for the final reverse dolly-zoom.",
+    "Loop hygiene from cosmic-vortex: every periodic term divides the loop length. Choose a total of about 90-110 s with 8-9 shots, alternating intimate and vast scales."
+   ],
+   "avoid": [
+    "ACES tone mapping or any hue-shifting grade: chrome yellow and ultramarine must survive. Use Neutral, or luminance-only Reinhard plus a soft OKLab pull toward the palette.",
+    "Invented motifs that dominate frames: the floating island with paint waterfalls, a persistent gold ember, dust or threads that do not fade to zero at the eye, a 'galaxy' frame with no painting icon in it.",
+    "Long off-axis stretches (more than about 15 s) with no cypress, star, moon, village or swirl arm in frame. Avoid deep fractal or abstract blue-noise frames.",
+    "Tour-style itineraries over 130 s where shots follow geography instead of a motivated chain. Avoid slow 270-deg orbits whose payoff is small.",
+    "Nausea camera grammar: whip rolls above about 35 deg/s, cameras roll-locked to a vortex, dolly-zooms or falls past about 85 deg vertical FOV. Cap roll and provide a calm mode.",
+    "Daylight or dawn key-light sweeps and product-shot macro depth of field: the night must stay lit by moon, stars and windows, with raking 'gallery' light only at the canvas pose.",
+    "Material contradictions such as craquelure (aged, dry paint) on wet linseed specular: pick one paint state.",
+    "Placing the swirl or bands in front of the stars in depth. Star dabs and the crescent sit on top of the sky layer.",
+    "Animations that break exactness at the eye: precessing halo axes, uv-space drift, or hand-held noise that leaves the final lock visibly misregistered. All motion must be canvas-space and pattern-invariant.",
+    "An opening or closing frame that is not the composition (e.g. a generic room interior). Recognition must happen in the first second and land exactly at the end.",
+    "Storm or scatter effects that read as confetti: keep coherent motif silhouettes (tube, horn, wall) until the reassembly.",
+    "Generic round bloom blobs, generic starfields, or more than 11 stars. Halos must be concentric stroke rings.",
+    "Presenting conceits (paint order as chronology, moon phase) as historical fact in any on-screen text."
+   ]
+  }
+ ]
+}

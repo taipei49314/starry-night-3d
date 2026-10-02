@@ -1,0 +1,789 @@
+[
+ {
+  "key": "M1-engine",
+  "build": {
+   "module": "M1 engine",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/engine/engine.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/engine/tiers.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/engine/dynamicRes.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/engine.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/engine.ts",
+    "C:/Users/play/Desktop/starry-night-3d/shots/engine-run.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/engine-heavy.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/engine-scene.png"
+   ],
+   "exports": "src/engine/engine.ts:\n  export function createEngine(container: HTMLElement, opts?: { tier?: Tier }): EngineInternals   // EngineInternals extends contracts Engine, so the contract signature still holds\n  export interface EngineInternals extends Engine { readonly gpuTimerActive: boolean; readonly rendererName: string; readonly detectedTier: Tier; readonly dynamicResolution: DynamicResolution; readonly actionLog: readonly DynResAction[] }\n  The quality, renderScale, cssWidth, cssHeight and pixelRatio properties are live getters. stats is one object, mutated in place.\n\nsrc/engine/tiers.ts:\n  export function detectTier(renderer: WebGLRenderer): Tier\n  export function tierFromRendererString(s: string): Tier          // pure version of the section 7.3 regexes\n  export function rendererString(renderer: WebGLRenderer): string   // UNMASKED_RENDERER_WEBGL, else RENDERER\n  export function lowerTier(t: Tier): Tier | null\n  export function qualityForTier(t: Tier): QualitySettings           // fresh copy of QUALITY_PRESETS[t]\n  export function parseTier(s: string | null | undefined): Tier | null\n  export const TIER_ORDER: readonly Tier[]                           // ['high','medium','low']\n\nsrc/engine/dynamicRes.ts (pure: no WebGL, DOM or wall clock; time = sum of the clamped dt values passed in):\n  export class DynamicResolution {\n    constructor(q: Pick<QualitySettings,'tier'|'targetFrameMs'|'renderScaleInit'|'renderScaleMin'|'renderScaleMax'>)\n    setQuality(q): void            // tier change: scale := init, counters cleared; counts as a change for the 2 s rule\n    update(dtMs: number, gpuSamples: readonly number[] | null, benchmarking: boolean): DynResAction\n    readonly scale: number; readonly steps: readonly number[]; readonly tier: Tier; readonly targetMs: number; readonly ema: number | null; readonly clockMs: number; readonly usingTimer: boolean; readonly upBanned: boolean; readonly pinned: boolean; lastBenchmark: BenchmarkResult | null\n  }\n  export type DynResAction = { kind: 'none' } | { kind: 'scale'; scale: number; from: number; reason: 'down'|'up'|'revert'; atMs: number } | { kind: 'tierDrop'; reason: 'pinned'|'benchmark'; atMs: number; median?: number }\n  export interface BenchmarkResult { median: number; n: number; targetMs: number; dropped: boolean; atMs: number }\n  export function scaleStepsFor(q): number[]\n  Constants: EMA_ALPHA, DOWN_RATIO, DOWN_FRAMES, UP_RATIO, UP_FRAMES_TIMER, UP_DT_RAF_MS, UP_FRAMES_RAF, CHANGE_GAP_MS, REVERT_WINDOW_MS, UP_BAN_MS, PINNED_MS, BENCH_RATIO, MAX_DT_MS",
+   "deviations": [
+    "three r186 always creates the WebGL context with alpha: true. Its `alpha: false` option only sets clear alpha to 1, so getContextAttributes().alpha reports true. I pass alpha: false as specified, and the engine also sets canvas.style.backgroundColor = '#000' so the canvas stays visually opaque if any pass writes alpha < 1.",
+    "Step clamping: 'RENDER_SCALE_STEPS clamped to the tier's [min, max]' is implemented as unique(clamp(step)). The steps are High [0.75, 0.85, 1], Medium [0.6, 0.67, 0.75, 0.85, 1] and Low [0.5, 0.6, 0.67, 0.75, 0.8]. Low's 0.8 maximum is therefore reachable even though 0.8 is not in RENDER_SCALE_STEPS.",
+    "Boot counts as a scale change. lastChangeAt starts at 0, so no step can happen in the first 2 s. This keeps shader-compile and upload hitches from causing an early down-step. A tier change also restarts the 2 s gap.",
+    "The revert of a bad up-step is exempt from the 'at most one change per 2 s' rule. Otherwise it could never fire, because the revert window is also 2 s.",
+    "'Pinned' means the scale is at the tier minimum while EMA > 1.1x target, held continuously for 2 s. DynamicResolution never returns tierDrop on Low.",
+    "Benchmark: while benchmarking = true, samples are collected and the EMA and counters keep running, but scale steps and pinned drops are frozen so the median measures one scale. The spec does not say either way. In timer mode the benchmark median uses GPU ms; otherwise it uses the rAF dt (the same quantity as the EMA).",
+    "Hitch guard (not in the spec): each dt and GPU sample is clamped to 250 ms (MAX_DT_MS) before it feeds the clock and the EMA. Without it, one 5 s stall such as a tab switch would force a down-step.",
+    "Measurement-source switch (not in the spec): timer mode is used while EXT_disjoint_timer_query_webgl2 exists and has delivered a sample within the last 180 frames; otherwise the engine passes null (rAF mode). On every switch the EMA and run counters restart.",
+    "Tier regex: 'Basic Render' (Microsoft WARP software rasteriser) is added to the Low list, next to SwiftShader and llvmpipe.",
+    "setTier(sameTier) still resets the scale to init and fires both callbacks, per 'quality := preset'."
+   ],
+   "contract_requests": [],
+   "integration_notes": [
+    "src/app/composition.ts already calls the API correctly: createEngine(container, {tier}), onResize, onQualityChange, beginFrame before the scene/post render, endFrame after, then updateDynamicResolution(dtMs, shotFrames 30..120). Keep that order. The GPU timer brackets only the work between beginFrame and endFrame, and query results are read one or more frames later in the next beginFrame.",
+    "Drawing-buffer size: three's setSize uses Math.floor(cssW * pixelRatio). composition.ts computes bufW/bufH with Math.round, which is 1 px off whenever the product is fractional (for example 1280 * 0.67 = 857.6 gives 858 against a canvas of 857). Use Math.floor or renderer.getDrawingBufferSize() for uViewportH, uPxPerRad and canvasRectPx.",
+    "onResize callbacks are not called on registration. composition.ts already calls resize(engine.cssWidth, engine.cssHeight, engine.pixelRatio) once by hand, which is correct.",
+    "On a tier change (benchmark drop, pinned drop or setTier) the order is: renderer pixel ratio and size updated, then onQualityChange(q), then onResize(cssW, cssH, pr). Post should rebuild its MSAA target in setQuality or setSize, and strokes.setQuality(q) belongs in the onQualityChange handler.",
+    "The engine sets camera.aspect and calls updateProjectionMatrix on every resize, but not camera.fov. The director (M8) owns the fov, including canvasPoseFovDeg(aspect) for narrow viewports.",
+    "If beginFrame/endFrame are never called on a GPU that exposes the timer extension, dynamic resolution waits about 180 frames (3 s) before it falls back to rAF deltas.",
+    "engine.actionLog, engine.dynamicResolution.lastBenchmark, engine.gpuTimerActive and engine.rendererName are available for the H HUD and the debug overlay.",
+    "renderer.toneMapping = NeutralToneMapping and outputColorSpace = SRGBColorSpace are set at creation. Post (M9) sets toneMappingExposure each frame."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : 0 errors in src/engine/* and harness/engine.*. The only remaining errors are 9 in src/app/composition.ts (M10), which imports modules other agents have not written yet.",
+    "node tools/shot.mjs harness/engine.html --wait 40000: 51/51 checks PASS, 0 console errors or warnings. The headless run actually used the laptop GPU: 'ANGLE (Intel, Intel(R) UHD Graphics (0x0000A78B) Direct3D11 ...)', detected as low. Timer query present, gpuMs about 2.1, fps about 165 (headless rAF is not vsync-capped). Benchmark median 2.0 ms over 91 samples, no drop. Buffer 857x482 = floor(1280*0.67) x floor(720*0.67).",
+    "DynamicResolution unit results (synthetic dt): slow High timer run gives down 1->0.85 at 2004 ms, 0.85->0.75 at 4008 ms, tierDrop(pinned) at 6029 ms. Slow Low gives 0.67->0.6->0.5 and no drop. Slow Medium rAF gives 0.85->0.75->0.67->0.6 then a pinned drop at 8070 ms. Fast timer gives 0.85->1 at 2004 ms. Fast rAF Low gives 0.67->0.75 at exactly 300 frames and ->0.8 at 600. A bad up-step gives up at 2004, revert at 2689 (inside the 2 s window), and the next up at 12692 (10 s ban). Benchmark median 25 > 21.71 gives tierDrop(benchmark); median 20 gives no drop; Low never drops; an even-count median averages the middle pair; sparse 200 ms hitches give median 12. A single 5000 ms hitch causes no down-step. The timer to rAF switch restarts the EMA. Non-revert scale changes are always at least 2 s apart.",
+    "Tier regex: 15 renderer strings classified correctly (RTX 5060 high, UHD/Iris/SwiftShader/llvmpipe/Mesa/WARP low, Apple/Adreno/Mali/Radeon(TM) medium, Radeon RX high, masked 'WebKit WebGL' high).",
+    "Engine checks: canvas fills the container (1280x720); renderer flags (logdepth, Neutral, sRGB, antialias false, stencil false, depth true, high-performance, clear alpha 1); camera near 0.1, far 600000, fov 36, aspect = css aspect; quality is a copy of the preset; pixelRatio = min(dpr, maxPR) * scale and canvas.width = floor(cssW * pr); setTier fires quality then resize; container resize to 960x540 via ResizeObserver fires one onResize; no spurious resize; opts.tier override works; dispose removes the canvas and is idempotent; QUALITY_PRESETS is not mutated.",
+    "End-to-end heavy run (harness/engine.html?tier=high&heavy=80&frames=700) on the real Intel UHD: benchmark median 50.1 ms > 1.3x16.7 dropped High to Medium at frame 121. The real engine then stepped 0.85->0.75 at 8367 ms, ->0.67 at 10397 ms and ->0.6 at 12415 ms (about 2.0 s apart). The quality and resize events matched the action log exactly. All checks passed, with 0 console errors.",
+    "Screenshots inspected: shots/engine-scene.png shows the canvas-pose test scene with flow-aligned strokes (c1/c2 swirls, halos, ridge-parallel land) rendered through the engine's tone mapping and colour space. shots/engine-run.png and shots/engine-heavy.png show the PASS list and the dynamic-resolution log."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/engine-scene.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/engine-run.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/engine-heavy.png"
+   ],
+   "known_issues": [
+    "Untested on hardware: an NVIDIA High-tier GPU, a high-DPR display (only dpr 1 was tested headless), devicePixelRatio changes through the matchMedia re-arm path, and WebGL context loss and restore (the handlers exist but were never triggered).",
+    "rAF-only mode was verified only with synthetic sequences. On this laptop the timer extension is always present, so the real-engine runs used GPU-timer mode.",
+    "Headless Chrome rAF is not vsync-locked (about 165 fps), so the real-time runs do not show 60 Hz vsync behaviour. The 17.5 ms rAF up-rule is covered by the unit tests only.",
+    "With heavy GPU-bound frames, at most 4 queries are in flight, so some frames have no GPU sample. The heavy run's benchmark had n=71 samples over 91 frames. This is by design (non-blocking), but the median then comes from fewer samples.",
+    "Not done: the reversed-depth / EXT_clip_control experiment (section 2.5 marks it optional) and canvas-pose FOV handling (owned by M8)."
+   ],
+   "tsc_clean_for_own_files": true
+  },
+  "review": null
+ },
+ {
+  "key": "M3-strokes",
+  "build": {
+   "module": "M3 - stroke system (src/strokes/*)",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/strokeBuffer.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/ribbonGeometry.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/strokeMaterial.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/glsl/stroke.vert.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/glsl/stroke.frag.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/underlay.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/debugGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/strokes.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/strokes.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/strokesWorld.ts"
+   ],
+   "exports": "// strokeBuffer.ts (also re-exports everything below, because src/app/composition.ts imports buildStrokeLayer and makeUnderlayMaterial from here)\nexport class StrokeBuffer implements StrokeSink {\n  constructor(capacity?: number /* default 4096, grows x2 */);\n  push(r: StrokeRecord): void;            // packs a0.w = cls + FLAG_STRIDE*flags; throws on a bad class or a non-finite field\n  readonly count: number;\n  readonly data: Float32Array;            // subarray(0, count*16), a view\n  classRange(cls: StrokeClass): { dMin: number; dMax: number; n: number };\n  get(i: number, out: StrokeRecord): StrokeRecord;\n  clsOf(i: number): StrokeClass; flagsOf(i: number): number;\n}\nexport function emptyRecord(): StrokeRecord;\nexport { buildStrokeLayer, makeStrokeMaterial, type StrokeLayerEx, type StrokeChunkEx } from './strokeMaterial';\nexport { makeUnderlayMaterial } from './underlay';\nexport { makeRibbonGeometry } from './ribbonGeometry';\nexport { generateDebugStrokes } from './debugGen';\n\n// strokeMaterial.ts\nexport const MAX_CHUNK = 4096; export const STORM_FIELD_BOUND = 2;\nexport interface StrokeChunkEx extends StrokeChunk { nUnder: number; center: Vector3 }\nexport interface StrokeLayerEx extends StrokeLayer { chunks: StrokeChunkEx[]; readonly material: ShaderMaterial; readonly drawCalls: number; dispose(): void }\nexport function makeStrokeMaterial(u: SharedUniforms, q: QualitySettings): ShaderMaterial;\nexport function buildStrokeLayer(buf: StrokeBuffer, u: SharedUniforms, q: QualitySettings): StrokeLayerEx;   // assignable to StrokeLayer; layer.ribbon = current shared ribbon (getter)\n\n// ribbonGeometry.ts\nexport function makeRibbonGeometry(segments: 3 | 4 | 5): BufferGeometry;   // (segments+1)*2 verts, position=(s,w,0), indexed\nexport function sharedRibbon(segments: 3 | 4 | 5): BufferGeometry;         // cached shared instance per LOD\n\n// underlay.ts\nexport const UNDERLAY_DEPTH_BIAS = 1e-3;\nexport const underlayVert: string; export const underlayFrag: string;\nexport function makeUnderlayMaterial(colorHex: number, u: SharedUniforms, side?: Side /* default FrontSide */): ShaderMaterial;\n\n// debugGen.ts\nexport function generateDebugStrokes(sink: StrokeSink, rng: Rng, n?: number /* 64 */): void;\n\n// glsl\nexport const strokeVert: string;  // src/strokes/glsl/stroke.vert.ts\nexport const strokeFrag: string;  // src/strokes/glsl/stroke.frag.ts (optional defines: HASHED_ALPHA, STK_DEBUG=1..5 for inspection)",
+   "deviations": [
+    "Depth warp, positions: the vertex shader builds every position unwarped (d) and then maps each vertex radially about E to its warped forward depth (stkWarp). Endpoints are identical to the prelude's canvasToWorld(uv, d) under warp, and every other vertex (ribbon edges, spine bow) keeps its exact projection from E. Ribbon width uses the unwarped d before the radial map.",
+    "Depth warp, depth test: when uWarpK != 1, log depth (vFragDepth) comes from the unwarped vertex, and gl_Position.z is clamped to the far plane. Without this, k=0 puts every stroke at 1 km (coplanar, so z-fighting) and k=1.6 pushes far strokes to about 6.4e6 m, beyond CAMERA_FAR 600 km (clipped). The warp test was 75% / 38% differing pixels before this change and 0.3-0.4% after it.",
+    "Overdraw guards (Lpx, upper fade, near fade dist/Lw) use the unwarped stroke length and distance. They equal the spec values at uWarpK = 1 and are warp-invariant from E. The behind-camera cull still uses the warped endpoints.",
+    "Added a vertex LOD: a stroke with Lpx < STK_LOD_PX (20 px) snaps its interior ribbon stations to s=0/1, so the interior triangles become zero-area, and it is drawn flat-profile with no bow. This took the full-budget frame at 720p High on Intel UHD from 115 to 90 ms. Bow and taper are sub-pixel at that size.",
+    "Fragment: the bristle amplitude fades as fwidth(w)*nb goes from 0.5 to 1.0 (an anti-alias LOD: a bristle period of 4 px down to 2 px), and the dry-brush step(e, bristle) edge is anti-aliased with fwidth. All derivatives are taken before any discard.",
+    "Fragment: vnoise2(vec2(3s, 9seed)) and vnoise2(vec2(18s, seed)) are replaced by a 1-D value noise along s with a per-stroke lane (hash11). The second coordinate was constant per stroke anyway, so this is the same family at half the hashes. bristle(w+0.37) is computed by angle addition.",
+    "Fragment: coverage is computed first and the fragment discards before shading (alpha < 0.004 on A2C tiers; alpha < ign on HASHED_ALPHA). Specular is capped at 4. Shading uses a per-vertex bent frame (T and Nb rotated by the kappa bow slope).",
+    "UNDERLAYER strokes are placed first inside each chunk and are always drawn: instanceCount = nUnder + ceil(nRest*fraction). This keeps the spec table's UNDERLAYER fraction 1/1/1, which the flag-based design otherwise lost. They render flat: no bristle, impasto, specular, dry brush or outline, W x3, as a ragged lozenge (rounded ends, noisy edge) so they do not read as rectangles.",
+    "VORTEX strokes flagged UNDERLAYER get d *= 1.01 in the shader. The shader recomputes VORTEX depth from the arm law, so the generator's '+1%' shell depth (M4) cannot survive otherwise.",
+    "RING depth: d = d_k * clamp(recordD/d_k, 0.97, 1.03), or d_k*(1 +/- 0.5% by seed) when the record depth equals d_k exactly. This keeps generator jitter so overlapping ring strokes do not z-fight; the spec says d = d_k.",
+    "JET colour ramp in the shader: mix(PAL_CYPRESS_GREEN -> PAL_CERULEAN -> PAL_ZINC_WHITE by sigma), with the record colA/colB as a 35% tint. Emissive = a2.z * sigma, so the generator sets a2.z = 1.1. Depth = jetPoint d * (1 + q3), matching harness/lib/preview.ts.",
+    "Storm tumble ordering: T is taken from the endpoints, tumbled by D, and the endpoints are rebuilt about the displaced centre with the same Lw. The spec lists 'tumble' in step 5 before 'T = normalize(PB - PA)' in step 6, so the order was ambiguous.",
+    "setCullInflation(extra): radius = baseRadius + extra * dMax * STORM_FIELD_BOUND (2), because |stormField| can exceed 1. The contracts comment says 'radius += extra * dMax'.",
+    "Underlay material: polygonOffset(1, 2) is set as specified, but it has no effect once the shader writes gl_FragDepth (log depth). The same push is applied by hand in the fragment shader: a slope term (fwidth of log2 depth) plus a relative distance bias uUlDepthBias = 1e-3. makeUnderlayMaterial gained an optional third parameter, side.",
+    "Both stroke and underlay fragment shaders include tonemapping_fragment and colorspace_fragment. These are no-ops when rendering into M9's sceneRT and give correct output when rendering straight to the canvas (harness).",
+    "One ShaderMaterial (one program) is shared by all chunks; the spec says 'materials per class group'. Every per-class difference is per-instance or in const tables, so no split was needed.",
+    "generateDebugStrokes uses STATIC classes (UNDERPAINT, STAR_CORE, MOON, HILL, HOUSE, GROUND), with depths inside each class's dRange. Solid strokes get a face normal perpendicular to the stroke that faces E (tilt up to 40 deg). Random normals had collapsed one ribbon to a sliver."
+   ],
+   "contract_requests": [
+    "Spec 4.3 acceptance 'toggling uWarpK from 0 to 1.6 at E changes no pixel' cannot hold with stock log depth and CAMERA_FAR = 600 km: k=0 makes everything coplanar and k=1.6 puts the underpainting at about 6.4e6 m. M3 works around it internally (unwarped log depth plus far-plane clamp). Any other warped material (M4 dust and backdrop) needs the same treatment or must hide under warp, as underlays do (section 5.3). The spec or contracts should document this.",
+    "Consider documenting in contracts.ts that setCullInflation applies a |stormField| bound factor (STORM_FIELD_BOUND = 2), or change the comment to 'radius += extra * dMax * 2'.",
+    "Consider adding to the StrokeRecord docs: RING a0.z = ring depth (jitter of 3% or less is honoured); JET a2.z = emissive at the Venus end (1.1) and q3 = relative depth jitter; VORTEX colours stay attached to the stroke while it streams (no recolouring by sigma); UNDERLAYER strokes are always drawn on every tier.",
+    "Generators must keep solid strokes inside their face (face normal perpendicular to the stroke direction). Otherwise B = cross(N, T) lies along the stroke and the ribbon collapses to a sliver. Worth a line in contracts.ts next to 'solid'."
+   ],
+   "integration_notes": [
+    "Imports: src/app/composition.ts imports { StrokeBuffer, buildStrokeLayer, makeUnderlayMaterial } from '../strokes/strokeBuffer'. That works through the re-exports, with no runtime import cycle (strokeMaterial.ts only imports the StrokeBuffer type).",
+    "scene.add(layer.group) and keep the group and its meshes at identity: the vertex shader writes world positions and ignores modelMatrix (matrixAutoUpdate is false).",
+    "Call layer.setQuality(q) on every tier change. It writes the shared uWidthComp, uSpecular and uVelStretch values, swaps the shared ribbon, sets instanceCount prefixes, and toggles alphaToCoverage / HASHED_ALPHA (material.needsUpdate). buildStrokeLayer already calls it once.",
+    "Per frame: layer.setCullingEnabled(warpK === 1); layer.setCullInflation(0.05) while uScatter > 0 or the snap is live, and 0 otherwise.",
+    "uPxPerRad and uViewportH must be in device pixels of the actual render target (sceneRT height after the render scale). The screen-size alpha window, sub-pixel cull and vertex LOD all depend on them.",
+    "uOff, uAlign and uCamVel come from M10 per section 6. At E, uOff = 0 gives the image-plane binormal and uAlign = 1 lights with the gallery light.",
+    "Underlays: one makeUnderlayMaterial per colour is fine, since all share one program (two programs including the instanced variant). The material supports InstancedMesh via USE_INSTANCING. Hide underlays while warpK != 1 (they are not warped).",
+    "Self-test: use generateDebugStrokes into a separate StrokeBuffer (or a RecordingSink). If pushed into the world buffer, those 64 strokes render as random visible strokes. harness/strokes.ts shows the CPU projection test exactly as section 4.10 describes.",
+    "For inspection, set layer.material.defines.STK_DEBUG = '1'..'5' (diffuse, specular x10, normal, imp/4, bristle) and set needsUpdate.",
+    "Rendering into M9's HalfFloat MSAA sceneRT: A2C needs samples > 0, which matches the msaa > 0 tiers; the Low tier (msaa 0) uses hashed alpha automatically."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : 0 errors in src/strokes/* and harness/strokes*.ts. The remaining errors are composition.ts imports of other agents' not-yet-written modules.",
+    "harness/strokes.html (swiftshader, 1280x720, real path: logarithmicDepthBuffer + antialias + NeutralToneMapping), mini-world of 21,097 strokes: 0 console errors or warnings and no GLSL compile errors, on swiftshader and on the GPU via ANGLE D3D11 (Intel UHD).",
+    "Warp invariance at the exact canvas pose, final run, fraction of pixels with any channel differing / differing by more than 24 levels: k=1 0/0; k=0.5 0.23% / 0.011%; k=1.6 0.28% / 0.012%; k=0 0.43% / 0.019% (max diff 105). Full-budget world (182k strokes): 0.51-0.89% / 0.024-0.041%. The diff overlay (shots/strokes-warpdiff0.png, produced at an earlier stage of the fix) shows isolated edge pixels, plus clusters on the harness houses' coplanar wall strokes.",
+    "CPU endpoint projection of the 64 debug strokes (128 endpoints) via Vector3.project, u = 0.5 + ndc.x*aspect/(2A), v = 0.5 + ndc.y/2: max error 3.9e-6 (< 1e-4). Passes.",
+    "GPU centre coverage: the debug strokes rendered alone through the real shader; all 64/64 canvas centres covered (kappa set to 0 for this test).",
+    "Pack round trip StrokeBuffer.push/get: max relative error 5.6e-8; cls and flags exact.",
+    "Bounds: renders with frustum culling on vs off are pixel-identical in every view (pose, side, funnel, full-density funnel, close, house, venus, macro, cypmacro, storm, snap, stir, lay-in, low tier) at t = 0, 12, 20, 30 and 40. Culling removed up to 40 of 55 chunks in the full-density funnel view.",
+    "Draw calls: mini-world 13 chunks (15 calls with 2 underlays). Full High budget, 182,019 strokes: 55 chunks, 57 calls (<= 80), 1.82 M triangles on High, 0.89 M on Medium, 0.38 M on Low. Build (chunk + Morton sort + shuffle + bounds + upload setup) 121-126 ms.",
+    "Tier switch at runtime (low -> medium -> high): HASHED_ALPHA on and A2C off on Low, A2C on otherwise; instanceCount prefixes and ribbon swap apply with no regeneration and no errors.",
+    "Dynamic paths, checked visually: storm scatter (uScatter = 1) with tumble; snap ripple from Venus (0.6 s after the snap the area near Venus is reassembled and the far side still scattered); stir rotates the swirl region; lay-in reveals strokes outward from (0.6374, 0.64); VORTEX, RING, BAND, CYPRESS and JET animate at t > 0; velocity stretch (900 m/s) produces no artefacts.",
+    "Timing on the real GPU (Intel UHD via ANGLE D3D11, --gpu, median of 20-30 frames, each closed by a 1-pixel readPixels), full budget: High 1920x1080 201 ms before optimisation, 140 ms final. High 1280x720 115 ms to 90 ms (measured before the final unwarped-guard change). Low 1280x720 52 ms to 40 ms, and 34 ms with tone mapping and sRGB off (production-equivalent). High 320x180 51 ms to 25.6 ms. Experiments: with a trivial fragment shader the 320x180 frame is 12 ms, so the cost is fragment and quad bound, not vertex.",
+    "renderer.info, pose view, mini-world: calls 15, triangles 213,066, programs 4. Full budget: calls 57, triangles 1,822,718. No shader warnings were printed.",
+    "Stroke look, checked in a lab view with large strokes through the real path, plus the STK_DEBUG passes: bristle grooves, dry-brush fringe at the tail, dark rims on OUTLINE strokes, flat ragged underlayer fill, HDR emissive. Diffuse, normals and imp were confirmed live. Specular glints are non-zero along the bristle ridges (STK_DEBUG=2: max 255 at x10, 0.3% of pixels)."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-full-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-side.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-funnel.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-funnel-full.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-close.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-house.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-macro.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-cypmacro.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-venus.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-lab.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-lab-offaxislight.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-labdbg1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-labdbg2.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-labdbg3.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-pose-t12.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-storm-side.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-snap.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-stir.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-layin.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-low.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-velstretch.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-warpdiff0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-debug.png"
+   ],
+   "known_issues": [
+    "Performance is far over the spec targets on this laptop's Intel UHD. Full budget (182k strokes): High 1080p 140 ms, High 720p about 90 ms, Low 720p about 34-40 ms, against 16.7 / 22 ms targets. The cost is fragment and fill bound (log depth disables early-Z; sub-pixel slivers each pay for a 2x2 quad). The section 7.1 budget assumes an RTX 5060, which was not available here, so it is NOT verified. The harness's full world also has more HOUSE strokes than budget (33k vs 14k) and generic HILL/GROUND/GROVE fills, so its overdraw is not representative.",
+    "Warp invariance is not exactly zero. 0.2-0.9% of pixels differ in some channel, and 0.01-0.04% by more than 24/255 (max 105-164). The remaining sources are edge-sample rounding from different clip coordinates, perspective-correct interpolation on depth-varying strokes, and depth ties between coplanar strokes (harness house walls). I judge this 'dither level', but it is not literally 'no pixel changes'.",
+    "Wet highlights are subtle at the spec weights (0.16 * pow(., 28) * imp). They are verified non-zero via STK_DEBUG=2 but barely visible in normal renders. M8/M10 can raise uImpastoGain / uSpecular if more is wanted.",
+    "Bristle texture is only visible once a stroke is more than about 40 px wide; below that the anti-alias LOD fades it. At the 720p/1080p canvas pose most strokes therefore read as two-tone tapered ribbons without grooves.",
+    "The spec's near fade (smoothstep(0.8, 2.5, dist/Lw)) makes strokes within about 2.5 stroke lengths of the camera transparent. In close macro views this exposes the underlay meshes (shots/strokes-macro.png). This is by design, but camera paths should not linger that close.",
+    "The harness generators (funnel, rings, bands, cypress, jet, houses) are simplified stand-ins, not M4-M7. The sparse cypress and visible underlayer blobs in the close shots reflect harness density (2.8k vs 19.5k strokes), not the stroke system.",
+    "Not tested with M9's real HalfFloat MSAA sceneRT and EffectComposer; only the default-framebuffer MSAA canvas. A2C behaviour on an MSAA render target is expected to match but is unverified.",
+    "No Spector capture was run. There are no per-frame attribute uploads by construction (StaticDraw instanced buffers written once at build; setQuality changes only instanceCount, index/position bindings, uniforms and defines), but this was not measured.",
+    "Most screenshots used SwiftShader; only the timing runs used the GPU (ANGLE D3D11, Intel UHD).",
+    "VORTEX strokes keep their generator colour while streaming. A stroke born white at the throat re-enters at the mouth still white after wrapping (it fades through the sigma-end alpha window). This follows the spec (no VORTEX recolouring), but the M4/lead should be aware of it.",
+    "The vertex LOD (20 px) and the guards use the unwarped stroke. Off-axis under a strong warp (free mode only), the alpha windows describe the stroke as painted, not its warped size, so very large warped strokes near the camera are not faded."
+   ],
+   "tsc_clean_for_own_files": true
+  },
+  "review": {
+   "module": "M3 - stroke system (src/strokes/*), review and fix pass",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/glsl/stroke.vert.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/strokeMaterial.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/strokes.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/glsl/stroke.frag.ts (reviewed, unchanged)",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/strokeBuffer.ts (reviewed, unchanged)",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/ribbonGeometry.ts (reviewed, unchanged)",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/underlay.ts (reviewed, unchanged)",
+    "C:/Users/play/Desktop/starry-night-3d/src/strokes/debugGen.ts (reviewed, unchanged)",
+    "C:/Users/play/Desktop/starry-night-3d/harness/strokesWorld.ts (reviewed, unchanged)"
+   ],
+   "exports": "Unchanged from the builder's report. strokeBuffer.ts: class StrokeBuffer implements StrokeSink { constructor(capacity = 4096); push(r: StrokeRecord): void; readonly count: number; readonly data: Float32Array; classRange(cls): { dMin; dMax; n }; get(i, out): StrokeRecord; clsOf(i): StrokeClass; flagsOf(i): number }; emptyRecord(): StrokeRecord; it also re-exports buildStrokeLayer, makeStrokeMaterial, makeUnderlayMaterial, makeRibbonGeometry and generateDebugStrokes. strokeMaterial.ts: MAX_CHUNK = 4096; STORM_FIELD_BOUND = 2.7 (was 2); makeStrokeMaterial(u: SharedUniforms, q: QualitySettings): ShaderMaterial; buildStrokeLayer(buf: StrokeBuffer, u: SharedUniforms, q: QualitySettings): StrokeLayerEx. StrokeLayerEx extends StrokeLayer with { chunks: StrokeChunkEx[]; material; drawCalls; dispose() }, and StrokeChunkEx adds { nUnder; center }. ribbonGeometry.ts: makeRibbonGeometry(segments: 3|4|5): BufferGeometry; sharedRibbon(segments). underlay.ts: makeUnderlayMaterial(colorHex: number, u: SharedUniforms, side?: Side): ShaderMaterial; UNDERLAY_DEPTH_BIAS = 1e-3. debugGen.ts: generateDebugStrokes(sink: StrokeSink, rng: Rng, n = 64): void. glsl: strokeVert, strokeFrag.",
+   "deviations": [
+    "Depth warp, changed: the builder overwrote vFragDepth with the unwarped depth but kept perspective-correct interpolation weighted by the WARPED clip w. Varyings across a stroke that spans depths (s, w, and vFragDepth itself) then interpolated differently under warp. That was the main remaining source of warp-invariance error. The vertex shader now rescales gl_Position by wUnwarped / wWarped when uWarpK != 1 (the stroke is not culled and both w > 0). A positive rescale of the clip vector keeps NDC, the pixel and clipping exactly. Interpolation weights and the log depth (1 + w) then become those of the unwarped stroke, so the vFragDepth override was removed. The far-plane clamp z = min(z, w) is kept. Off-axis under warp, the depth test therefore uses unwarped camera distance, the same trade-off the builder chose.",
+    "Supersedes the builder's 'Overdraw guards use the unwarped stroke' deviation only for depth and interpolation. The guards themselves are unchanged.",
+    "Underlayer strokes now never get an outline: vStkBi.w = outlined && !under ? OUTLINE_W[cls] : 0. The builder's report said underlayers are flat with no outline, but the shader applied OUTLINE_W when a generator set both flags.",
+    "STORM_FIELD_BOUND 2 -> 2.7. Each component of the §3 stormField is at most (1.1 + 1.7 + 0.45*2)*0.42 = 1.554, so |field| <= sqrt(3)*1.554 = 2.69. 2 was not a conservative bound, so storm cull inflation could under-cover strokes. The radius is still baseRadius + extra*dMax*bound.",
+    "Chunk bounds for sky classes (CLASS_INFO.sky: SKY_BAND, SWIRL, EDDY, STAR_RING, MOON_RING, WIND_JET) now add a stir envelope of 0.05 h-units * 2t * d. The §4.3 step-3 rotation about the cursor moves a point by at most 0.515*z*R, which is 0.041 h for z = 1 and R = 0.08 (§5.3). The builder's bounds had no stir term, which risked culling pops while stirring near the frustum edge."
+   ],
+   "contract_requests": [
+    "Same as the builder's first request, updated: the spec's 'uWarpK 0 -> 1.6 at E changes no pixel' needs depth handling under warp (log depth with CAMERA_FAR = 600 km). M3 now does it by rescaling clip w to the unwarped depth, which keeps NDC and makes interpolation and log depth warp-invariant. Other warped materials (M4 dust and backdrop if warped) can use the same 3-line trick: if (uWarpK != 1.0) gl_Position *= wUnwarped / gl_Position.w; then clamp z <= w. Worth one line in the spec or contracts.",
+    "contracts.ts setCullInflation comment says 'radius += extra * dMax'. M3 applies 'extra * dMax * 2.7' (the |stormField| bound). Please document it or adopt the factor.",
+    "The builder's other requests still apply: RING a0.z depth jitter (3% or less) is honoured; JET a2.z = emissive at the Venus end and q3 = relative depth jitter; UNDERLAYER strokes are always drawn; solid strokes must have a face normal perpendicular to the stroke."
+   ],
+   "integration_notes": [
+    "No API changes. Everything in the builder's integration notes still holds: setQuality on tier change; setCullingEnabled(warpK === 1); setCullInflation(0.05) during storm or snap; uPxPerRad and uViewportH in device pixels of the actual render target; hide underlays while warpK != 1.",
+    "Note: buildStrokeLayer() calls setQuality(), which writes the SHARED uWidthComp, uSpecular and uVelStretch. Building a second layer (for example a self-test layer) with a different QualitySettings overwrites the world layer's values. Call world.strokes.setQuality(q) afterwards, as harness/strokes.ts now does.",
+    "Bounds now include a stir envelope sized for the §5.3 stir radius of 0.08 h (it covers R up to about 0.097). If M8 uses a larger uStir.w, tell M3 so STIR_PAD_H in strokeMaterial.ts can be raised."
+   ],
+   "verification": [
+    "Code review against SPEC §4.3 and the lead's deviations. These match the spec or the prelude: decode of cls/flags (int(a0.w+0.5), mod/div FLAG_STRIDE, bit tests); VORTEX fractional arm (q1 - 2*floor(q1/2)) and armPoint with thetaArm = arm*PI + 0.37*vi; sigma = fract(q2 - t/24); d *= 1 + 0.02*(seed-0.5); dlnd = expo*lnR*L/|tH|; sigma-end alpha fade; RING ang, spin (-1)^k*(1 + k mod 3)/96 s, radius rho*(1 + 0.04*q3), tangent ang + pi/2; BAND periods {8,12,16,24}; CYPRESS 6 s sway; JET period 8 s and the jetPoint law; FLICKER 4 s; stir about uStir.xy (h-units); endpoints uv -/+ 0.5*(du/A, dv) with dA/B = d*exp(-/+0.5*dlnd); storm amp and spring wavefront 0.9*|p - pVenus|; D = amp*0.05*d*stormField(Pc/(0.15d) + 7*seed); the uniform branch; B_img/Bv/solid binormal with degeneracy fallbacks and Bv hemisphere alignment; Nb faces the camera; spine bow and width profile; velocity stretch; the guards (UNDERPAINT and uAlign > 0.5 upper-fade exemptions are present, and no guard culls a normal-length stroke at E); fragment block (bristle, wp, mask, dry brush, lay-in, h and analytic normal, diffuse and spec, colour mix, outline, emissive, fog); A2C when msaa > 0 and HASHED_ALPHA when msaa == 0; Morton chunking <= 4096, one chunk per vortex and per star; Fisher-Yates per chunk; StaticDraw interleaved buffers; hand-set spheres; one program.",
+    "Warp invariance at the exact pose (fraction of pixels differing / differing by more than 24 / max diff). BEFORE (builder, re-measured here): k=0.5 0.229% / 0.0106% / 105; k=1.6 0.281% / 0.0117% / 58; k=0 0.430% / 0.0192% / 105. AFTER the clip-w rescale: k=0.5 0.0140% / 0.00054%; k=1.6 0.0193% / 0.00076%; k=0 0.0183% / 0.00098%. That is about 16-24x fewer differing pixels. Full 182k-stroke world: 0.039-0.048% / 0.0018-0.0026% (builder: 0.51-0.89%). Medium tier 0.012-0.016%; Low tier 0.006%. The diff overlay (shots/strokes-rv-warpdiff0.png) shows only isolated single pixels, which is edge-sample rounding.",
+    "harness/strokes.html: 0 console errors or warnings, no GLSL compile errors, in every view run: pose, pose 1080p, side, funnel, full funnel, close, house, venus t=12, lab, storm pose and side (scatter=1, t=20), snap 0.6 s, stir, low and medium tiers, full world, aside dx=1 with and without warp 0.4/1.6, side warp 0.4/1.6.",
+    "cpuEndpointProjection maxErr 3.91e-6 (< 1e-4) OK; packRoundTrip maxRel 5.6e-8, cls and flags exact; gpuCentreCoverage 64/64 on high, medium and low (low was 36/64 before the harness fix; the cause was the harness building the debug layer with low-tier fractions, not a shader defect).",
+    "Bounds: culling on vs off is pixel-identical (anyFrac 0) in pose, side, storm-side, storm-pose, snap, stir, house, venus, full funnel (37 of 56 calls culled) and every tier.",
+    "Draw calls unchanged: mini-world 15 (13 chunks + 2 underlays); full world 57 calls (55 chunks), 1.82 M triangles High, 0.89 M Medium, 0.38 M Low. Tier switch: HASHED_ALPHA on and A2C off on Low, A2C on otherwise.",
+    "GPU timing (Intel UHD, ANGLE D3D11, full world, 1280x720 High, median of 20): 88.9 ms. Same as the builder's ~90 ms, so the fix costs nothing at k = 1 (uniform branch).",
+    "npx tsc --noEmit -p . : 0 errors in the whole project at the end of this pass.",
+    "Visual check (I looked at every PNG): at the pose the sky reads as tapered two-tone dashes following the flow field; the funnels are spiral swirls; the Venus ring horn is concentric and textured; large underpaint strokes show bristle grooves and dry-brush tails; lab strokes show bristle ridges, dry-brush fringes, dark outline rims on OUTLINE strokes and flat ragged underlayer fills. Storm, snap ripple (Venus area reassembled, far side scattered), stir and off-axis warp all render coherently."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-pose1080.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-fullpose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-warpdiff0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-warp-offaxis.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-aside-dx-1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-aside-dx-1-warp-0-4.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-aside-dx-1-warp-1-6.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-side-warp-0-4.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-side-warp-1-6.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-side.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-funnel.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-funnel-full.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-close.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-house.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-venus.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-lab.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-storm-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-storm-side.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-snap.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-stir.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/strokes-rv-low.png"
+   ],
+   "known_issues": [
+    "Warp invariance is still not literally zero: about 0.01-0.05% of pixels differ, as isolated single pixels with max channel diff 53-155 (sample-edge rounding of the different clip coordinates, plus depth ties between coplanar harness house-wall strokes). I judge this to be within the spec's 'A2C noise' wording.",
+    "Off-axis under warp (free mode only), the depth test uses unwarped camera distance. Near E it matches paint order; far from E with a strong warp, occlusion can differ from the true warped geometry. The builder's version had the same trade-off.",
+    "Not changed (spec-normative weights): wet highlights (0.16*pow(.,28)*imp) and the uAlign = 1 diffuse range 0.72-1.0 are subtle. Strokes read as bristled two-tone ribbons more than heavy relief. The bristle AA fade means grooves only show on strokes wider than about 40 px. At the 720p/1080p pose most sky strokes are tapered two-tone dashes without visible grooves. M8/M10 can raise uImpastoGain if more relief is wanted.",
+    "Performance is unchanged and still far over the §7.1 targets on this Intel UHD (full world, High 720p, 88.9 ms). The RTX 5060 budget is NOT verified.",
+    "Not tested against M9's real HalfFloat MSAA sceneRT or M10's composition; only the harness default framebuffer was used. No Spector capture was made (no per-frame attribute uploads by construction; setCullInflation early-outs, and setQuality only runs on a tier change).",
+    "The underlay InstancedMesh normal uses mat3(instanceMatrix) (not the inverse-transpose). This is exact for axis-scaled boxes, approximate for other non-uniformly scaled meshes. Left as is.",
+    "The harness world generators are stand-ins, not M4-M7, so density and look judgements of the cypress, funnels and village reflect harness density only.",
+    "Most review shots ran headless; the shot tool's page info reported ANGLE D3D11 on the Intel GPU even without --gpu."
+   ],
+   "tsc_clean_for_own_files": true
+  }
+ },
+ {
+  "key": "M4-sky",
+  "build": {
+   "module": "M4 sky (src/sky: skyGen.ts, backdrop.ts, dust.ts; harness/sky*)",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/sky/skyGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/sky/backdrop.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/sky/dust.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/sky.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/sky.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/skyPreview.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/sky-real.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/skyReal.ts"
+   ],
+   "exports": "// src/sky/skyGen.ts\nexport function generateSky(sink: StrokeSink, rng: Rng): void;          // UNDERPAINT, SKY_BAND, SWIRL(+UNDERLAYER shell), EDDY, WIND_JET; one rng draw seeds forkRng streams per class\nexport function generateUnderpaint(sink: StrokeSink, rng: Rng): void;\nexport function generateBands(sink: StrokeSink, rng: Rng): void;\nexport function generateFunnels(sink: StrokeSink, rng: Rng): void;     // SWIRL arms + shell, EDDY arms\nexport function generateJet(sink: StrokeSink, rng: Rng): void;\nexport const SKY_COUNTS: { underpaintRows: 60; underpaintCols: 50; band: 32000; swirl: readonly number[] /*[16000,14000]*/; swirlShell: readonly number[] /*[1600,1400]*/; eddy: 6000; eddyShell: 0; jetFilaments: 32; jetPerFilament: 75 };\nexport const SKY_CLASSES: readonly StrokeClass[];\nexport function skyDepthViolations(records: readonly StrokeRecord[]): string[];   // records outside CLASS_INFO[cls].dRange\n// src/sky/backdrop.ts\nexport function createBackdrop(u: SharedUniforms, q: QualitySettings): Mesh;     // fullscreen triangle, renderOrder -1000, depthTest/depthWrite false, frustumCulled false, no logdepth; uniforms {...u, uBdLayers}\nexport function setBackdropQuality(backdrop: Mesh, q: QualitySettings): void;   // sets uBdLayers = q.backdropLayers (no recompile)\n// src/sky/dust.ts\nexport function createDust(u: SharedUniforms, q: QualitySettings, rng: Rng): Points;  // max(q.dustCount, 30000) points, drawRange(0, q.dustCount), additive, logdepth, frustumCulled false, hand-set bounds",
+   "deviations": [
+    "VORTEX across spread is encoded as a fractional arm phase, not q3; all SWIRL/EDDY records have q3 = 0. Reason: the arm law takes depth from sigma only, so an across offset moves a stroke radially at constant depth. Off-axis every arm then became a radial fin and the funnels read as twisted threads (seen at the V6 profile vantage). arm' = arm + 0.2*across/(beta*PI), wrapped into [0, 1.9995]. This keeps r, sigma and depth exactly on the cone d = dThroat (r/r0)^expo. From E the arm band is statistically identical. The funnels now read as continuous flaring horns both in the shared lib preview and through the real M3 material. M3 already decodes arm = q1 - 2*floor(q1/2) and chunks by floor(q1/2).",
+    "Shell strokes: arm 0.5/1.5 plus a small on-cone spread (across-equivalent +-0.35). Colours are ultramarine/cobalt over Prussian instead of pure #0b1a3a, which read as black snail-shell bands from E. Shell L = 1.3x the arm law; W = arm-law L/5, and M3 applies x3.",
+    "Swirl arm W = L/4 (spec L/5) with L jittered x0.85-1.2, for solidity off-axis (arms are about 1.4 px wide at 55 km).",
+    "Swirl colours are not a pure r/rmax ramp. Colours are fixed per stroke while strokes stream through every radius in 24 s, so a radial ramp would slide inward as a hard seam. The ramp position is 0.55*|across|^2 + 0.2*sigma0 + jitter: pale arm cores, cerulean/cobalt edges, edge strokes (|across| > 0.8) 15% darker with the OUTLINE flag, and 8% lemon-tinted whites at the core. Visually stable from E at t = 0, 6 and 90.",
+    "Eddies: L = 0.004 + 0.22 r instead of the swirl law; the 0.008 floor would be 1.3 throat radii at r0 = 0.006. W = L/4. No eddy shell, because eddy arms overlap (pitch ratio 1.37). EDDY = 6,000 arm strokes.",
+    "Underpaint W = 0.038-0.044 (spec 0.03) with reduced jitter. With 0.03, the M3 ribbon taper (about 0.6 W at the tail) left 0.38% true holes. Now under 0.001%.",
+    "SKY_BAND seeding: stratified jittered 2:1 grid, topped up by rejection, instead of pure random sampling. Sky pixels under 3 layers fell from 3.06% to 0.39%. Seeds go down to ridgeV(u,2) - 0.012 (hidden by the hill walls) instead of skyMask > 0.5, which left an underpaint-only strip above the crest.",
+    "Star and moon halo areas are NOT excluded from band seeding, per the lead ('leave their halo areas to the band field'). Band directions inside halos (r < 1.25 R) and near vortex discs (r < 1.7 rmax) are blended toward the local tangent, weighted by proximity and radialness. Reason: the band stream cancels the circulation under c1, above c2 and inside halos, leaving only the radial sink, and strokes bristled radially. Swirl throats (r < 1.3 r0) are filled by band strokes curling exactly around the axis in pale swirl colours (a bright eye from E). Eddy eyes (r < 2.5 r0) are band-filled, and the eddy band exclusion is 0.45 rmax instead of 0.7, because eddy throat strokes (about 4 px) fall under M3's lower size fade and left dark holes.",
+    "Band colour index uses the band stream function psi = y - 0.022 sin(4x+9y) - 0.012 sin(9.3x-5y+1.7) instead of v, in fract(7*(psi + 0.03 sin(4x))) + 0.1 N(0,1). The stripes then wave with the brushwork instead of lying dead level. Weights are about 0.50/0.34/0.16 (paler within 0.16 above the ridge, deeper above v = 0.88). Two-tone partners: cobalt->ultramarine/#22449e, cerulean->cobalt/#4a77a8, zinc white->cerulean/blue-green.",
+    "Deck index b = clamp(round(13 (v - 0.34)/0.76 + 1.8 N), 0, 13), coherent with v so the decks read as shingled tilted strata, not an 85 km-deep confetti volume. dlnd = 12000*dv/d so each stroke lies in its tilted deck. Band direction and kappa come from a 0.0125 h grid of the exact (vortex/halo-aware) direction, bilinear on unit vectors, for the generation budget.",
+    "kappa: band/underpaint kappa = 0.5 * turn of the direction over the stroke (the M3 spine law sagitta = 0.25*kappa*L). Funnel kappa is closed-form from log-spiral curvature: -sign(gamma)*0.5*L/(r sqrt(1+beta^2)).",
+    "WIND_JET: a2.z = 1.1 for every stroke (the Venus-end emissive; M3 multiplies by sigma). colA/colB are per-filament tints (zinc white / cerulean / blue-green), which M3 mixes at 35% over its sigma ramp.",
+    "Backdrop sky splats are a darker continuation of the band field (same band function and pigments, 25% toward Prussian, x0.62, under the HDR 0.6 cap), not 'Prussian-ultramarine with 6% cerulean'. At wide fov near E (shots 4-5) the spec palette made the generated-canvas boundary a hard style seam; it is now only a brightness step.",
+    "Backdrop 'earth' is decided from the UNFOLDED direction (below ridgeV in raw v), so looking down from altitude stays ground-coloured instead of mirroring back into sky stripes.",
+    "Backdrop u is folded over [0.5 -+ PI/(4 atan(AT))] = [-0.518, 1.518] instead of [-0.3, 1.3]. Two mirror periods then span the full turn exactly, so there is no seam at the atan wrap behind the eye, and the canvas region stays unmirrored. BD_HALF_U/V are generated from atan(AT) and atan(T_HALF). The back-hemisphere 30% contrast is luminance-only, because the RGB-difference version turned pale strokes green.",
+    "Dust alpha *= smoothstep(0.03, 0.25, d/|P - C|), the anamorphic apparent-size ratio. Without it, from the shot-8 vortex eye (44 km out) the ~13k motes within 2 km of E piled up additively into a white blob exactly over the village (verified in the real-material render, then fixed).",
+    "Dust depth is log-uniform in [50 m, min(250 km, 0.98 * groundHitDepth)], so motes stay above the ground for rows below the horizon.",
+    "Dust flow direction for the drift is precomputed on the CPU with the shared TS flowField (attribute aFlow) instead of evaluating flowField per vertex; the values are identical. createDust always builds max(q.dustCount, 30000) points with drawRange = q.dustCount, so a tier change only needs setDrawRange."
+   ],
+   "contract_requests": [
+    "Lead/M3: bless fractional arm phase for ALL VORTEX strokes, not only shells, and q3 = 0 as the normal encoding. contracts.ts currently says 'arm may be 0.5 for shell strokes' and 'across in [-1,1]'. This encoding is what makes the funnels continuous surfaces off-axis.",
+    "M3 (shot 8 blocker): at the vortex-eye pose (A44 looking at E, fov 26), M3's upper size fade (1 - smoothstep(180k, 320k, Lpx)) together with the VORTEX sigma fade (smoothstep(0, 0.06, sigma)) removes every visible throat-wall stroke. Harness preview: 3,156 strokes in front of the camera, 3,156 faded by the size guard, 53 drawn even with a 0.003 L floor. The real M3 render (shots/sky-real-eye.png) shows no throat ring at all. With guards off the throat frames the view as the spec intends (shots/sky-eye-noguard.png). Suggest exempting ANIM_VORTEX from the upper fade the way UNDERPAINT is exempt, or widening it to about 600k-1000k px for VORTEX.",
+    "M3: VORTEX stroke length L (a1.x) and W are fixed per stroke, but each stroke streams through all radii every 24 s. Mid-loop (shift 0.5), throat strokes carry mouth-sized L (2.5x too long) and vice versa. This is mild at the canvas-pose times (shift within -0.33..0.25) but visible in shots 6-8. Suggest scaling L and W by r(sigma)/r(sigma0), with sigma0 = a3.z and r from VORT_GEO, clamped to about [0.4, 2.5].",
+    "Integrator (M10): on a tier change call setBackdropQuality(world.backdrop, q) to update the backdrop layer count; the dust setDrawRange is already in composition.ts."
+   ],
+   "integration_notes": [
+    "generateSky(buffer, rng) emits 76,400 records: UNDERPAINT 3,000; SKY_BAND 32,000; SWIRL 33,000 (30,000 arms: c1 16,000 / c2 14,000, plus 3,000 UNDERLAYER-flagged shell: c1 1,600 / c2 1,400); EDDY 6,000 (split by rmax^2, no shell); WIND_JET 2,400 (32 x 75). Every class is at or under CLASS_INFO.budgetHigh.",
+    "Measured record depth ranges (m): UNDERPAINT 230,503-249,497; SKY_BAND 95,210-191,923; SWIRL 39,657-92,878 (shell record d already includes the x1.01 M3 applies to UNDERLAYER vortex strokes); EDDY 44,636-78,231; WIND_JET 220-12,076. All are inside dRange. Paint order holds globally: SWIRL/EDDY max < SKY_BAND min < UNDERPAINT min, and WIND_JET < SWIRL.",
+    "Records hold their t = 0 animated position. VORTEX: u, v = armPoint(vi, arm', q2, 0); d = ap.d*(1 + 0.02(seed - 0.5)), times 1.01 for shells. JET: u, v, d = jetPoint(q1, q2) with d*(1+q3). BAND: q1 = 0.35, q2 = int 0..3, q3 = phase. The harness asserts the VORTEX t = 0 match (error < 1e-6).",
+    "OUTLINE flag is set on swirl/eddy arm-edge strokes (|across| > 0.8): about 2,300 SWIRL and 440 EDDY.",
+    "Backdrop: scene.add(createBackdrop(u, q)). It draws first (renderOrder -1000) without a depth test or depth write, includes tonemapping/colorspace chunks (no-ops when rendering into sceneRT), and its uniforms are {...shared, uBdLayers}. It reads uEyeBasis plus the built-in projection/view matrices.",
+    "Dust: transparent additive Points, depthWrite off, depthTest on, with logdepth chunks and hand-set boundingSphere/boundingBox (needed for three's transparent sorting; the position attribute is a 1-component dummy that only caps the draw count). Visible only when uOff > 0; uses uTime, uOff, uDustAlpha, uViewportH, uEye, uEyeBasis, uWarpK.",
+    "Generation is deterministic for a given rng: one rng.next() seeds forkRng(base, 'sky.underpaint' | 'sky.band' | 'sky.funnel' | 'sky.jet').",
+    "Harness: harness/sky.html?view=canvas|zoom|profile|profileb|funnel|jet|eye|coverage|backdrop[&t=&cls=&under=0&grid=&bd=0&dust=0&guards=0&lib=1]. It uses the shared lib RecordingSink/animate plus harness/skyPreview.ts (M3-like off-axis binormal, sigma fade, size guards). harness/sky-real.html renders the same views through M3's real buildStrokeLayer and depends on src/strokes."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : 0 error lines for the whole project, including all my files (final run).",
+    "harness/sky.html checks: counts and budgets OK; every record inside CLASS_INFO dRange; paint order SWIRL/EDDY < SKY_BAND < UNDERPAINT and WIND_JET < SWIRL OK; all fields finite; seeds in [0,1); VORTEX encodings valid (vi range, q2 in [0,1), dv = dlnd = 0); records equal their t = 0 animated position (error < 1e-6). Result: errors: [].",
+    "Coverage from E (harness view=coverage, 1280x720), drawing each stroke as a tapered polygon following the M3 width profile up to s = 0.85. Sky: 0.001% of pixels < 1 layer, 0.049% < 2, 0.393% < 3; the residuals sit at star-halo cores (M5 cores cover them) and just above the rear crest (hills cover it). Earth region with underpaint alone: < 1 layer 0.001%. Before the stratified seeding and the wider underpaint: sky < 3 was 3.06% and underpaint holes were 0.38%.",
+    "Generation time (headless Chrome on this laptop): about 72-76 ms warm with a null sink (underpaint 7, bands 42-53, funnels 17-22, jet 1 ms, these per-part timings measured with the harness recording sink); 99-138 ms for the first, cold call into a StrokeBuffer. Before optimisation it was 207 ms warm.",
+    "Real M3 material (harness/sky-real.html, tier high): 16 chunks, 18 draw calls, 0 console errors. Canvas pose reads as the Starry Night sky. Tier low renders without errors with the same composition.",
+    "Every screenshot listed was opened and inspected; no console errors or GLSL compile errors on any page (shot tool: '0 error/warning line(s)').",
+    "Visual checks: the canvas pose at t = 0 / 6 / 90 is stable under streaming. The V6 (t=48) and V6b (t=52) profiles show the two funnels as continuous flaring horns with helical arm/shell banding (before the on-cone encoding they read as thin twisted threads). Inside c1 (r = 0.06, th = -90 deg) reads as a spiral tunnel. The backdrop alone forward reads as a painted sky with a ridge-line earth; backward it is a dark blue void with no wrap seam."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-real-canvas.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-real-canvas-low.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-real-profile.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-real-funnel.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-real-eye.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-real-zoom-eddies.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-canvas.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-canvas-t6.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-canvas-t90.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-zoom.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-zoom-halos.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-coverage.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-profile.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-profileb.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-funnel.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-eye.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-eye-noguard.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-jet.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-backdrop.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-backdrop-back.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/sky-dust.png"
+   ],
+   "known_issues": [
+    "Shot 8 (vortex eye): with M3's size guards as specified, the c1 throat ring disappears entirely; this needs the M3 change in contract_requests. Not fixable inside M4: lowering the L floor to 0.003 rescued only 53 strokes and made the brushwork too fine from E, so I reverted to the spec law.",
+    "VORTEX strokes keep a fixed L and W while streaming. Mid-loop the throat carries mouth-sized strokes and the mouth carries throat-sized ones (contract request to M3).",
+    "Generation time is about 72-76 ms warm and 100-140 ms cold on this laptop, against the 70 ms budget (the 250 ms world budget is the harder limit). The remaining cost is mostly the shared flowField (about 0.66 us per call, 13k grid plus 9k underpaint calls) and per-stroke JS.",
+    "Coverage was measured for my strokes alone with a conservative ribbon approximation. It was not verified with the real ?overdraw view or together with the M5/M6/M7 strokes. 0.39% of sky pixels sit at 2 layers, at star-halo cores and just above the rear crest.",
+    "Radial 'bristle' patches remain where halo circulations of opposite sign collide (between S6, S7 and the moon) and partly below-left of c1. From E they are under M5's rings and stars; off-axis they show.",
+    "At wide fov near E (shots 4-5, fov 60-78) the edge of the generated canvas is still visible as a brightness step against the backdrop; it is no longer a style seam.",
+    "At the V6 profile the arm strokes are only about 1.5-2 px wide, so through the real M3 material the arms look like filigree and the shell carries most of the surface continuity.",
+    "The backdrop has the usual pole singularity (looking straight up or down, u spins). The camera paths do not look there.",
+    "Colours and composition were tuned by eye against memory of the painting (no reference image ships), with the harness preview and the real M3 material without the post chain (bloom, OKLab pull, tone mapping untested here).",
+    "The eddy E1 at (0.18, 0.62) is mostly hidden behind the cypress from E (spec position). At 720p the eddy eyes are only a few pixels across.",
+    "harness/sky-real.html depends on M3's current API (StrokeBuffer, buildStrokeLayer, layer.setQuality). If M3 changes it, only that page breaks; harness/sky.html uses the shared preview lib."
+   ],
+   "tsc_clean_for_own_files": true
+  },
+  "review": null
+ },
+ {
+  "key": "M5M6-celestial-cypress",
+  "build": {
+   "module": "M5 (stars, Venus, moon) + M6 (cypress)",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/celestial/starsGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/celestial/moonGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/cypressGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/celestial.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/celestial.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/cypress.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/cypress.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/cypressRibbons.ts"
+   ],
+   "exports": "src/celestial/starsGen.ts:\n  export function generateStars(sink: StrokeSink, rng: Rng): void            // STAR_CORE 2,200 + STAR_RING 14,000\n  export function emitHalo(sink: StrokeSink, rng: Rng, cls: StrokeClass, si: number, style: HaloStyle): void\n  export interface HaloStyle { total; rings; width(k, rho, dRho); rowAmp(k, rho, dRho, w); minAspect; colours(k, rng): [number, number]; emissive(k) }\n  export function pushChecked(sink: StrokeSink, r: StrokeRecord): void       // throws if r.d is outside CLASS_INFO[r.cls].dRange\n  export function mixQ(a: number, b: number, t: number): number              // memoised mixHex (t quantised to 1/64)\n  export function shadeQ(hex: number, k: number): number                     // memoised shadeHex (k quantised to 1/64)\n  export const STAR_CORE_STROKES = { venus: 400, other: 180 }; export const STAR_RING_STROKES = { venus: 3000, other: 1100 }\nsrc/celestial/moonGen.ts:\n  export function generateMoon(sink: StrokeSink, rng: Rng): void             // MOON 1,800 (1,350 crescent + 450 hollow) + MOON_RING 4,200 (q1 = MOON_INDEX = 11)\n  export function crescentGeom(): CrescentGeom                               // crescent circles + horn points in h-units\n  export const MOON_CRESCENT_STROKES = 1350, MOON_HOLLOW_STROKES = 450, MOON_RING_STROKES = 4200\nsrc/earth/cypressGen.ts:\n  export function generateCypress(sink: StrokeSink, rng: Rng): void          // CYPRESS 19,500 = 18,000 surface + 1,500 flagged StrokeFlag.UNDERLAYER; about 6,350 flagged OUTLINE (|cos phi| > 0.85)\n  export function createCypressCore(material: Material): Mesh                // LatheGeometry, 97 profile points (96 segments) x 48 radial, world-space positions, name 'cypressCore'\n  export const CYPRESS_CORE_COLOR = 0x0f1712, CYPRESS_TONGUES = 7, CYPRESS_STROKES = 18000, CYPRESS_UNDERLAYER_STROKES = 1500\nRecord layout:\n  RING: u, v = the t = 0 position on the ring at radius rho_k (1 + 0.04 q3); d = ringGeom(si, k).d exactly; a1 = (L, 0, 0, W); a3 = (kappa in +-0.3, q1 = star index (0..10, moon 11), q2 = integer k, q3 in [-1, 1]).\n  CYPRESS: a1 = (du, dv, dlnd, W) from the helix chord; a3 = (kappa in +-0.15, q1 = tongue 0..6, q2 = phi in [0, 2pi), q3 = 0).\n  STAR_CORE: q1 = star index (informational only). MOON: q1..q3 = 0.",
+   "deviations": [
+    "STAR_CORE depth is d_core*(0.99 - 0.0065*hash), not 0.01*hash. With 0.01, Venus cores would reach 11,760 m, outside STAR_CORE dRange [11,800, 16,100]. All cores still sit in front of ring 0.",
+    "Ring dash length is L = max(1.3 x spacing, 1.8 x W) for stars and max(1.3 x spacing, 1.6 x W) for the bell. At the spec budgets, 1.3 x spacing alone gives round dots (about 0.004 h), especially for the bell's W 0.006. The dashes now overlap along each ring. Star ring W = clamp(0.85*dRho - 0.08*rho_k, 0.045*rho_k, 0.55*dRho), which fills about 85 % of the radial spacing and leaves thin dark seams. Rows use q3 = {-a, 0, +a} with +-0.4a jitter, so q3 is continuous in [-1, 1] rather than exactly {-1, 0, 1}. a = 1 for stars. For the bell, a = clamp((0.8*dRho - W)/(0.08*rho_k), 0.12, 1), so outer bell rings do not merge into one solid disc. Each dash's value is mottled x0.82 to x1.08.",
+    "MOON (crescent) depths are 10,824-10,890 m and the hollow is 10,912-10,978 m, not d = 11,000. Bell ring 0 sits at exactly 11,000, so MOON < MOON_RING would otherwise fail where they overlap.",
+    "Moon split: 1,350 crescent strokes and 450 hollow strokes (the spec gives 1,800 total). The hollow is offset 0.40R toward 225 deg with radius 0.80R, so the lit limb is 0.6R thick. Crescent strokes follow the pencil of circles through the two horn points. Colour runs ochre on the inner edge to chrome on the limb, with lemon glints. Bell: chrome overall, but ring 0 is orange (chrome/ochre), ring 1 is pale lemon and the outer ring leans toward lemon / zinc white. The spec says plain chrome; this separates the crescent from its halo.",
+    "Cypress centreline: u0_j is spread across [uL + w, uR - w], then soft-clamped (smooth min/max, k = 0.008, 0.0015 margin) to that range. The sway factor is 0.15 for the edge tongues and 0.75 for the next ones, which keeps the E silhouette within 0.01 of CYPRESS_SIL. The spec's taper(v) applies only above the canvas top edge, where each tongue tapers to its own tip at vTop = 1.03-1.17 (y up to about 165 m), converging on u ~ 0.197.",
+    "Cypress depth offset dd_j is scaled by clamp(silhouette width / 0.2, 0.3, 1), so tongues converge in depth toward the top (the spec has a constant dd_j). With a constant offset, the thinning upper tongues fanned out along the view ray and opened see-through gaps from the helix pose. Base dd = [-6, 12, -17, 5, 17, -12, 0] +-1.5 m: neighbours differ by at least 12 m, and the sorted depths are at most 6 m apart, so there is no front/back split from the side. Rw uses (192 + dd) instead of 192 so the tubes are truly round.",
+    "Cypress shading is baked into colA/colB, because the ribbon shader has no tube normal. Lit = (0.6 + 0.66*(0.5 + 0.5*cos(phi - 0.6))) x per-tongue tone x three helical stripes that follow phi0, so the twist shows. Even tongues lean light (green, 17 % olive) and odd tongues lean dark (80 % #1d2b1f); overall olive is about 10 % and ultramarine flecks 5 %. L = 0.012 + 0.023*sqrt(rand), so lengths stay in [0.012, 0.035] but skew long, and are shortened up to 45 % at the tips.",
+    "Cypress seeds cluster per tongue: seed = (j/7 + 0.22*rand) mod 1. The CYPRESS writhe (phase 2*pi*seed) then sways each tongue coherently instead of boiling stroke by stroke.",
+    "UNDERLAYER strokes cover the body only (v <= 0.97), and their width is capped at 0.3*w*A so the shader's x3 ribbon never pokes out of the thin tips.",
+    "Core lathe follows the silhouette centre at 0.5 x half-width with a +-12 % three-lobe cross-section that twists 2.6 rad per unit v. It closes elliptically between v = 0.72 and the canvas top edge v = 1.0, rather than running to 1.08. Run to 1.08, the smooth core showed between the free flame tips; with the depth convergence and the tubes there, no interior see-through appears."
+   ],
+   "contract_requests": [
+    "Soft request to M3, no contract change needed: RING strokes have no per-stroke depth jitter (d = d_k exactly), so the overlapping dashes of one ring are coplanar. I give every ring stroke a random kappa in +-0.3. If the shader honours the spine bow along the camera-facing Nb (section 4.3 step 7), the overlaps get a stable depth order. If M3 does not bow along Nb, please add a tiny seed-based depth offset for RING (for example d_k*(1 + 1e-4*(seed - 0.5))) to avoid z-fighting shimmer while the rings spin.",
+    "Optional for M3: the CYPRESS writhe formula keys its phase on seed, which is why I cluster seeds per tongue. If M3 prefers to drive coherent sway from q1 (tongue index), the seed clustering is harmless but could then be dropped."
+   ],
+   "integration_notes": [
+    "src/app/composition.ts already calls generateStars / generateMoon / generateCypress(buffer, forkRng(seed, name)) and createCypressCore(mat(0x0f1712)). These match the exported signatures, and CYPRESS_CORE_COLOR = 0x0f1712 is exported. tsc's only remaining error is in composition.ts: it imports createLandUnderlays from villageGen (M7), which is not exported yet.",
+    "createCypressCore returns a Mesh with world-space positions (identity transform), recomputed vertex normals (100 % outward, so FrontSide is safe) and a computed bounding sphere. It is not depth-warped, so hide it while uWarpK != 1, like the other underlays.",
+    "Every generator push asserts CLASS_INFO dRange and throws on a violation; a throw means a bug, not bad luck with the rng. Measured ranges: STAR_CORE 11,802-15,840; STAR_RING 12,000-25,600; MOON 10,824-10,978; MOON_RING 11,000-23,870; CYPRESS 169-219 m. Contract PAINT_ORDER pairs involving these classes hold by range: STAR_CORE/STAR_RING < SWIRL 39 km, MOON/MOON_RING < SKY_BAND 94 km, CYPRESS < HOUSE 450 m. Per star, max core d < min ring d; the moon's max MOON d is below its min MOON_RING d.",
+    "Chunk rule 'ring': a3.y = q1 is the star index (0 = Venus ... 10) or 11 for the moon; q2 is an integer ring index.",
+    "Counts at High: STAR_CORE 2,200, STAR_RING 14,000, MOON 1,800, MOON_RING 4,200, CYPRESS 19,500 (1,500 flagged UNDERLAYER). That totals budgetHigh for every class except CYPRESS, where 19,500 includes the underlayer.",
+    "Cypress CPU bounds for chunking: world x about -71..-29, y about 5..167 m, z about -235..-160 (d 169-219 m). The writhe envelope is +-0.004 u (about 0.6 m).",
+    "Off-axis views of the cypress only read correctly with section 4.3 step 6 (B blended toward cross(T, toCamera) by uOff). With image-plane ribbons, which harness/lib/preview.ts uses, strokes seen from the side collapse to slivers. harness/cypressRibbons.ts emulates step 6 plus the wp(s) taper."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p .: no errors in my files. The one remaining project error is src/app/composition.ts importing createLandUnderlays from M7's villageGen.",
+    "harness/celestial.html (headless, 0 console errors): PASS deterministic (22,200 records, identical twice); PASS counts {STAR_CORE 2200, STAR_RING 14000, MOON 1800, MOON_RING 4200}; PASS dRange for all four classes; PASS paint order core < ring per star and for the moon, max ring d 25,600 < SWIRL 39,000; PASS ring placement (max error 1.8e-16; q2 integral, |q3| <= 1, dv = dlnd = 0); PASS landmarks (core and bell centroids within 0.00008 h of the table, tolerance 0.005); PASS generation time, warm stars 4.4 ms and stars + moon 7.3 ms, cold 15.9-31.5 ms across runs (budget 25).",
+    "Venus ring depths printed: 12000 / 13440 / 14880 / 16320 / 17760 / 19200 / 20640 / 22080 / 23520, matching the spec's 12.0 / 13.4 / 14.9 / 16.3 / 17.8 / 19.2 / 20.6 / 22.1 / 23.5 km.",
+    "harness/cypress.html (headless, 0 console errors): PASS deterministic (19,500); PASS counts (underlayer 1,500, outline 6,354); PASS dRange [169.0, 218.7] within [140, 245]; PASS 7 tongues; PASS outline flag exactly where |cos phi| > 0.85 (0 mismatches); PASS core lathe (4,753 vertices, 9,216 triangles, 100 % outward normals, y 5.3..144.8 m); PASS right edge left of Venus (u = 0.274 at v = 0.72, against Venus 0.300 and core edge 0.287).",
+    "Silhouette from E, as the union of stroke extents after the CYPRESS writhe: max |deviation| from CYPRESS_SIL over v in [-0.1, 1.0] is 0.0058 / 0.0061 / 0.0084 / 0.0074 at t = 0 / 1.5 / 3 / 4.5 s. All four are within the 0.01 tolerance.",
+    "Generation timing: in the browser harness, the second run is 16-20 ms (0-2 of 7 runs measured over 20 ms; I stopped tracking pass/fail per run) and the first run 22-28 ms; budget 20. In a node benchmark (rolldown bundle), warm runs are about 10-13 ms, the first two about 26-28 ms. Stars + moon in node: 23 ms on the first call, 4-6 ms warm.",
+    "Visual checks, viewed one by one: the canvas pose shows 11 haloed stars with white-yellow cores, concentric chrome / lemon / blue-green rings and an orange crescent in a large chrome bell at (0.86, 0.85). The cyan landmark circles coincide with the halo centres. The cypress fills the CYPRESS_SIL outline (green overlay) from below the bottom edge past the top edge, just left of Venus.",
+    "Venus ray tiles at d = 11.5 / 14 / 17 / 20 km (fov 72), rendered at t = 0 and t = 6: the core disc is ahead at 11.5 km, then a tunnel of nested hoops. Dash patterns move between t = 0 and t = 6, alternately clockwise and counter-clockwise per ring (spin applied by preview.ts). The oblique outside views show the Venus horn and the moon bell as flaring stacks of hoops.",
+    "Cypress off-axis checks used camera-facing tapered ribbons plus a MeshBasicMaterial core, on a magenta background: helix poses t = 21 / 23 / 25 / 27 per the section 5 formula (t = 25 is (-83, 108, -225) looking at (-50, 138, -192)). No see-through holes inside the trunk; only ragged specks at the outer fringe and gaps between the free flame tips above v = 1. From the side, the knoll and the tip views, the bundle reads as separate twisted tubes ending in individual flame tips."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/celestial-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/celestial-pose-tm.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/celestial-zoom-venus.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/celestial-zoom-moon.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/celestial-venus-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/celestial-venus-t6.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/celestial-horn.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cypress-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cypress-zoomE.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cypress-helix.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cypress-helix22.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cypress-holes-quad.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cypress-tips.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/cypress-burst-quad.png"
+   ],
+   "known_issues": [
+    "Cypress generation exceeds its 20 ms budget on first (cold-JIT) runs: 22-28 ms in both node and the browser. Warm runs are about 10-13 ms in node but 16-20 ms in the browser harness, where occasional runs also go over (the harness check failed on 2 of 7 runs during development). The world generates once at boot, so the cold number is the relevant one. Stars + moon also start over their 25 ms budget on a cold first call (23-31 ms) and are about 4-9 ms warm.",
+    "All visuals were judged with harness preview meshes: flat colours, no impasto lighting, bristle, outline darkening, bloom or isophote banding. The tube separation and outlines on the cypress were approximated (baked shading plus an outline-tint option). The final look depends on M3 and M9 and is not verified in the real stroke shader.",
+    "At the burst end pose ((-45, 210, -235) looking at the Venus core, fov 78) the cypress is behind the camera, so that pose cannot show tongues or holes. I checked the burst start (-26, 175, -192), helix t = 21-27 and several extra poses instead. From the burst start the tips are also out of frame (to the left).",
+    "At the helix t = 27 pose the camera is about 20 m from the flame tips: the tip strokes look large and sparse, and the region above v = 1 has open gaps between tongues, which is intended. The preview has no near-camera fade (section 4.3 step 9).",
+    "In flat preview, the moon's unlit hollow (spec: ochre at 35 %, emissive 0.4) reads as a dark brown disc. The crescent stands out from the bell only through colour and the orange ring 0. Its real pop depends on emissive 3.5 against 1.4 under bloom and tone mapping. With Neutral tone mapping in the preview, the crescent desaturates toward peach.",
+    "Seen from inside the Venus tunnel, rings 4-8 sit at similar angular radii (about 9 deg) and stack into a narrow band; the nearer rings are distinct. This follows from the section 2.4 ring law (rho ~ 1 + 0.62k, d ~ 1 + 0.12k), which I did not change.",
+    "On the canvas, S7's halo overlaps the outer moon bell rings (positions from the section 2.4 table); S7's rings sit in front there. No PAINT_ORDER pair covers STAR_RING against MOON_RING.",
+    "Ring dashes within one ring are coplanar. Z-ordering relies on M3 applying the kappa bow (see contract_requests).",
+    "The silhouette check samples the writhe at 4 time values only (t = 0, 1.5, 3, 4.5 s); the worst deviation was 0.0084 against the 0.01 tolerance."
+   ],
+   "tsc_clean_for_own_files": true
+  },
+  "review": null
+ },
+ {
+  "key": "M7-land",
+  "build": {
+   "module": "M7 terrain, hills, village, steeple",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/terrain.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/hillsGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/earth/villageGen.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/land.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/land.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/landReal.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/landReal.ts"
+   ],
+   "exports": "src/earth/terrain.ts:\n  export { groundHeight }   (re-export of src/shared/canvasSpace groundHeight)\n  export function generateGround(sink: StrokeSink, rng: Rng): void      // GROUND 8000 (6800 fields v[-0.12,0.10] + 1200 plain up to the hill foot) + GROVE 6000 on 250 ellipsoid clumps\n  export function groundNormal(x: number, z: number, out?: Vector3): Vector3\n  export const GROUND_COUNTS\n  re-exports from villageGen: createLandUnderlays, GROUND_GRID, GROUND_SKIRT, GROVE_COUNTS, groveLayout, UNDERLAY_COLORS, type GroveClump\nsrc/earth/hillsGen.ts:\n  export function generateHills(sink: StrokeSink, rng: Rng): void       // HILL 16500 = 13800 contour + 1200 crest (flags OUTLINE) + 1500 underlayer (flags UNDERLAYER)\n  export function hillDepth(u: number, v: number, k: number): number    // d_k(u,v) per §2.3\n  export function hillPoint(u, v, k, scale = 1, out?): Vector3; hillNormal(u, v, k, out?): Vector3 (analytic, faces E)\n  export function hillFootV(u, k): number; solveHillRow(u, k, y): number (closed form); hillTopV(u, k); hillTaper(u); ridgeInFront(u, k)\n  export function buildHillUnderlayGeometry(): BufferGeometry\n  export class SolidEmitter { constructor(sink: StrokeSink, cls: StrokeClass); emit(a: Vector3, b: Vector3, n: Vector3, p: SolidStrokeParams): boolean; finish(): void }   // shared M7 world-segment -> StrokeRecord emitter with dRange guard + width compensation\n  export function widthCompensation(a, b, n, d, maxComp): number; export const LAND_STATS; HILL_COUNTS; HILL_U_CANVAS; HILL_U_EXT; HILL_UNDERLAY_SCALE; swatches(); type Pair\nsrc/earth/villageGen.ts:\n  export function generateVillage(sink: StrokeSink, rng: Rng): VillageInfo   // HOUSE 14000, WINDOW 400 (FLICKER, emissive 2.5, 2-3 per wall on all 4 walls), CHURCH 3600; steepleTip === (27,145,-678) exactly\n  export function createLandUnderlays(makeMaterial: (hex: number) => Material, info: VillageInfo): Group\n  export function villageLayout(): readonly House[]; groveLayout(): readonly GroveClump[]   // fixed internal seeds, memoized\n  export function houseFrame(h: House): HouseFrame; houseRoofHeight(size: Vector3): number; frameCanvasBox(f): {u0,u1,v0,v1,d}\n  export function buildHouseCoreGeometry(houses: VillageInfo['houses']): BufferGeometry; buildChurchCoreGeometry(): BufferGeometry\n  export const CHURCH_GEO, VILLAGE_COUNTS, CHURCH_WINDOWS, HOUSE_COUNT, GROVE_COUNTS, GROUND_GRID, GROUND_SKIRT, UNDERLAY_COLORS; type House, HouseFrame, GroveClump\nVillageInfo.houses[i]: center = centre of the wall box (y = base + wallH/2); size = (facade width along local X, wall height, depth along local Z); yaw = rotation about +Y (three Object3D.rotation.y), local +Z = facade facing E within +-20 deg. Roof height = houseRoofHeight(size) (4-7 m from the gable span); the ridge runs along the longer horizontal side.",
+   "deviations": [
+    "createLandUnderlays and the grove/village layouts are in villageGen.ts and re-exported from terrain.ts. src/app/composition.ts already imports it from '../earth/villageGen'; the placement also keeps the module graph acyclic (hillsGen <- villageGen <- terrain).",
+    "House cores are one merged static BufferGeometry (walls + gable roofs) instead of an InstancedMesh. It is still one draw call, and roof heights stay independent of wall heights with no per-instance matrices. M3's underlay material supports both.",
+    "Two extra underlay meshes beyond §4.7. (1) groundSkirt: a #0b1a3a plain beyond the 7 x 6.5 km grid out to +-30 km, so the vortex-eye view does not show the earth region as a tile floating in the void. It is hidden from E. (2) groveCores: dark ellipsoids at 88 % inside each grove clump, so groves read as solid trees off-axis. Total land underlays: 9 meshes.",
+    "Hill walls continue past the generated canvas to u in [-0.65, 1.65], with the crest tapering down to the plain. This removes the cliff ends that were visible in the t=25 s off-axis frame. The extension gets 30 % stroke density and stays inside the HILL budget, and is invisible from E.",
+    "Field strokes are authored in world space as horizontal wavy swathes on the ground, not as canvas-space hillFlow directions. With canvas authoring, any canvas tilt is stretched by 1/sin(grazing angle) into streaks that radiate from E when seen off-axis. Canvas length 0.015-0.03 is kept for horizontal strokes.",
+    "GROUND normal is the true terrain normal of groundHeight: exactly +Y on the plain, tilted at most 4.4 deg on the knoll.",
+    "8000 GROUND strokes = 6800 in the spec band v in [-0.12, 0.10] plus 1200 on the plain from v 0.10 up to the front hill's foot. Behind the cypress silhouette, density is 30 %, kept for the off-axis shots.",
+    "Width compensation: solid strokes on faces seen obliquely from E get their record w multiplied so the canvas width from E equals the face-on width. Caps: ground 6 (plain 4), hills 4, crest/underlayer 3, roofs 2.5, groves 2.5, walls 1.8. Record w values for these classes are therefore larger than the nominal canvas widths.",
+    "Village and grove layouts use fixed internal seeds (mulberry32 constants), independent of the generator rng. This lets terrain, village and underlays agree whatever rng each receives. The rng drives only the strokes, so ?seed= changes strokes but not the layout.",
+    "Underlays sit behind their strokes geometrically, on top of M3's polygonOffset and depth bias: ground -0.4 m, hill faces at 1.004 x d along the eye rays, house cores inset 0.25 m, church core 0.3-0.35 m, grove cores at 88 %.",
+    "Church reading of '40 x 16 x 18 m': footprint 40 x 16 with 18 m walls plus a 7 m gable roof, attached to the east side of the octagonal shaft (circumradius 4 m, to y 75) and yawed 15 deg about +Y. The spire base radius is 4.4 m. 60 spire strokes start exactly at the tip.",
+    "Houses never stand in front of the church from E, and never reach behind the foot of hill wall k=0 (which would hide them). Because of this, effective house bases fall in d 464-2076 m rather than the 520-2700 m of §2.3.",
+    "Crest strokes are centred 0.0024 below ridgeV (not on it) with W 0.0045-0.007, so the dark outline stays visible against the dark sky through M3's shader. Depth thickness is +-150 m along the eye rays, as specified."
+   ],
+   "contract_requests": [
+    "M3 (stroke vertex shader): give WINDOW / FLICKER strokes (or any emissive > 0 stroke) a minimum projected footprint of about 1.5-2 px, and exempt them from the `Lpx < 0.35` cull and the `smoothstep(1.5, 4, Lpx)` fade. Without this the §4.7/§9.2 t=71 s requirement ('village reads as a cluster of lit windows') cannot be met: from A44 (44 km, fov 26) every window is about 0.05-0.2 px and gets culled. From E at 720p, windows on houses beyond about 1.5 km are also partly faded. The harness emulates the requested behaviour with 2.5 px points (shots/land-far-emu.png); without it, no windows show (shots/land-far.png).",
+    "Same request, lower priority, for CHURCH strokes: a 1 px minimum ribbon width would keep the steeple visible as a line from the vortex eye. It is 145 m tall but under 0.3 px wide there.",
+    "Spec §2.3 consistency, for the lead. (1) The listed crest altitudes (190-380 / 240-510 / 300-660 m) do not follow from the normative d_k law; the law gives 128-268 / 242-420 / 400-666 m. (2) The walls do not meet the ground exactly at v = 0.20: wall k=0's v=0.20 row floats 8-15 m up (I extend it down to the ground along the same linear law, foot at v about 0.18-0.196), while walls k=1 and k=2 rise out of the ground at v about 0.205 and 0.212. (3) House v_base [0.06, 0.195] does not match d 520-2700. (4) The '~10 % of frame height' village at A44 is geometrically about 3 % (a village 1.5 km deep x 0.6 km wide seen from 44 km at 16 deg elevation is about 15 x 21 px at 720p)."
+   ],
+   "integration_notes": [
+    "Wiring as composition.ts already does: generateGround(buf, forkRng(seed,'ground')); generateHills(buf, forkRng(seed,'hills')); const village = generateVillage(buf, forkRng(seed,'village')); underlays.add(createLandUnderlays(hex => makeUnderlayMaterial(hex, u), village)). The default FrontSide is fine: every underlay mesh has outward winding (verified with FrontSide materials). createLandUnderlays calls makeMaterial once per distinct colour (8 colours, 9 meshes).",
+    "Hide the land underlay group while uWarpK != 1 (§5.3). All meshes are static, matrixAutoUpdate false, with bounding spheres computed.",
+    "Paint order: HOUSE min d is 464 m, so CYPRESS < HOUSE holds. HILL max d is 6039 m, below STAR_CORE (11.8 km). Every emitted endpoint is inside CLASS_INFO dRange: SolidEmitter drops anything outside, and the harness shows 0 drops.",
+    "Exact High-tier counts: GROUND 8000, GROVE 6000, HILL 16500, HOUSE 14000, WINDOW 400 (396 on houses, 4 on the church nave), CHURCH 3600. In M3 these build into 15 Morton chunks.",
+    "Generators are deterministic for a given rng (harness hash check) and independent of call order, since the layouts are memoized with fixed seeds. LAND_STATS (hillsGen) holds per-class emitted/rejected/dMin/dMax from the last run; a console.warn fires if the dRange guard ever drops a stroke.",
+    "The director can use VillageInfo.steepleTip (exactly (27,145,-678)) and steepleBase (27,0,-678). For houses, use houseFrame(h) or houseRoofHeight(h.size) if roof geometry is needed (see the exports for the center/size/yaw semantics).",
+    "harness/landReal.html renders M7 through M3's real buildStrokeLayer and makeUnderlayMaterial (no sky, no post). It is useful for re-checking after M3 changes: node tools/shot.mjs \"harness/landReal.html?view=pose|off|far|church|village\"."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : 0 errors in src/earth/{terrain,hillsGen,villageGen}.ts, harness/land.ts, harness/landReal.ts. composition.ts's import of createLandUnderlays from villageGen now compiles. The remaining tsc errors are in src/camera/director.ts (another agent's file).",
+    "harness/land.html, run 6 times plus a cold layout timing, all checks PASS. Counts GROUND 8000/8000, GROVE 6000, HILL 16500, HOUSE 14000, WINDOW 400, CHURCH 3600. dRange endpoints (dropped 0 for every class): GROUND 213-2160, GROVE 217-1901, HILL 1641-6039, HOUSE 464-2076, WINDOW 466-2076, CHURCH 652-684. Deterministic (same hash on a rerun with the same seed). All q1..q3 are unit and all fields finite.",
+    "Steeple: 60 CHURCH strokes have an endpoint at (27,145,-678); best error 1.4e-14 m after the strokeEndpoints round trip. The tip projects to (u 0.549, v 0.446), and ridgeV(0.549, 2) = 0.377, so the steeple pierces the rear ridge by 0.069.",
+    "Village canvas extent (house/window stroke centres): u 0.317-1.118, v 0.061-0.202. Ridge crests run v 0.26-0.40 (three layered walls). Crest altitudes: 128-268 m (k=0), 242-420 m (k=1), 400-666 m (k=2).",
+    "Windows: 118 distinct wall normals carry windows; there are 2-3 per wall on all 4 walls of all 40 houses.",
+    "Generation time in headless Chrome on this shared laptop (other agents were running shots at the same time): warm 43.9-47 ms, within the 60 ms budget. The cold first run is 74-93 ms, plus about 6 ms of one-time layouts (foot table 1.1, village 1.5, groves 3.4). See known_issues.",
+    "Looked at every screenshot. shots/land-pose.png (canvas pose with canvasGrid): three layered ultramarine/cobalt contour-stroked ridges with dark crest outlines between v 0.30 and 0.40, the steeple at u 0.55 above the rear ridge, a village of pale houses with blue-grey roofs and lit windows in u 0.32-1.1 / v 0.06-0.21, dark groves, foreground fields. shots/land-off.png (camera (-83,108,-225) looking at (27,0,-678), fov 56): houses show solid walls, roofs, outlined edges and windows on side and gable walls, no holes (crop checked), and the hill ends taper into the plain. shots/land-far.png and land-far-emu.png (A44 looking at E, fov 26): the land reads in a dark plain; windows only appear with the min-pixel emulation. Also land-church.png, land-village.png, land-side.png (sloped walls with rounded backs) and land-top.png.",
+    "Real-pipeline check through M3's buildStrokeLayer and makeUnderlayMaterial (harness/landReal.ts), 0 console errors: land-real-pose.png, land-real-off.png, land-real-church.png, land-real-far.png. 15 land stroke chunks plus 9 underlay meshes = 24 draws. This pass is where I found and fixed faint crest outlines, too-small windows and hairline field strokes."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-off.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-far.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-far-emu.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-church.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-village.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-side.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-top.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-real-pose.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-real-off.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-real-church.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/land-real-far.png"
+   ],
+   "known_issues": [
+    "Cold generation (first call, JIT not warmed) measured 74-93 ms on this laptop in headless Chrome while other agents were rendering, against the 60 ms M7 budget. Warm runs are 44-47 ms. I have not measured it on an idle mid-range machine. Hills are the largest share, about 32 ms cold.",
+    "Vortex-eye acceptance (t=71 s: lit windows plus steeple) is not met with the current M3 shader, which culls strokes under 0.35 px. It was verified only with the harness emulation (2.5 px window points). The steeple is not visible from A44 at all. See contract_requests.",
+    "Off-axis, the field strokes are flat paint dabs elongated toward E. To fill the canvas from E, their depth-wise width is widened up to 6x. This is the deliberate trade-off between the E look and the off-axis look.",
+    "The far plain band (v 0.10 to the hill foot, d 600-2000 m) is lightly covered from E: compensation is capped at 4, so strokes there are thin and the dark ground underlay shows between the groves.",
+    "With the canvas-Poisson house layout, world density is highest near E. The village's world footprint (about 1.5 x 0.6 km) is smaller than the spec's '10 % of frame' at the vortex eye; measured about 3 %.",
+    "Not verified together with the cypress (M6), sky (M4), post chain (M9) or the director's real camera paths; I used only the harness preview and M3's stroke and underlay materials.",
+    "Lower tiers were not checked visually. Tier fractions are applied by M3 as prefixes of shuffled chunks, so M7 does nothing tier-specific."
+   ],
+   "tsc_clean_for_own_files": true
+  },
+  "review": null
+ },
+ {
+  "key": "M8-director",
+  "build": {
+   "module": "M8 camera director (src/camera/*)",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/director.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/shots.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/paths.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/freeFly.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/ui.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/director.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/director.ts"
+   ],
+   "exports": "director.ts:\n  class Director {\n    constructor(camera: PerspectiveCamera, input: HTMLElement, opts: DirectorOptions)\n    update(dtSeconds: number): DirectorFrameEx      // writes camera.position/quaternion/fov + updateProjectionMatrix + updateMatrixWorld\n    jumpToShot(index: number): void                  // 0..9, 0.15 s fade up, cut at the peak (cut=true, velocity zeroed), 0.15 s down\n    returnToEye(): void                              // log-polar flight to H0 (3-6 s), then the shot-10 homecoming, then mode 'free' at E\n    resumeCinematic(): void                          // immediate rejoin flight (same as idle hand-back)\n    setCalm(on: boolean): void\n    setHudText(text: string): void                   // integrator HUD text (fps/tier/scale), shown while H HUD is on\n    setHud(on: boolean): void\n    startRejoin(): void\n    rejoinChoice(camPos: Vector3, viewDir: Vector3): { index: number; cost: number }\n    dispose(): void                                  // removes listeners + DOM overlay\n    readonly mode: DirectorMode; readonly calm: boolean; readonly hudVisible: boolean\n    readonly timeline: Timeline; readonly ui: DirectorUI | null; readonly input: PilotInput | null; readonly pilot: FreeFly\n    readonly table: { p: Float64Array; d: Float64Array }   // 960 samples, xyz interleaved\n    readonly tableBuildMs: number\n  }\n  interface DirectorOptions { calm: boolean; startTime?: number; free?: boolean; firstBoot: boolean; ui?: boolean /*default true*/; listen?: boolean /*default true*/ }\n  interface DirectorFrameEx extends DirectorFrame { animTime: number; align: number }\n  function poseQuaternion(d: Vector3, rollDeg: number, out: Quaternion): Quaternion   // aviation roll, + = bank right, applied as rotateZ(-roll)\n  function alignOf(pos: Vector3, quat: Quaternion, fovDeg: number, aspect: number): number  // section 6 uAlign formula\n  const REJOIN_SAMPLES = 960, REJOIN_DT = 0.1\n\npaths.ts:\n  const ease: { inOutCubic, inOutSine, smootherstep, outQuint, outCubic, smoothstep, linear }: (t: number) => number; type EaseName\n  function hermite(p0: Vector3, m0: Vector3, p1: Vector3, m1: Vector3, s: number, out: Vector3): Vector3\n  function hermite1(p0: number, m0: number, p1: number, m1: number, s: number): number\n  function catmullRomCentripetal(pts: Vector3[], s: number, out: Vector3): Vector3\n  function slerpUnit(a: Vector3, b: Vector3, s: number, out: Vector3): Vector3\n  function rotateTowards(from: Vector3, to: Vector3, maxAngle: number, out: Vector3): Vector3\n  function logPolarAboutEye(fromPos: Vector3, toPos: Vector3, s: number, out: Vector3): Vector3\n  function vanWijkNuij(c0: Vector3, w0: number, c1: Vector3, w1: number, rho: number): { duration: number; at(S01: number): { center: Vector3; width: number } }\n  function dollyZoomFov(fov0Deg: number, depth0: number, depthNow: number): number\n  function funnelCameraPoint(vi: number, rCanvas: number, theta: number, inset: number, out?: Vector3): Vector3\n  class CriticalSpring3 { constructor(omega: number); value: Vector3; velocity: Vector3; reset(p: Vector3, v?: Vector3): this; step(target: Vector3, dt: number): Vector3 }\n\nshots.ts (the section 5 tables as data + the pure timeline):\n  SHOTS, SHOT_STARTS, shotAt(t), KEYS (E, F, P2, DIR2, P3, L3, TRUNK, BURST0/1, VENUS, VENUS_DIR, RAY_END, V6, V6B, P_MID, C1_MOUTH_TABLE, A47, A44, H0, STEEPLE_DEPTH), KEYFRAME_CHECKS,\n  ENV_KEYS, BLOOM_PULSE, evalEnvKeys(keys, t), interface CamPose { p; d; roll; fov }, newPose(), copyPose(), COMFORT,\n  aspectFov(fovDeg, aspect), applyComfort(pose, aspect, calm), trapEase(x, r),\n  class Timeline { pose(t, out: CamPose): CamPose; position(t, out): Vector3; velocity(t, out): Vector3; pirouette; jetEndSlope },\n  interface EnvSample (= ShotEnvelope fields), newEnv(), timelineEnv(t, camDistFromE, calm, out), lerpEnv(a, b, s, out), TIMELINE_SECONDS\n\nfreeFly.ts: class PilotInput (event plumbing: keys, look drag, pinch, speedExp, warpK, stirAt, idle, dispose), class FreeFly (pilot integrator: takeOver, update, speed, write), type DirectorCommand, interface InputCallbacks\nui.ts: class DirectorUI { constructor(input); setHudText(text); render(s: UiState); dispose() }, projectEyeRing(camera, widthPx, heightPx, align): RingState, HINT_TEXT, interface UiState, interface RingState",
+   "deviations": [
+    "Jet ride (32-37.5): sigma = 0.12 + 0.88*jetEase(x), where jetEase is a cubic Hermite that starts at rest and has end slope 0.722. The spec says inOutSine. With this ease the camera reaches the Venus core at the ring-tunnel start speed (~5.7 km/s) and punches through, instead of stopping dead in the core.",
+    "Jet ride joins: the spec's burst end (-45,210,-235) is 106 m from jetPoint(0.12). A decaying offset (smootherstep over 32-34.5 s) closes that gap. Over sigma 0.7-1 the path also converges onto the Venus ray, because the jet ends at v=0.735 while the core is at v=0.72 (117 m apart). The path arrives tangent to the ray, so t=37.5 is C1 and the pose there is exactly the Venus core.",
+    "Jet look: blends from looking at Venus (the burst-end look) to 'path tangent 0.4 s ahead' over 32-33.5 s (inOutSine). Switching straight to the tangent would snap the view about 18 degrees.",
+    "Swoop (52-55.5): it ends at the spiral formula's tau=0 point, (0.43, 0.756, 86.9 km) = (-4940, 29376, -83066). The table's 'c1 mouth entry' (-5003, 31100, -83883) = (0.43, 0.78, 88 km) is 1.9 km away and disagrees with the spiral formula; I kept the formula for C1 continuity. The swoop arrives along the spiral tangent at 1/4 of the spiral's 56.0 s speed, because the spiral starts from rest. The swoop's look turns to the spiral's own start look rather than to 'c1 axis at 70 km'; the two are 18 degrees apart, and the axis target would force a 37 deg/s swing inside the 0.5 s join.",
+    "Spiral (55.5-64): follows the formula with inset 0.8. The table's approximate midpoint is 502 m off and its end point 169 m off, because the table used inset 1.0 for v at the midpoint.",
+    "Shot 9 pirouette: runs 76.0-82.5 (6.5 s) instead of 77.0-82.5. Turning 177 degrees in 5.5 s while staying at or under 33 deg/s would need near-instant acceleration. Heading uses a flat-top ease (smoothstep-shaped ramps of about 1.05 s, peak 32.5 deg/s); pitch uses inOutSine. 'Face F' still holds from 82.5 on.",
+    "Shot 8 roll: 'unwind to -10, then drift -4 deg/s, clamped to -30' is implemented smoothly. A Hermite from the spiral-end roll reaches -10 with a -4 deg/s slope at 66.5. From there roll = -10 - 20(1 - e^(-(t-66.5)/5)), which starts at -4 deg/s and soft-saturates toward -30 (-24.5 at 73 s). Shot 9 unwinds it to 0 over 73-77 s.",
+    "Roll convention is aviation: + = bank right, applied as rotateZ(-roll). Under this convention shot 8's -4 deg/s is co-rotation with c1. Shot 4's 'bank 10 deg into the turn' is a -10 degree bump (the orbit yaws left) shaped by the helix angular rate. Shot 7's roll = 25*tanh(0.6*yawRate/25), a soft clamp. The yaw rate is measured numerically about world up.",
+    "C1 joins: Hermite blend windows that start AT the boundary, so pose(tb) is exactly the previous shot's end. They sit at 20 s (1.0 s, because shot 4's start is 2.2 m and about 10 degrees off shot 3's end), 30, 48 and 55.5 (0.5 s each). All other joins are C1 by construction.",
+    "Shot 6 van Wijk-Nuij (rho 1.4): the widths are w = 2*tan(fov/2)*|P_mid - c| at each end (FOV 72 and 56). Camera = vWN centre + pull-back along (centre - P_mid) by (w(S) - w_linear)*/(2 tan 32 deg), about 12 km at mid-move. S01 = inOutSine((t-42)/6).",
+    "Envelopes: steps between table rows become 0.5-1 s linear ramps. env.storm stays 1 until 88.5 s and reaches 0 by 89 s, so M10's snap (first |C-E| < 360 m) fires while the storm is armed. dust over 88-96 = 0.3*smoothstep(0.5, 40, |C-E|). The bloom pulse is a sine bump over 88.6-88.9. The re-entry breath is 1 + 0.15 sin(pi t/2) over 0-2 s, only when not on first boot.",
+    "Jump-cut fade: 0.15 s up plus 0.15 s down (0.3 s total), with the cut at the peak. The spec wording '0.3 s up/down' is ambiguous.",
+    "Narrow screens: every timeline FOV is widened with the same tan scale that canvasPoseFovDeg uses. The FOV cap is max(80 (70 calm), canvasPoseFovDeg(aspect)), so the canvas pose survives phones narrower than about 0.46, where the canvas pose itself exceeds 80 degrees.",
+    "Idle / C rejoin: flies toward a moving target, timeline(t_c + e), and lands C1 on the timeline at t_c + D. The spec's literal reading (fly to a static sample, then continue from it) would jolt from rest to shot speed (up to 17 km/s). When |C-E| < 50 m the flight is static to t=0. Duration is 3 + 2*min(1, cost/1.5) s. loopTime jumps to t_c when the rejoin starts; animTime does not jump.",
+    "C key = resumeCinematic, implemented as an immediate rejoin flight rather than a cut.",
+    "Command keys (Space, digits, C, R, G, M, H) perform their action without forcing free mode. Movement keys and any other unbound key hand off. Modifier keys, Tab, Escape and F-keys are ignored. Keyboard listeners sit on the input's window and are filtered to the input element or body, ignoring editable elements, so keys work without clicking the canvas first. Pointer, wheel and touch listeners are on the input element.",
+    "End-of-loop hint: shown on the first loop only, in cinematic mode, 90-96 s, and only if the user has not interacted yet.",
+    "DirectorFrame.shotT = seconds since the shot start (not normalised).",
+    "firstBoot = opts.firstBoot for the first 6 s of boot. Any jump cut clears it. Free-mode hand-off does not, so an early drag does not abort the lay-in.",
+    "Free-mode envelopes: matte = the director's own align (M10 overrides it with uAlign anyway). bloom relaxes to 0.7, exposure to 1, galleryLight to +15, storm to 0 (M10 owns free-mode storm via G and stormToggled). smear comes from pilot speed (0 when calm). dust = smoothstep(0.5, 40, |C-E|)."
+   ],
+   "contract_requests": [
+    "Add `animTime: number` to DirectorFrame, the continuous animation clock. Today it exists only on DirectorFrameEx (director.ts). M10 currently sets uTime = f.loopTime. loopTime jumps when an idle/C rejoin starts, which makes streaming arms and rings shimmer for one frame; animTime only jumps on fade-masked jump cuts. Until then M10 can read `(f as DirectorFrameEx).animTime`."
+   ],
+   "integration_notes": [
+    "composition.ts already wires the director exactly as implemented: new Director(engine.camera, engine.canvas, { calm, startTime: flags.t, free: flags.free, firstBoot: flags.t === undefined }); then f = director.update(dt) each frame, and director.setHudText(...) while f.hud. It typechecks against my files; the only remaining project tsc error is M7's missing createLandUnderlays export.",
+    "Recommended: use (f as DirectorFrameEx).animTime for uTime instead of f.loopTime, so a rejoin start does not jump the stroke animation. Use loopTime for anything tied to the camera timeline.",
+    "update() clamps dt to [0, 0.1] and writes camera.position / quaternion / fov plus updateProjectionMatrix() and updateMatrixWorld(), so derived uniforms can read the camera right away. Velocity: analytic in cinematic, the pilot's in free mode, smoothed finite difference during flights; zeroed when f.cut. The first update() returns cut = true and shows startTime exactly, without advancing the clock.",
+    "The director builds its own DOM overlay: one injected <style> id 'pn-director-ui-style', and a fixed div appended to document.body and kept over the input element's rect. It sets tabIndex=0, the class 'pn-focusable' (focus-visible gold outline) and touch-action:none on the input element. dispose() removes all listeners and the overlay. Pass { ui:false, listen:false } for headless or test use.",
+    "Keyboard handling sits on window (filtered). Avoid binding Space, 0-9, C, R, G, M, H, W/A/S/D/Q/E or the arrows in other modules. Debug-overlay inputs are safe because editable elements are ignored.",
+    "prefers-reduced-motion is detected inside the director and OR-ed with opts.calm. M can toggle calm at runtime; f.calm reports the current value.",
+    "Free mode: f.env.matte = the director's align (same formula as M10's uAlign; also on f.align). M10 already uses uAlign for the matte in free mode, which is consistent. f.warpK comes from Shift+wheel (0..1.6, steps of 0.1) and is lerped back to 1 during rejoin and return flights. f.stir = [u*A, v, strength, 0.08] or null; null means set uStir.z = 0, which M10 already does.",
+    "Storm: env.storm stays 1 until 88.5 s, so StormController's snap fires at 88.0+ in the cinematic. In 'returning' mode M10 uses its own G-armed state, which matches 'snap included if the storm is armed'.",
+    "?free starts in free mode at the startTime pose with idle hand-back disabled until the user presses C or a digit. returnToEye() ends in free mode at E, and the 12 s idle rejoin then resumes at t = 0, per section 5.3.",
+    "f.firstBoot is true for the first 6 s of boot (M10's uLayIn = boot < 4 logic works). Any jump cut (digit or R) clears it."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : no errors in src/camera/* or harness/director*. The single remaining project error is in src/app/composition.ts and is M7's missing createLandUnderlays export.",
+    "node tools/shot.mjs \"harness/director.html?tests\": 71/71 checks PASS, 0 console errors (window.__report).",
+    "Keyframes, exact rows (tolerance 0.5 m or 0.1% of |C-E|, 0.2 deg, 0.1 deg FOV): t = 0, 6, 10, 12, 20, 25, 30, 32, 37.5, 42, 48, 52, 66.5, 67, 71, 73, 82.5, 88, 95.5, 96 all pass. Examples: the Venus core at 37.5 is 0.36 m off; t=25 is (-83.2, 107.5, -225.2) with roll -10; H0 has FOV 70.02.",
+    "Keyframes, approximate rows (the spec's '≈' values that the formulas don't reproduce): t=55.5 is 1909 m off, t=59.75 is 502 m off, t=64 is 169 m off. They are reported as [approx] passes with loose tolerances.",
+    "t=96 vs t=0: dp = 0 m, dq = 0 rad, FOV 36.000000 for both.",
+    "Position continuity at 1/120 s (step vs the mean of the ±0.1 s neighbours): worst ratio 1.09 (t=30.09), no step above 3x anywhere. View-direction continuity: worst ratio 1.18 (t=75.96).",
+    "Comfort: max |roll| 24.55 deg; max roll rate 13.36 deg/s (t=58.71); max FOV 78.0 at 16:9; calm roll 12.27 and FOV 70.0; at aspect 0.5 the canvas pose is 78.16 and the max FOV 80.0; shot 9 yaw pirouette peaks at 32.50 deg/s (177 degree turn).",
+    "Section 5 facts: shot 9 passes the c1 throat at 74.35 s (|C-E| 40270 m) and stays at canvas v >= 0.500 (above the hills).",
+    "Rejoin table: 0.90 ms for 960 samples (budget 15 ms). Director CPU averages 0.0015 ms per frame over a 96 s pass (budget 0.3). The director in cinematic mode matches the timeline exactly. The loop wrap is continuous (0 m step) with exactly one cut (the first frame). firstBoot lasts 361 frames (6 s at 60 fps). The re-entry breath peaks at 1.1500.",
+    "Envelopes: matte, storm, dust, exposure-dip and bloom key values, plus env(0) == env(96). Calm: smear 0 and the punch exposure dip goes to 0.75.",
+    "Paths unit tests pass: hermite endpoints; catmullRomCentripetal interpolates (0 error); logPolarAboutEye endpoints and log-midpoint; vanWijkNuij endpoints and zoom-out; dollyZoomFov(40, 411.4, 315.6) = 50.76; funnelCameraPoint(c1 throat) = (-2274, 11092, -38670); CriticalSpring3(20) settles 1 m to 5e-4 m in 0.5 s.",
+    "Input and mode tests with real DOM events in headless Chrome: pointerdown hands off to free within one frame and keeps velocity; dragging yaws the view 10.3 deg; W moves forward; wheel sets speed 2^1; Shift+wheel sets warpK 1.1; Alt-drag stirs with strength 1 and radius 0.08, decaying to 0.368 after 1.5 s; G sets stormToggled for exactly one frame; H and M toggle; the free ring shows off-axis and hides when aligned; digit 5 fades, cuts and lands in cinematic at t=32 with zero velocity; Space returns in 11.2 s to free mode at E (|C-E| 0, align 1.000, FOV 36); 12 s idle rejoins at t=0; a far rejoin picks sample t=54.4 (cost 0.006) and lands on the timeline.",
+    "I looked at each screenshot (placeholder scene, director camera, 1280x720). t=0: matches 9.2 (cypress x 0.05-0.30 crossing the top edge, Venus at 0.30/0.72, double swirl, moon and bell, steeple at x 0.55 piercing the ridge). t=10: 34 m left, FOV 39.4, cypress slid to the centre eclipsing Venus's halo edge. t=31: Venus dead ahead, jet filaments, cypress dropped below. t=37.6: concentric rings centred on the Venus ray. t=45: both funnels emerging during the pull-out. t=50: both funnels framed around P_mid. t=60: inside the c1 wall looking down to the throat. t=68 and t=71: on the axis looking back up the funnel at E; the throat ring fills about 59% of frame height (spec about 57%) with E and the village region at its centre. t=80: mid-pirouette above the hills. t=92: approaching E facing F, reverse dolly-zoom (the steeple is the same size as at t=96), hint line visible. t=96: identical to t=0. Portrait 540x960 at t=0 shows the full canvas width (FOV 71.6). The free-mode frame shows the HUD and the gold ring."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t00.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t10.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t25.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t31.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t37.6.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t45.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t50.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t60.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t68.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t71.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t80.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t92.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-t96.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-free-t45.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-overview.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-portrait-t00.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-x-t34.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-x-t56.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-x-t83.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-tests.png"
+   ],
+   "known_issues": [
+    "Spec inconsistency at t=25: the section 5.1 helix formula places the camera behind-left of the cypress at (-83, 108, -225), looking at the trunk axis. That view points back toward +x+z, E's side of the sky, so the swirl, stars and village are behind the camera. Section 9.2's 'swirl and stars visible through gaps; house solids below' can't be met without changing the helix. Only the real backdrop will be behind the cypress in that frame.",
+    "Shot 7 roll peaks at about 10.5 degrees, not the spec's ≈25. The camera looks down the funnel, so most of its 44 deg/s view rotation is not yaw about world up (measured yaw rate about 17 deg/s), and the roll sign alternates with the precession. It stays well within the 25 deg/s roll-rate cap.",
+    "Large rotation and translation rates come from the spec geometry and are not capped by any rule: shot 4 helix view rotation up to 72 deg/s (450 degrees in 10 s), The Fall 44 deg/s, Inhale tilt 26 deg/s; the shot 6 pull-out peaks at 16.9 km/s and the swoop at 17.3 km/s.",
+    "Not verified in the full app: index.html currently fails at module load because M7's villageGen lacks createLandUnderlays (not my file). Integration is only typechecked.",
+    "Input was tested only with synthetic DOM events in headless Chrome. Real touch (one-finger look, two-finger pinch) is untested; the pinch path has no automated test. Pointer capture and focus behaviour inside a sandboxed iframe are unverified.",
+    "In free mode the FOV stays at the hand-off value (e.g. 26 degrees if taken over at t=71), per 'the current pose, FOV ... become the pilot state'. There is no FOV control in free mode.",
+    "The hint line uses a 0.25 s CSS opacity transition. In a single-frame static screenshot (t=92) it appears partly faded; with continuous updates it is fully visible. Its dark pill is low-contrast against the dark placeholder ground; on the real painting it should read better, but this is unverified.",
+    "CriticalSpring3 is exported and unit-tested but unused at runtime. The analytic homecoming lands exactly on E at 95.5 s, so no settle is needed.",
+    "Placeholder-scene limits: houses and windows are sub-pixel from 44 km (t=71), so 'lit village framed in the throat' is checked by geometry (E and the village region at the throat centre, about 10% of frame height), not by visible windows. The cypress is a single tapered cylinder, not tubes."
+   ],
+   "tsc_clean_for_own_files": true
+  },
+  "review": {
+   "module": "M8 camera director review and fix (src/camera/*, harness/director*)",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/shots.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/camera/director.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/director.ts"
+   ],
+   "exports": "Unchanged from the builder's report. Director, DirectorOptions, DirectorFrameEx, poseQuaternion, alignOf, REJOIN_SAMPLES and REJOIN_DT come from director.ts. shots.ts exports SHOTS, SHOT_STARTS, shotAt, KEYS, KEYFRAME_CHECKS, ENV_KEYS, BLOOM_PULSE, evalEnvKeys, CamPose, newPose, copyPose, COMFORT, aspectFov, applyComfort, trapEase, Timeline, EnvSample, newEnv, timelineEnv, lerpEnv and TIMELINE_SECONDS. The paths.ts, freeFly.ts and ui.ts APIs are unchanged. The only removal is shots.ts's internal (non-exported) helper yawRateDeg, which nothing uses any more.",
+   "deviations": [
+    "Shot 7 roll (this fixes a defect). Spec: 'Roll = clamp(0.6 x yaw rate) (yaw rate is about 42 deg/s, so roll about 25 deg)'. The builder measured yaw about world up. That gave a roll peaking at only 10.5 deg whose sign alternated with the precession, so the bank rocked left and right instead of holding into the turn. The yaw rate is now the spiral's turn rate about the c1 axis, d theta/dt = -360*dtau/dt (mean 42 deg/s, peak 66 deg/s). Roll = 25*tanh(0.6*rate/25), which is negative: co-rotation with c1, the same sense as shot 8's -4 deg/s drift. Measured: roll stays one sign over 56-64 s and peaks at -23.0 deg. It is -21.4 at t=58 and -22.8 at t=60 (shown in the screenshot HUD).",
+    "Shot 7 to 8 roll hand-over. Over the second half of the spiral the roll blends with smoothstep to -20/3 deg and arrives at 64.0 with zero slope. Shot 8's glide then winds on with the pure cubic -20/3 + (-10 + 20/3)*x^3. That reaches exactly -10 deg at 66.5 with slope -4 deg/s, where the builder's drift takes over unchanged. So the smallest bank between the spiral and the drift is -6.7 deg at 64.0, not a turnaround at -10 deg at 66.5. A literal turnaround at -10 deg would put a kink in the roll rate. The keyframe check 'roll -10 at 66.5' still passes.",
+    "Shot 5b roll 0 -> -15 (37.5-42) now uses trapEase(x, 0.25): a plateau at 4.4 deg/s, 3.3 deg/s on average, with eased ends. It used to be linear, which kinked the roll rate by 3.3 deg/s at 37.5 (the jet rides at roll 0) and at 42.0 (shot 6 unwinds from rest).",
+    "Shot 9 roll unwind (73-77) is now a Hermite that leaves with the shot 8 drift's own roll rate (-1.09 deg/s at 73). Before, it was a plain inOutSine that started at rate 0, which kinked the roll rate at 73.0.",
+    "Shot 9 pirouette now starts from the live look-at-E heading and pitch: psi(t) = psiE(t) + (psi1 - psiE(t))*trapEase(x). psiE is unwrapped against psi0 because the look-at-E heading sits on the +-180 deg seam. Before, the start direction was frozen at 76.0, which kinked the view's angular velocity at 76.0 (a 0.41 deg/s jump). The peak yaw is now 32.78 deg/s, still under the 33 deg/s cap.",
+    "Free mode lens (director.ts): after hand-off, pilot.fov relaxes toward canvasPoseFovDeg(aspect) with a 1.5 s time constant. The hand-off itself still keeps the shot's FOV with no blend, as section 5.3 asks. Without the relax, a pilot who took over at 26 deg (t=71) or 78 deg (shot 5) could never get uAlign > 0.95 at E. uAlign needs the FOV within 2 deg of the canvas pose, so the matte would never close, the gold ring never hide, and the section 9.3 warp-invariance demo would only work after Space.",
+    "I kept every other builder deviation after checking it against sections 4.8, 5 and 5.3. That covers the jet ease and the decaying offset, the swoop's look target and the spiral formula against the table's approximate points, starting the pirouette at 76, the moving-target rejoin, the 0.15 + 0.15 s fade, the envelope ramps (storm held to 88.5 so the snap fires), dust 88-96 = 0.3*smoothstep(0.5, 40, |C-E|), and the breath and firstBoot rules. Each one is either forced by C1 continuity or the comfort caps, or is a reasonable reading of an ambiguous line."
+   ],
+   "contract_requests": [
+    "Still open from the builder: add animTime to DirectorFrame. loopTime jumps when an idle/C rejoin starts; animTime only jumps on fade-masked cuts. M10 can read (f as DirectorFrameEx).animTime until then."
+   ],
+   "integration_notes": [
+    "No API change. composition.ts typechecks against the edited files (npx tsc --noEmit -p . reports 0 errors project-wide). index.html?t=60 now loads and renders with 0 console errors (shots/director-r-app-t60.png shows the banked fall inside the c1 funnel).",
+    "Free mode: f.mode === 'free' frames now show the camera FOV easing to the canvas-pose FOV over a few seconds after hand-off. M10's uPxPerRad and uAlign already read camera.fov every frame, so nothing needs wiring.",
+    "In 'returning' mode env.storm is lerped toward timelineEnv(88).storm = 1 during the flight to H0. M10's StormController already ignores env.storm in 'free' and 'returning' (it uses its G-armed state), so this is harmless today. Any other consumer of env.storm should do the same."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : 0 errors (whole project).",
+    "node tools/shot.mjs \"harness/director.html?tests\": 0 failures across 77 checks, 0 console errors. That is the builder's 71 checks plus 6 new ones (below).",
+    "New C1 test (testC1, 240 Hz): a kink is a step in the finite-difference rate that exceeds 4 times the quiet neighbours on both sides. BEFORE my fixes it failed in two places. The roll-rate jump was 3.33 deg/s at 37.5, 3.34 at 42.0, 1.51 at 64.0 and 1.11 at 73.0. The view's angular-velocity jump was 0.41 deg/s at 76.0. AFTER: position worst ratio 1.05, view direction 0.94, roll 0.95 and FOV 0.74 (a kink would be above 4), all PASS.",
+    "New check 'shot 7 spiral bank about 25 deg, one sign': roll range -23.03 .. -6.63 over 56-64 s. The builder's version peaked at 10.5 deg and changed sign.",
+    "New check 'free lens relaxes to the canvas FOV': hand-off at t=71, FOV 26.00 -> 35.952 after 8 s; at E in the canvas orientation, align = 1.000.",
+    "Comfort after the fixes: max |roll| 24.61 deg (cap 30); max roll rate 19.03 deg/s at t=55.82, inside the 55.5 Hermite join (cap 25, so the director's slew limiter never engages and director == timeline exactly, rel err 0); max FOV 78.0 at 16:9; calm roll 12.30 deg and FOV 70.0; pirouette yaw 32.78 deg/s (cap 33).",
+    "Every section 5 keyframe check still passes within 0.5 m (or 0.1% of |C-E|), 0.2 deg and 0.1 deg FOV. That includes t=66.5 roll -10.00, t=96 == t=0 (dp 0, dq 0), and the section 5 facts (c1 throat passed at 74.35 s; min canvas v 0.500 during shot 9). The runtime, envelope and input/mode tests still pass: hand-off within one frame, Space return in 11.2 s to free mode at E, 12 s idle rejoin to t=0, far rejoin landing on the timeline, digit fade/cut, stir, G/H/M.",
+    "Screenshots, which I looked at (placeholder scene, director camera, 1280x720). t=0: canvas framing; cypress from x 0.05 to 0.30 crossing the top edge; Venus at (0.30, 0.72); swirl, moon and steeple in place. t=10: matte off; the camera is 34 m left; the cypress has slid toward the centre over Venus's halo; FOV 39.4. t=25: behind-left of the trunk, looking up at it, roll -10. t=37.6: ring tunnel ahead along the Venus ray, exposure dip at 0.50, roll -0.0. t=45: both funnels emerging during the pull-out, roll -7.5. t=54: swoop toward the c1 mouth. t=58 and t=60: inside the c1 wall, now visibly banked (-21.4 and -22.8 deg) looking down toward the throat and E. t=63: bank unwinding (-7.6). t=71: the throat ring fills about 58% of frame height, centred on E and the village. t=76.5: pirouette start. t=80: mid-pirouette above the hills, roll 0. t=92: backing in along F, FOV 45.1, hint visible. t=96: identical to t=0. Overview and near views: the path is continuous with no loops or pops."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t10.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t25.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t37.6.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t45.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t54.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t58.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t60.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t63.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t65.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t71.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t76.5.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t80.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t92.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-t96.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-overview.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-near.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-r-app-t60.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/director-tests.png"
+   ],
+   "known_issues": [
+    "The spec inconsistency at t=25 remains, and I did not change it. The section 5.1 helix puts the camera behind-left of the cypress looking at the trunk, i.e. back toward E's side of the sky. Section 9.2's 'swirl and stars visible through gaps' cannot hold without changing the helix.",
+    "The roll turnaround between shots 7 and 8 is -6.7 deg at 64.0, not -10 deg (see deviations). This keeps the roll rate C1.",
+    "Return to the Eye pressed within 360 m of E (e.g. in free mode at E) still flies out to H0 and then runs the 8 s homecoming, per the literal section 5.3 text. It works, but it is an odd 11 s round trip at E.",
+    "Calm mode applies hard FOV and roll clamps (min/max). Where the cinematic FOV crosses 70 deg (the burst at 30-32 and the swoop at 55.5), the calm FOV rate has a kink. The non-calm track is C1 everywhere (verified). I did not add a C1 test for calm.",
+    "Large rotation and translation rates come from the spec geometry and are unchanged: shot 4 helix up to 72 deg/s, The Fall up to 44 deg/s, the shot 6 and 7 moves up to about 17 km/s. Shot 7's new 23 deg bank adds to the motion intensity there (roll rate up to 19 deg/s inside the 55.5 join). Calm halves it.",
+    "Input is tested only with synthetic DOM events in headless Chrome. Real touch, the pinch path, and pointer capture and focus inside a sandboxed iframe are unverified.",
+    "The full app was only smoke-tested at t=60: it loads with 0 console errors and the frame looks right. I did not run a full-app pass over the loop.",
+    "The jump-cut fade is still 0.15 s up + 0.15 s down. The spec's '0.3 s up/down' could also mean 0.3 s each way."
+   ],
+   "tsc_clean_for_own_files": true
+  }
+ },
+ {
+  "key": "M9-post",
+  "build": {
+   "module": "M9 post-processing (src/post/post.ts, src/post/painterlyLens.ts, harness/post*)",
+   "files": [
+    "C:/Users/play/Desktop/starry-night-3d/src/post/post.ts",
+    "C:/Users/play/Desktop/starry-night-3d/src/post/painterlyLens.ts",
+    "C:/Users/play/Desktop/starry-night-3d/harness/post.html",
+    "C:/Users/play/Desktop/starry-night-3d/harness/post.ts"
+   ],
+   "exports": "src/post/post.ts:\n  export function createPost(renderer: WebGLRenderer, u: SharedUniforms, q: QualitySettings): PostInternals\n  export interface PostInternals extends PostChain {\n    readonly composer: EffectComposer; readonly sceneRT: WebGLRenderTarget; readonly bloom: UnrealBloomPass;\n    readonly lens: ShaderMaterial; readonly bufferSize: readonly [number, number];\n    setLensOptions(opts: LensOptions): void; dispose(): void;\n  }\n  export const BLOOM_THRESHOLD = 1.0; export const BLOOM_RADIUS = 0.6;\n  (PostChain.render / setSize(cssW, cssH, pr) / setQuality(q) exactly as in contracts.ts)\nsrc/post/painterlyLens.ts:\n  export function createPainterlyLens(u: SharedUniforms, q: QualitySettings, opts?: LensOptions): ShaderMaterial\n  export function setLensQuality(mat: ShaderMaterial, q: QualitySettings, opts?: LensOptions): void\n  export function lensDefines(q: QualitySettings, opts?: LensOptions): Record<string, string>\n  export interface LensOptions { toeCompensation?: boolean; dither?: boolean; isoDisplay?: boolean; isoRingGain?: number; isoNoiseGain?: number }   // all default to the shipped behaviour (true / 0.18 / 0.1)\n  export function linearToOklab(r: number, g: number, b: number): [number, number, number]\n  export function oklabToLinear(L: number, a: number, b: number): [number, number, number]\n  export function oklabHueDeg(lab: readonly number[]): number\n  export const PIGMENT_OKLAB: readonly [number, number, number][]   // PIGMENTS order\n  export const MATTE_HEX = 0x0a0b10; export const FRAME_LINE_HEX = 0x3a2a18;",
+   "deviations": [
+    "Order inside the lens: the radial-smear taps (and the High chroma split) are sampled first from the bloomed input. Isophote banding and the pigment pull then act on the smeared colour. I first followed the spec order (isophote -> pull -> smear) with the smear added as a residual. That turned HDR star cores black at smear 0.8: the residual went negative where banding had darkened a core of about 6. Smear 0 is still an exact no-op.",
+    "Isophote banding (define LENS_ISO_DISPLAY, on by default): the spec's multiplier m = 1 + smoothstep(0.35,1.2,Lum)*(0.18*(ring-0.5)+0.1*n) is applied to the tone-mapped peak. The scene colour is then scaled uniformly so its hue is kept. Below the Neutral shoulder this equals the literal c *= m. With the literal scene-referred form, the bands vanish inside the shoulder, which is exactly where the Venus whiteout happens (compare shots/post-punch.png with post-punch-isoscene.png). Brightening is capped at max(peak, 0.99). setLensOptions({isoDisplay:false}) restores the literal form.",
+    "Neutral toe pre-compensation (define LENS_TOE_COMP, on by default): the lens adds the exact inverse of the toe offset in three's NeutralToneMapping (x - 6.25x^2, or 0.04) before OutputPass. Below the shoulder, the display is then linear x exposure. Stock Neutral shifts the hues of ultramarine, prussian, cobalt and roof by -3.2 to -5.1 deg (measured in shots/post-swatch-notoe.png), which fails the < 3 deg acceptance. Compensation also makes the matte #0a0b10 and the frame line #3a2a18 display exactly. Side effect: darks are not crushed by Neutral's toe. OutputPass itself is the stock NeutralToneMapping; there is no ACES anywhere.",
+    "Added a +-0.5 LSB dither of the 8-bit output before the tone mapper (define LENS_DITHER, on by default). Without it, quantisation alone puts the near-neutral zincWhite swatch 4.9 deg off in hue, and the haze and vignette band.",
+    "OKLab pull: the nearest of the 12 pigments is chosen by chromaticity ab/L, which does not change with intensity. The target is that pigment at the pixel's own OKLab lightness, and the weight is mix(c, c', 0.25), or 0.12 when Lum > 1. The pull moves hue and chroma only; HDR values and tonal structure are preserved, and a pigment at any intensity maps to itself.",
+    "Weave and varnish are applied only inside canvasRectPx (1 px antialiased edge). Outside the rect, c *= 1 - 0.35*align. Weave: over/under checker with period canvasH/280 and amplitude 0.06*align. It fades out below a 1.4 px period to avoid aliasing (weight 0.89 at a 720 px canvas).",
+    "Matte: each bar is solid from its inner edge out to the screen edge. Inner edge = canvasEdge + (1-matte)*(gap + barW), with barW = max(4 px, 0.01*H) as the overshoot, so bars are fully off-screen at matte 0. The frame line is a 2 px band on the bar's inner edge, #3a2a18 at 0.6*matte opacity. Matte, frame and fade (prussian*0.3) colours are display-referred, so they do not change with exposure. The vignette (0.22*r^2, r = 1 at the corners) applies after the matte, following the spec order.",
+    "Smear 'over 0.025*smear of the screen radius' is implemented as a zoom blur whose span is 0.025*smear*r, where r is the pixel's distance from the centre. That gives 0.025*smear*R at the corners. Taps are IGN-jittered. Chroma split: R and B taps shifted radially by +-1.5*smear*(r/R) px.",
+    "Low tier keeps varnish, outside darkening, dither and toe compensation as well as the listed 4-tap smear, weave, matte and vignette. They are cheap multiplies.",
+    "createPost returns PostInternals, a subtype of PostChain. It also exposes composer, sceneRT, bloom, lens, bufferSize, setLensOptions and dispose, for harnesses and the debug overlay.",
+    "The lens ShaderPass material and uniforms are set explicitly. Without that, ShaderPass silently clones the uniforms when its instanceof ShaderMaterial check fails because two copies of three are loaded. This happened on my first dev-server run."
+   ],
+   "contract_requests": [
+    "Lead (vite.config.ts): add optimizeDeps.include entries for 'three' and the five 'three/examples/jsm/postprocessing/{EffectComposer,TexturePass,UnrealBloomPass,ShaderPass,OutputPass}.js' modules. Harness pages are not crawled by Vite's dependency scanner, so the deep imports are discovered late. With hmr:false the page then runs with two copies of three. My first shot showed this: ShaderPass cloned the lens uniforms and the whole frame went to matte. post.ts now works around it for the lens pass, but other instanceof checks inside three could still trip.",
+    "Lead/M8 (FYI, not M9): in §5.2 the exposure dip (1.0 -> 0.5) ends at 37.5 s, so the t = 37.6 acceptance frame is at bloom 1.3 / exposure 1.0, not at the dip. I verified both cases with the harness (shots/post-punch.png and post-punch-t376.png).",
+    "Optional: add dispose() to PostChain in contracts.ts. PostInternals already has it."
+   ],
+   "integration_notes": [
+    "Call createPost(engine.renderer, u, engine.quality) after the engine exists. It sets renderer.toneMapping = NeutralToneMapping and outputColorSpace = SRGBColorSpace (the same as M1) and overwrites renderer.toneMappingExposure with f.exposure every frame.",
+    "Wire post.setSize(cssW, cssH, pixelRatio) to engine.onResize and post.setQuality(q) to engine.onQualityChange; src/app/composition.ts already does both. Sizes are Math.round(css*pr). three's canvas uses floor, so the two can differ by 1 px; this is harmless.",
+    "PostFrame.canvasRectPx must be in drawing-buffer px with y from the bottom. composition.ts's canvasRect(bufW, bufH) with Math.round matches what the harness uses: at 1280x720 the rect is [190, 0, 900, 720], and at 1920x1080 it is [285, 0, 1350, 1080].",
+    "post.render() draws the scene into its own sceneRT (renderer.autoClear clears with the renderer's clear colour) and leaves the render target null. Do not call renderer.render to the screen yourself.",
+    "The composer targets are HalfFloat with samples 0. sceneRT samples follow q.msaa. setQuality changes the sample count in place (samples = n; dispose(); three rebuilds on next use) and keeps TexturePass's texture reference valid.",
+    "Bloom: UnrealBloomPass(threshold 1.0, radius 0.6, strength = f.bloom). It is disabled when f.bloom <= 0. setSize is wrapped so the top mip is bufW*q.bloomScale: 640x360 at High/Medium and 320x180 at Low for a 1280x720 buffer.",
+    "The lens uniforms use the uLens* prefix (uLensRes, uCanvasRect, uLensMatte, uLensAlign, uLensSmear, uLensFade, uLensExposure). The lens fragment shader includes GLSL_PRELUDE and spreads the shared uniforms by reference; f.time is not used.",
+    "Feature switches for comparisons, e.g. the debug overlay: post.setLensOptions({toeCompensation, dither, isoDisplay, isoRingGain, isoNoiseGain}). Each call recompiles the lens once."
+   ],
+   "verification": [
+    "npx tsc --noEmit -p . : 0 errors in src/post/* and harness/post.ts. Errors elsewhere are only other agents' missing modules (src/app/composition.ts imports ../earth/*, ../camera/director).",
+    "Composer MSAA trap: composer.renderTarget1.samples === 0 and renderTarget2.samples === 0 in every run. Both are HalfFloat (type 1016), sceneRT samples 4 on High. Cycle test (?cycle=1): after setQuality(low) sceneRT samples 0 and bloom top mip 320x180. After setSize half, buffers 640x360 and bloom 160x90. After restore, samples 4 and bloom 640x360. No console errors.",
+    "Pigment swatch test (scene=swatch, 12 PIGMENTS at HDR 0.8 on a dark ultramarine ground, read back as 7x7 patch averages, OKLCh). High: max hue error 0.41 deg (zincWhite, C=0.007); chromatic pigments max 0.06 deg; max |dab| 0.0002. Low tier: 1.39 deg on zincWhite, 0.07 deg on chromatic pigments. The harness calls console.error on failure; zero errors.",
+    "Control without toe compensation (scene=swatch&toe=0): ultramarine -5.13, prussian -4.87, cobalt -3.19, roof -4.69 deg. All fail, which shows why LENS_TOE_COMP is needed.",
+    "At align 1 (varnish tint): chromatic pigments max 1.88 deg. zincWhite's hue rotates 12.9 deg, but at C = 0.007 its intensity-normalised |dab| is 0.0023, about 1/9 of an OKLab JND. The harness checks near-neutral pigments with |dab| < 0.005 instead of hue.",
+    "No white field at bloom 1.6 / exposure 0.5. Full test scene: 0% white pixels (min channel >= 245), 1.4% with luminance >= 235. Representative Venus punch (9 rings of stroke dabs, 2.2 -> 1.2, core 8): 0.04% white, 2.0% bright, rings and colours legible. Stress case with solid bands covering half the frame (punchwide): 0.18% white and 52% bright, but structured into concentric bands; without isophote it is 0.45% white and 62% bright. t = 37.6 envelope (bloom 1.3 / exposure 1.0): 0.17% white, rings legible.",
+    "Isophote banding, checked by eye in side-by-side crops (post-crop-*): Venus and moon halos and star cores become concentric bristled rings; with iso=0 they are smooth glows. Display-referred banding shows several rings in the core; the literal scene-referred form shows only one contour.",
+    "Matte with a 16:9 viewport (1280x720, rect [190, 900]), middle-row probes. Matte 1: bar to x=189, frame line at x=188-189 reads (44,32,20), canvas from x=190; right side frame at x=1090. Matte 0.5: expected left inner edge 91.4 px; measured bar <= 87, frame line 89-90, partial pixel at 91, content from 92. Matte 0: no bar. At pr 1.25 (1600x900) the edge is exactly at 238.",
+    "Smear 0.8: radial zoom blur growing toward the corners, no dark or negative cores after the smear-first fix. High has the chroma split; Medium (2x MSAA) and Low (4 taps, IGN-jittered, grainier) were also rendered without errors.",
+    "Align 1: outside the rect darkened 35% (x=189 reads 177 vs 214 inside). At 3x zoom the weave checker is visible inside the canvas, strongest on bright areas, and the varnish warms the image slightly.",
+    "Fade 1: uniform display prussian*0.3, reading (3,10,29-30). Fade 0.5 darkens halfway.",
+    "Crude timings on this laptop's Intel UHD at 1920x1080 (headless, wall clock with a 1-px readPixels sync per frame, medians of 24 frames): High lens ~6.2 ms, bloom ~4.5 ms, chain excluding the scene ~13 ms. Medium lens ~6.3 ms, bloom ~5.4 ms. Low lens ~3.6 ms, bloom ~2.4 ms, at full 1080p before Low's 0.67 render scale.",
+    "Every shot run listed under screenshots ended with no console errors or exceptions, except the deliberate toe=0 control, which reports its 4 hue failures."
+   ],
+   "screenshots": [
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-default.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-swatch.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-swatch-align1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-swatch-low.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-swatch-notoe.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-bloom16.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-bloom16-noiso.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-punch.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-punch-noiso.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-punch-isoscene.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-punch-t376.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-punchwide.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-punchwide-noiso.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-crop-venus-iso-vs-noiso.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-crop-punch-iso-vs-noiso.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-crop-punch-isodisplay-vs-isoscene.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-matte0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-matte0.5.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-matte1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-boot-matte1-align1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-pr125-matte1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-smear08.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-medium-smear08.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-low-smear08.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-align1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-align1-1080.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-align0-1080.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-crop-weave-align1-vs-0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-crop-weave-venus-align1-vs-0.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-fade05.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-fade1.png",
+    "C:/Users/play/Desktop/starry-night-3d/shots/post-cycle.png"
+   ],
+   "known_issues": [
+    "The RTX 5060 budgets (bloom <= 1.0 ms, lens <= 0.7 ms, output <= 0.2 ms) are not verified; no RTX GPU was available. The only measurements are crude headless Intel UHD wall-clock timings (lens ~6 ms on High, ~3.6 ms on Low, bloom 2.4-5.4 ms, all at 1080p). On UHD the post chain alone is a large share of Low's 22 ms frame even at the 0.67 render scale. A real GPU-timer pass is still needed.",
+    "In the full emissive test scene, the swatch hue check fails at bloom 0.45 (prussian 7.3 deg, cypressDark 10.5 deg, cypressGreen 4.1 deg, zincWhite 3.9 deg). The bloom haze from nearby stars and windows legitimately adds light to the dark swatches. With bloom 0 the same scene passes (0.06 deg). The acceptance check is therefore enforced only on the isolated strip (scene=swatch).",
+    "Test scenes are flat emissive quads, not the real stroke world. The real Venus-punch acceptance at t = 37.6 (rings legible, not a white frame) must be re-checked after integration. In the solid-band stress case 52% of pixels still have luminance >= 235; it is structured into bands but pale.",
+    "Toe compensation changes the look relative to stock Neutral: darks are rendered linearly instead of being crushed by the toe. If the lead prefers stock Neutral, setLensOptions({toeCompensation:false}) turns it off, but the < 3 deg palette test then fails for 4 pigments.",
+    "The isophote bristle noise is anchored to the screen, so moving or rotating halos will slide slightly under the bristle texture. The value-noise lattice can show rectangular streak blocks where the tangent is axis-aligned; this is visible in the punchwide stress shot.",
+    "The weave period is canvasH/280, which is about 2.6 px at a 720 px canvas, close to aliasing. It is faded to 0.89 weight there and disappears below 1.4 px; it is clearly visible only at 1080p and above, or on bright areas.",
+    "The matte bars get the vignette (spec order), so they read about (8,9,14) near the screen edges instead of exactly #0a0b10.",
+    "Medium/Low setQuality and setSize were only exercised in the harness cycle test, not inside the integrated app; dynamic-resolution churn (many setSize calls) was not soak-tested.",
+    "The first dev-server run loaded two copies of three (late dependency optimisation). post.ts guards the lens pass, but other harness pages could hit the same problem until optimizeDeps.include is set (see contract_requests)."
+   ],
+   "tsc_clean_for_own_files": true
+  },
+  "review": null
+ }
+]
