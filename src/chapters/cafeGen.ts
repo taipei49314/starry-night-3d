@@ -4,14 +4,14 @@
 // silhouette (640-720 m), and the star-filled cobalt sky canyon overhead (12-250 km).
 import { Group, Vector3 } from 'three';
 import {
-  CANVAS_ASPECT, PALETTE, StrokeClass, StrokeFlag,
+  PALETTE, StrokeClass, StrokeFlag,
   type QualitySettings, type Rng, type SharedUniforms, type StrokeSink, type UnderlayMaterialFactory, type VillageInfo,
 } from '../contracts';
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
   buildCanvasQuadMesh, clamp, clamp01, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
-  mixHex, shadeHex, smoothstep, uFromPaint,
+  mixHex, shadeHex, uFromPaint,
 } from './types';
 
 export const CAFE_ASPECT = 0.81;

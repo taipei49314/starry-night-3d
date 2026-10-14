@@ -3,7 +3,7 @@
 // their analytic 3D camera tracks (ChapterTrack), and their procedural world generators.
 import { Group, Vector3 } from 'three';
 import {
-  CANVAS_ASPECT, EYE_POS, LOOP_SECONDS, MOON_DEF, PALETTE,
+  CANVAS_ASPECT, LOOP_SECONDS, MOON_DEF, PALETTE,
   type QualitySettings, type SharedUniforms, type StrokeSink, type UnderlayMaterialFactory, type VillageInfo,
 } from '../contracts';
 import { canvasToWorld, EYE, FORWARD } from '../shared/canvasSpace';

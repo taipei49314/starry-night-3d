@@ -1,5 +1,5 @@
 // M10: world assembly, Multi-Punctum Provençal Suite orchestration, and the per-frame loop (§4.10).
-import { Group, Scene, Vector2, Vector3, type Material, type PerspectiveCamera } from 'three';
+import { Scene, Vector2, Vector3, type Material, type PerspectiveCamera } from 'three';
 import {
   CANVAS_ASPECT, LOOP_SECONDS, type DirectorFrame, type Engine, type PostFrame, type QualitySettings, type SharedUniforms,
   type Tier, type UnderlayMaterialFactory, type World,

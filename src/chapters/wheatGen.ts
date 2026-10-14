@@ -4,7 +4,7 @@
 // the twin dark-emerald cypresses on the right writhing in the Mistral (155-238 m), and the wind-swept sea of golden wheat.
 import { Group, Vector3 } from 'three';
 import {
-  CANVAS_ASPECT, PALETTE, StrokeClass, StrokeFlag, VORTICES,
+  PALETTE, StrokeClass, StrokeFlag, VORTICES,
   type QualitySettings, type Rng, type SharedUniforms, type StrokeSink, type UnderlayMaterialFactory, type VillageInfo,
 } from '../contracts';
 import { canvasToWorld } from '../shared/canvasSpace';
@@ -12,7 +12,7 @@ import { armPoint } from '../shared/flowField';
 import { forkRng } from '../shared/rng';
 import {
   buildCanvasQuadMesh, clamp, clamp01, emitCanvasStroke, emitSurfaceStroke,
-  mixHex, packSrgb, pushChapterStroke, rampHex, shadeHex, smoothstep, uFromPaint,
+  mixHex, packSrgb, pushChapterStroke, rampHex, shadeHex, uFromPaint,
 } from './types';
 
 export const WHEAT_ASPECT = 1.27;

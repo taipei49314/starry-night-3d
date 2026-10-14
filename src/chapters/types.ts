@@ -5,7 +5,6 @@ import {
   type QualitySettings, type Rng, type SharedUniforms, type StrokeRecord, type StrokeSink,
   type UnderlayMaterialFactory, type VillageInfo,
 } from '../contracts';
-import type { ShotSpec } from '../camera/director';
 import { canvasToWorld, EYE, segmentToStroke } from '../shared/canvasSpace';
 import { mixHex, packSrgb, rampHex, shadeHex } from '../shared/palette';
 
