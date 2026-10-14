@@ -54,11 +54,11 @@ function genUndulatingBlueBackdrop(sink: StrokeSink, rng: Rng): void {
     const ang = 0.42 + 0.35 * Math.cos(uP * 8.0 + v * 5.0) + rng.range(-0.12, 0.12);
     const cA = isUpperWave
       ? shadeHex(mixHex(COAT_ULTRAMARINE, P.cobalt, rng.range(0.25, 0.80)), rng.range(0.88, 1.14))
-      : shadeHex(mixHex(P.cerulean, P.turquoise, rng.range(0.25, 0.75)), rng.range(0.90, 1.14));
+      : shadeHex(mixHex(P.cerulean, P.blueGreen, rng.range(0.25, 0.75)), rng.range(0.90, 1.14));
     const cB = isUpperWave ? COAT_PRUSSIAN : CAP_WHITE;
 
     emitCanvasStroke(
-      sink, GACHET_ASPECT, StrokeClass.SKY_SWIRL, uP, v, d,
+      sink, GACHET_ASPECT, StrokeClass.SKY_BAND, uP, v, d,
       rng.range(0.015, 0.030), ang, rng.range(0.0050, 0.0095),
       cA, cB, rng,
       { q1: 0.24, q2: i & 3, q3: rng.next() },
@@ -83,7 +83,7 @@ function genVermilionTableAndFoxglove(sink: StrokeSink, rng: Rng): void {
     const v = 0.002 + vMax * t;
     const d = clamp(158 + 335 * t + rng.range(-6, 6), 154, 510);
     const cA = shadeHex(mixHex(TABLE_VERMILION, TABLE_CRIMSON, rng.range(0.2, 0.75)), rng.range(0.88, 1.14));
-    const cB = mixHex(P.orange, BOOK_YELLOW, 0.35);
+    const cB = mixHex(P.indianYellow, BOOK_YELLOW, 0.35);
 
     emitCanvasStroke(
       sink, GACHET_ASPECT, StrokeClass.GROUND, uP, v, d,
@@ -126,7 +126,7 @@ function genVermilionTableAndFoxglove(sink: StrokeSink, rng: Rng): void {
       emitCanvasStroke(
         sink, GACHET_ASPECT, StrokeClass.GROVE, uP, v, d,
         0.014, 0.85 + rng.range(-0.2, 0.2), 0.0045,
-        P.viridian, P.emerald, rng,
+        P.groveLight, P.groveDark, rng,
         { emissive: 0.25 },
       );
     }

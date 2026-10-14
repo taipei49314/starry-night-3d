@@ -178,7 +178,7 @@ function genFifteenSunflowers(sink: StrokeSink, rng: Rng): void {
       const v = 0.40 + (bl.v - 0.40) * s + rng.range(-0.008, 0.008);
       const d = bl.d + 18 * (1 - s);
       const ang = Math.atan2(bl.v - 0.40, (bl.u - 0.50) * SUNFLOWERS_ASPECT) + rng.range(-0.2, 0.2);
-      const cA = shadeHex(mixHex(STEM_EMERALD, P.viridian, rng.range(0.2, 0.8)), rng.range(0.88, 1.14));
+      const cA = shadeHex(mixHex(STEM_EMERALD, P.groveLight, rng.range(0.2, 0.8)), rng.range(0.88, 1.14));
       emitCanvasStroke(
         sink, SUNFLOWERS_ASPECT, StrokeClass.GROVE, uP, v, d,
         rng.range(0.011, 0.022), ang, rng.range(0.0038, 0.0068),

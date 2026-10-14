@@ -56,11 +56,11 @@ function genRadialAuraBackdrop(sink: StrokeSink, rng: Rng): void {
     const warmDash = (i % 5) === 0;
     const cA = warmDash
       ? shadeHex(mixHex(STRAW_GOLD, P.lemon, rng.range(0.2, 0.8)), rng.range(0.92, 1.12))
-      : shadeHex(mixHex(P.cobalt, P.turquoise, clamp(0.25 + 0.55 * nearBrim, 0, 1)), rng.range(0.88, 1.14));
+      : shadeHex(mixHex(P.cobalt, P.blueGreen, clamp(0.25 + 0.55 * nearBrim, 0, 1)), rng.range(0.88, 1.14));
     const cB = warmDash ? STRAW_OCHRE : P.cerulean;
 
     emitCanvasStroke(
-      sink, SELFPORTRAIT_ASPECT, StrokeClass.SKY_SWIRL, uP, v, d,
+      sink, SELFPORTRAIT_ASPECT, StrokeClass.SKY_BAND, uP, v, d,
       rng.range(0.013, 0.026), ang, rng.range(0.0048, 0.0092),
       cA, cB, rng,
       { q1: 0.25, q2: i & 3, q3: rng.next() },

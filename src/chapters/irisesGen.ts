@@ -80,7 +80,7 @@ function genTerracottaSoilAndLeaves(sink: StrokeSink, rng: Rng): void {
     const cA = isExposedSoil
       ? shadeHex(mixHex(SOIL_TERRACOTTA, MARIGOLD_MEADOW, rng.range(0.18, 0.58)), rng.range(0.88, 1.14))
       : shadeHex(mixHex(LEAF_EMERALD, LEAF_SAGE, rng.range(0.25, 0.80)), rng.range(0.86, 1.12));
-    const cB = isExposedSoil ? P.ochre : P.viridian;
+    const cB = isExposedSoil ? P.ochre : P.groveLight;
     const ang = isExposedSoil ? rng.range(-0.28, 0.22) : 1.25 + rng.range(-0.35, 0.35);
 
     emitCanvasStroke(
@@ -104,7 +104,7 @@ function genTerracottaSoilAndLeaves(sink: StrokeSink, rng: Rng): void {
     const d = clamp(220 + 620 * ((vBase - 0.06) / 0.45) + rng.range(-12, 12), 210, 920);
     const ang = 1.57 - bend * 3.2 + rng.range(-0.12, 0.12);
     const cA = shadeHex(mixHex(LEAF_SAGE, LEAF_EMERALD, rng.range(0.2, 0.8)), rng.range(0.90, 1.14));
-    const cB = s > 0.75 ? P.lemon : P.viridian;
+    const cB = s > 0.75 ? P.lemon : P.groveLight;
 
     emitCanvasStroke(
       sink, IRISES_ASPECT, StrokeClass.GROVE, uP, v, d,
