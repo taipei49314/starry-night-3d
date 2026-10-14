@@ -36,7 +36,7 @@ function genWindowPortalSky(sink: StrokeSink, rng: Rng): void {
     const uP = rng.range(-0.08, 1.08);
     const v = rng.range(0.20, 1.04);
     const inPortal = uP > 0.30 && uP < 0.50 && v > 0.44 && v < 0.84;
-    const d = rng.range(180000, 246000);
+    const d = rng.range(230000, 250000);
     const cA = inPortal ? mixHex(P.prussian, P.cobalt, rng.range(0.2, 0.65)) : shadeHex(WALL_LAVENDER, rng.range(0.82, 1.05));
     const cB = inPortal ? P.ultramarine : WALL_COBALT;
     emitCanvasStroke(sink, BEDROOM_ASPECT, StrokeClass.UNDERPAINT, uP, v, d, rng.range(0.045, 0.085), rng.range(-0.2, 0.2), rng.range(0.022, 0.038), cA, cB, rng, {
@@ -187,7 +187,7 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
   }
 
   // 3. The Famous Scarlet & Golden-Oak Bed on the Right (uP = 0.56..0.96, v = 0.08..0.64, d = 190..485 m)
-  // 3a. Scarlet blanket & mattress (ROOF class [210..1,600 m])
+  // 3a. Scarlet blanket & mattress (HOUSE class)
   for (let i = 0; i < 9500; i++) {
     const tD = rng.next(); // 0 = near footboard (215 m), 1 = near headboard (455 m)
     const d = 215 + 240 * tD + rng.range(-6, 6);
@@ -202,7 +202,7 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
       ? P.chrome
       : shadeHex(SCARLET_B, rng.range(0.85, 1.10));
     emitSurfaceStroke(
-      sink, BEDROOM_ASPECT, StrokeClass.ROOF, uP, v, d,
+      sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, d,
       rng.range(0.014, 0.028), rng.range(0.0045, 0.0085),
       isPillow ? tHoriz : tDepth, nUp, cA, cB, rng,
       { emissive: isPillow ? 0.35 : 0.18 },
@@ -278,7 +278,7 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // 6. Framed Portraits & Mirror on the Walls (CHURCH class [580..750 m] & ROOF class [210..1,600 m])
+  // 6. Framed Portraits & Mirror on the Walls (HOUSE class)
   const frames = [
     // Portraits on the right wall above the bed
     { u0: 0.62, u1: 0.72, v0: 0.68, v1: 0.84, d: 420, fillA: P.ochre, fillB: P.cypressGreen },
@@ -296,7 +296,7 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
       const cA = border ? P.ochre : fr.fillA;
       const cB = border ? WOOD_DARK : fr.fillB;
       emitSurfaceStroke(
-        sink, BEDROOM_ASPECT, StrokeClass.ROOF, uP, v, fr.d + rng.range(-5, 5),
+        sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, fr.d + rng.range(-5, 5),
         0.011, 0.0035, border ? tHoriz : tVert, nFront, cA, cB, rng,
         { flags: border ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.2 },
       );
@@ -362,11 +362,11 @@ export function generateBedroomChapter(
   time('furniture', () => genBedroomFurnitureAndWalls(sink, forkRng(seed, 'bed:furn')));
 
   const underlays = buildBedroomUnderlays(mat);
-  const spireTip = canvasToWorld(uFromPaint(0.40, BEDROOM_ASPECT), 0.65, 530);
+  const steepleTip = canvasToWorld(uFromPaint(0.40, BEDROOM_ASPECT), 0.65, 530);
   const village: VillageInfo = {
     houses: [],
-    spireBase: canvasToWorld(uFromPaint(0.40, BEDROOM_ASPECT), 0.48, 530),
-    spireTip,
+    steepleBase: canvasToWorld(uFromPaint(0.40, BEDROOM_ASPECT), 0.48, 530),
+    steepleTip,
   };
   return { underlays, village, timings };
 }

@@ -67,7 +67,7 @@ function genAlmondSky(sink: StrokeSink, rng: Rng): void {
   for (let i = 0; i < 6500; i++) {
     const uP = rng.range(-0.14, 1.14);
     const v = rng.range(-0.06, 1.08);
-    const d = rng.range(180000, 246000);
+    const d = rng.range(230000, 250000);
     const cA = mixHex(TURQUOISE_A, TURQUOISE_LIGHT, rng.range(0.15, 0.75));
     const cB = mixHex(TURQUOISE_B, P.cerulean, rng.range(0.2, 0.7));
     emitCanvasStroke(
@@ -151,8 +151,8 @@ function genAlmondBlossoms(sink: StrokeSink, rng: Rng): void {
       const spread = (seg.w0 + (seg.w1 - seg.w0) * t) * 1.45;
       const uCenter = seg.u0 + (seg.u1 - seg.u0) * t + rng.range(-spread, spread);
       const vCenter = seg.v0 + (seg.v1 - seg.v0) * t + rng.range(-spread, spread);
-      // Map blossom depth into HOUSE [180..1,800 m] or ROOF [210..1,600 m] so it sits just in front of its branch
-      const dCluster = clamp(seg.d0 + (seg.d1 - seg.d0) * t - 8, 215, 1550);
+      // Map blossom depth into HOUSE [250..1,600 m] so CYPRESS < HOUSE paint order holds cleanly
+      const dCluster = clamp(Math.max(255, seg.d0 + (seg.d1 - seg.d0) * t - 8), 255, 1550);
       const flowerScale = clamp(420 / dCluster, 0.45, 1.35);
       const petalRadius = rng.range(0.014, 0.024) * flowerScale;
       const isBud = rng.next() < 0.22;
@@ -162,7 +162,7 @@ function genAlmondBlossoms(sink: StrokeSink, rng: Rng): void {
         for (let k = 0; k < 12; k++) {
           const ang = rng.range(0, TAU);
           emitCanvasStroke(
-            sink, ALMOND_ASPECT, StrokeClass.ROOF,
+            sink, ALMOND_ASPECT, StrokeClass.HOUSE,
             uCenter + rng.range(-0.005, 0.005), vCenter + rng.range(-0.005, 0.005),
             dCluster + rng.range(-3, 3),
             0.011 * flowerScale, ang, 0.0045 * flowerScale,
@@ -198,8 +198,8 @@ function genAlmondBlossoms(sink: StrokeSink, rng: Rng): void {
         }
       }
 
-      // Glowing crimson-and-lemon stamen heart in WINDOW class ([240..1,450 m])
-      const dStamen = clamp(dCluster - 3, 248, 1440);
+      // Glowing crimson-and-lemon stamen heart in WINDOW class ([250..1,450 m])
+      const dStamen = clamp(dCluster - 3, 250, 1440);
       for (let st = 0; st < 6; st++) {
         const sAng = rng.range(0, TAU);
         emitCanvasStroke(
@@ -214,7 +214,7 @@ function genAlmondBlossoms(sink: StrokeSink, rng: Rng): void {
     }
   }
 
-  // Drifting loose petals floating through the 3D volume (GROUND [155..1,800 m] & STAR_CORE [12..15.8 km])
+  // Drifting loose petals floating through the 3D volume (GROUND [165..1,650 m])
   for (let i = 0; i < 1800; i++) {
     const uP = rng.range(0.02, 0.98);
     const v = rng.range(0.04, 0.96);
@@ -250,11 +250,11 @@ export function generateAlmondChapter(
 
   const underlays = new Group();
   underlays.name = 'underlays:almond';
-  const spireTip = canvasToWorld(uFromPaint(0.50, ALMOND_ASPECT), 0.56, 680);
+  const steepleTip = canvasToWorld(uFromPaint(0.50, ALMOND_ASPECT), 0.56, 680);
   const village: VillageInfo = {
     houses: [],
-    spireBase: canvasToWorld(uFromPaint(0.50, ALMOND_ASPECT), 0.36, 520),
-    spireTip,
+    steepleBase: canvasToWorld(uFromPaint(0.50, ALMOND_ASPECT), 0.36, 520),
+    steepleTip,
   };
   return { underlays, village, timings };
 }

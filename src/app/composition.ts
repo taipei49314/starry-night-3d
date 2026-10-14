@@ -255,7 +255,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       if (worldCache.size <= MAX_CACHED_WORLDS) break;
       if (id === keepA || id === keepB || id === keepC) continue;
       masterScene.remove(w.strokes.group, w.underlays);
-      w.strokes.dispose();
+      w.strokes.dispose?.();
       worldCache.delete(id);
     }
   };

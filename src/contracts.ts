@@ -267,6 +267,7 @@ export interface StrokeLayer {
   setQuality(q: QualitySettings): void;               // instanceCount prefixes + ribbon LOD + uWidthComp
   setCullInflation(extraFractionOfD: number): void;   // storm: radius += extra * dMax
   setCullingEnabled(on: boolean): void;               // false while uWarpK != 1
+  dispose?(): void;
   readonly ribbon: BufferGeometry;
 }
 

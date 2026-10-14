@@ -29,7 +29,7 @@ function genAuversSky(sink: StrokeSink, rng: Rng): void {
   for (let i = 0; i < 6000; i++) {
     const uP = rng.range(-0.16, 1.16);
     const v = rng.range(0.32, 1.08);
-    const d = rng.range(180000, 246000);
+    const d = rng.range(230000, 250000);
     const cA = mixHex(P.prussian, SKY_DEEP, rng.range(0.2, 0.8));
     const cB = mixHex(P.ultramarine, P.cobalt, rng.range(0.15, 0.55));
     emitCanvasStroke(
@@ -57,7 +57,7 @@ function genAuversSky(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // Swirling storm-sky eddies around the spire portal (uP = 0.48, v = 0.82, EDDY class [42..92 km])
+  // Swirling storm-sky eddies around the spire portal (uP = 0.48, v = 0.82, EDDY class [44..88 km])
   for (let i = 0; i < 4200; i++) {
     const r = rng.range(0.03, 0.26);
     const th = rng.range(0, Math.PI * 2);
@@ -205,7 +205,7 @@ function genAuversChurchBody(sink: StrokeSink, rng: Rng): void {
     }
   }
 
-  // 3c. Terracotta-Orange & Cobalt Tiled Roofs (ROOF [310..590 m])
+  // 3c. Terracotta-Orange & Cobalt Tiled Roofs (HOUSE [310..590 m])
   for (let i = 0; i < 6800; i++) {
     const uP = rng.range(0.21, 0.79);
     const roofBase = 0.47 + 0.04 * Math.cos((uP - 0.50) * 5.0);
@@ -215,7 +215,7 @@ function genAuversChurchBody(sink: StrokeSink, rng: Rng): void {
     const cA = isOrangeTile ? shadeHex(TERRACOTTA, rng.range(0.88, 1.14)) : P.roof;
     const cB = isOrangeTile ? P.ochre : P.ultramarine;
     emitSurfaceStroke(
-      sink, CHURCH_ASPECT, StrokeClass.ROOF, uP, v, d,
+      sink, CHURCH_ASPECT, StrokeClass.HOUSE, uP, v, d,
       rng.range(0.013, 0.025), rng.range(0.0040, 0.0072),
       tHoriz, nFront, cA, cB, rng,
       { emissive: isOrangeTile ? 0.25 : 0.08 },
@@ -288,11 +288,11 @@ export function generateChurchChapter(
   time('church', () => genAuversChurchBody(sink, forkRng(seed, 'church:body')));
 
   const underlays = buildChurchUnderlays(mat);
-  const spireTip = canvasToWorld(uFromPaint(0.47, CHURCH_ASPECT), 0.89, 690);
+  const steepleTip = canvasToWorld(uFromPaint(0.47, CHURCH_ASPECT), 0.89, 690);
   const village: VillageInfo = {
     houses: [],
-    spireBase: canvasToWorld(uFromPaint(0.47, CHURCH_ASPECT), 0.52, 630),
-    spireTip,
+    steepleBase: canvasToWorld(uFromPaint(0.47, CHURCH_ASPECT), 0.52, 630),
+    steepleTip,
   };
   return { underlays, village, timings };
 }

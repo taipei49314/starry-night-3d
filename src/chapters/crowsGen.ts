@@ -35,7 +35,7 @@ function genStormSky(sink: StrokeSink, rng: Rng): void {
   for (let i = 0; i < 6500; i++) {
     const uP = rng.range(-0.10, 1.10);
     const v = rng.range(0.42, 1.08);
-    const d = rng.range(180000, 246000);
+    const d = rng.range(230000, 250000);
     const cA = mixHex(STORM_BLACK, P.prussian, rng.range(0.2, 0.8));
     const cB = mixHex(P.ultramarine, P.cobalt, rng.range(0.15, 0.55));
     emitCanvasStroke(
@@ -254,11 +254,11 @@ export function generateCrowsChapter(
   time('crows', () => genFlockOfCrows(sink, forkRng(seed, 'crows:flock')));
 
   const underlays = buildCrowsUnderlays(mat);
-  const spireTip = canvasToWorld(uFromPaint(0.58, CROWS_ASPECT), 0.72, 680);
+  const steepleTip = canvasToWorld(uFromPaint(0.58, CROWS_ASPECT), 0.72, 680);
   const village: VillageInfo = {
     houses: [],
-    spireBase: canvasToWorld(uFromPaint(0.49, CROWS_ASPECT), 0.25, 320),
-    spireTip,
+    steepleBase: canvasToWorld(uFromPaint(0.49, CROWS_ASPECT), 0.25, 320),
+    steepleTip,
   };
   return { underlays, village, timings };
 }
