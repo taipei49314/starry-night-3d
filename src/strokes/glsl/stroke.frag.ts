@@ -97,7 +97,7 @@ void main() {
   // the glint takes on some of the paint's own hue so dark blues do not wash out to grey
   vec3 specC = spec * mix(vec3(1.0), col / max(max(col.r, max(col.g, col.b)), 1e-3), 0.6);
   col = col * diffuse + specC + col * em;
-  vec3 fogC = mix(0.5 * PAL_ULTRAMARINE, PAL_PRUSSIAN, vStkL.w);
+  vec3 fogC = mix(uFogNear, uFogFar, vStkL.w);
   col = mix(col, fogC, vStkN.w * (em > 0.0 ? 0.25 : 1.0));
 
   gl_FragColor = vec4(col, alpha);

@@ -1,9 +1,12 @@
 import { Vector3, Vector4 } from 'three';
-import { CLASS_COUNT, MOON_DEF, T_HALF, type SharedUniforms } from '../contracts';
+import { CLASS_COUNT, MOON_DEF, PALETTE, T_HALF, type SharedUniforms } from '../contracts';
 import { canvasToWorld, EYE, EYE_BASIS, galleryLightDir } from './canvasSpace';
+import { srgbHexToLinear } from './palette';
 
 /** The shared uniform objects (§4.2). Create once; materials spread them into their own `uniforms` by reference. */
 export function createSharedUniforms(): SharedUniforms {
+  const ult = srgbHexToLinear(PALETTE.ultramarine);
+  const pru = srgbHexToLinear(PALETTE.prussian);
   return {
     uTime: { value: 0 },
     uEye: { value: EYE.clone() },
@@ -27,5 +30,8 @@ export function createSharedUniforms(): SharedUniforms {
     uSpecular: { value: 1 },
     uVelStretch: { value: 1 },
     uDustAlpha: { value: 1 },
+    uFogNear: { value: new Vector3(0.5 * ult[0], 0.5 * ult[1], 0.5 * ult[2]) },
+    uFogFar: { value: new Vector3(pru[0], pru[1], pru[2]) },
+    uSkyMode: { value: 0 },
   };
 }

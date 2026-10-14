@@ -26,6 +26,9 @@ uniform vec4 uStir;
 uniform float uSpecular;
 uniform float uVelStretch;
 uniform float uDustAlpha;
+uniform vec3 uFogNear;
+uniform vec3 uFogFar;
+uniform float uSkyMode;
 `;
 
 export const GLSL_COMMON = /* glsl */ `

@@ -1,19 +1,25 @@
 // M8 camera director (§4.8, §5): cinematic timeline, free explore, idle rejoin, Return to the Eye, envelopes and UI.
-//
-// Integration (M10):
-//   const director = new Director(camera, canvas, { calm, startTime, free, firstBoot });
-//   each frame: const f = director.update(dt)   // writes camera position / quaternion / fov (+ projection, matrixWorld)
-//   director.setHudText('60 fps · high · scale 1.00')   // shown under the H HUD; call any time
-// The returned frame is a fresh object each call (safe to keep). Extra fields beyond DirectorFrame: animTime, align.
+// Supports both the canonical 96 s Starry Night Timeline and Multi-Punctum ChapterTrack switching.
 import { Matrix4, type PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import { CANVAS_ASPECT, LOOP_SECONDS, type DirectorFrame, type DirectorMode, type ShotEnvelope } from '../contracts';
 import { canvasPoseFovDeg, EYE, FORWARD, worldToCanvas } from '../shared/canvasSpace';
 import { FreeFly, PilotInput, type DirectorCommand } from './freeFly';
 import { ease, logPolarAboutEye } from './paths';
 import {
-  applyComfort, COMFORT, lerpEnv, newEnv, newPose, SHOT_STARTS, shotAt, Timeline, timelineEnv, type CamPose, type EnvSample,
+  applyComfort, COMFORT, lerpEnv, newEnv, newPose, SHOT_STARTS, SHOTS, Timeline, timelineEnv, type CamPose, type EnvSample, type ShotDef,
 } from './shots';
 import { DirectorUI, projectEyeRing } from './ui';
+
+export interface DirectorTrack {
+  readonly loopSeconds: number;
+  readonly aspect: number;
+  readonly shots: readonly ShotDef[];
+  readonly shotStarts: readonly number[];
+  pose(t: number, out: CamPose): CamPose;
+  position(t: number, out: Vector3): Vector3;
+  velocity(t: number, out: Vector3): Vector3;
+  env(t: number, camDistFromE: number, calm: boolean, out: EnvSample): EnvSample;
+}
 
 export interface DirectorOptions {
   calm: boolean;
@@ -27,6 +33,8 @@ export interface DirectorOptions {
   ui?: boolean;
   /** listen to pointer / keyboard / wheel / touch on `input` (default true) */
   listen?: boolean;
+  /** optional initial chapter track */
+  track?: DirectorTrack;
 }
 
 export interface DirectorFrameEx extends DirectorFrame {
@@ -35,6 +43,10 @@ export interface DirectorFrameEx extends DirectorFrame {
   animTime: number;
   /** The director's own §6 alignment estimate (same formula as M10's uAlign). */
   align: number;
+  /** True on the frame where the cinematic loop wraps from loopSeconds back to 0. */
+  wrapped?: boolean;
+  /** Active painting canvas aspect ratio. */
+  canvasAspect?: number;
 }
 
 const DEG = Math.PI / 180;
@@ -50,7 +62,7 @@ const smooth = (e0: number, e1: number, x: number) => {
   const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
   return t * t * (3 - 2 * t);
 };
-const wrap = (t: number) => ((t % LOOP_SECONDS) + LOOP_SECONDS) % LOOP_SECONDS;
+const wrap = (t: number, period = LOOP_SECONDS) => ((t % period) + period) % period;
 
 const tv1 = new Vector3(), tv2 = new Vector3(), tv3 = new Vector3();
 const tq1 = new Quaternion();
@@ -68,10 +80,10 @@ export function poseQuaternion(d: Vector3, rollDeg: number, out: Quaternion): Qu
 }
 
 /** §6 uAlign formula, evaluated from a pose. */
-export function alignOf(pos: Vector3, quat: Quaternion, fovDeg: number, aspect: number): number {
+export function alignOf(pos: Vector3, quat: Quaternion, fovDeg: number, aspect: number, canvasAspect = CANVAS_ASPECT): number {
   const dist = pos.distanceTo(EYE);
   const f = tv1.set(0, 0, -1).applyQuaternion(quat);
-  return (1 - smooth(0.05, 3, dist)) * smooth(0.999, 0.99995, f.dot(FORWARD)) * (1 - smooth(0.2, 2.0, Math.abs(fovDeg - canvasPoseFovDeg(aspect))));
+  return (1 - smooth(0.05, 3, dist)) * smooth(0.999, 0.99995, f.dot(FORWARD)) * (1 - smooth(0.2, 2.0, Math.abs(fovDeg - canvasPoseFovDeg(aspect, canvasAspect))));
 }
 
 interface Flight {
@@ -89,6 +101,7 @@ export class Director {
   /** ms spent building the timeline + rejoin table at construction */
   readonly tableBuildMs: number;
 
+  private track: DirectorTrack;
   private _mode: DirectorMode = 'cinematic';
   private _calm: boolean;
   private hud = false;
@@ -102,6 +115,7 @@ export class Director {
   private lastActivity = 0;
   private cutPending = true;
   private stormToggled = false;
+  private wrappedThisFrame = false;
   private fadePhase: 0 | 1 | 2 = 0;
   private fadeT = 0;
   private fadeShot = 0;
@@ -124,13 +138,24 @@ export class Director {
   constructor(private readonly camera: PerspectiveCamera, private readonly inputEl: HTMLElement, opts: DirectorOptions) {
     const t0 = performance.now();
     this.timeline = new Timeline();
+    const defaultTrack: DirectorTrack = {
+      loopSeconds: LOOP_SECONDS,
+      aspect: CANVAS_ASPECT,
+      shots: SHOTS,
+      shotStarts: SHOT_STARTS,
+      pose: (t, out) => this.timeline.pose(t, out),
+      position: (t, out) => this.timeline.position(t, out),
+      velocity: (t, out) => this.timeline.velocity(t, out),
+      env: (t, dist, calm, out) => timelineEnv(t, dist, calm, out),
+    };
+    this.track = opts.track ?? defaultTrack;
     this.buildTable();
     this.tableBuildMs = performance.now() - t0;
 
     let reduced = false;
     try { reduced = !!inputEl.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches; } catch { /* no matchMedia */ }
     this._calm = opts.calm || reduced;
-    this.loopTime = this.animTime = wrap(opts.startTime ?? 0);
+    this.loopTime = this.animTime = wrap(opts.startTime ?? 0, this.track.loopSeconds);
     this.firstBoot = opts.firstBoot;
     this.freeLock = !!opts.free;
     this.ui = opts.ui === false ? null : new DirectorUI(inputEl);
@@ -154,6 +179,8 @@ export class Director {
   get mode(): DirectorMode { return this._mode; }
   get calm(): boolean { return this._calm; }
   get hudVisible(): boolean { return this.hud; }
+  get canvasAspect(): number { return this.track.aspect; }
+  get activeTrack(): DirectorTrack { return this.track; }
 
   setCalm(on: boolean): void { this._calm = on; }
   setHudText(text: string): void {
@@ -161,23 +188,45 @@ export class Director {
   }
   setHud(on: boolean): void { this.hud = on; }
 
-  /** Jump to the start of shot `index` (0..9) through a 0.3 s Prussian fade; the frame at the fade peak has cut = true. */
+  /** Switch to a different painting's ChapterTrack and reset the camera at `startTime` (default 0). */
+  setTrack(track: DirectorTrack, startTime = 0, firstBoot = true): void {
+    this.track = track;
+    this.buildTable();
+    this.fadePhase = 0;
+    this.fadeT = 0;
+    this.flight = null;
+    this._mode = 'cinematic';
+    this.freeLock = false;
+    this.loopTime = wrap(startTime, track.loopSeconds);
+    this.animTime = wrap(startTime, LOOP_SECONDS);
+    this.firstBoot = firstBoot;
+    this.bootSeconds = 0;
+    this.cutPending = true;
+    this.input?.resetWarp();
+    this.cinematicPose(this.loopTime, 0, true);
+    this.writeCamera();
+    this.prevPos.copy(this.pos);
+  }
+
+  /** Jump to the start of shot `index` through a 0.3 s Prussian fade; the frame at the fade peak has cut = true. */
   jumpToShot(index: number): void {
-    const i = Math.max(0, Math.min(SHOT_STARTS.length - 1, Math.floor(index)));
+    const starts = this.track.shotStarts;
+    const i = Math.max(0, Math.min(starts.length - 1, Math.floor(index)));
     const cur = this.fadeValue();
     this.fadePhase = 1;
     this.fadeT = cur * FADE_UP;
     this.fadeShot = i;
   }
 
-  /** Return to the Eye: log-polar flight to H0 (3-6 s), the shot-10 homecoming, then free mode at E. */
+  /** Return to the Eye: log-polar flight to H0 (3-6 s), the homecoming shot, then free mode at E. */
   returnToEye(): void {
     const dist = this.pos.distanceTo(EYE);
     const fwd = tv1.set(0, 0, -1).applyQuaternion(this.quat);
     const ang = Math.acos(Math.max(-1, Math.min(1, fwd.dot(FORWARD))));
     const dur = Math.max(3, Math.min(6, 3 + 1.2 * Math.abs(Math.log10(Math.max(dist, 1) / 360)) + (1.5 * ang) / Math.PI));
+    const homeStart = Math.max(0, this.track.loopSeconds - 8);
     this.cancelPendingJump();
-    this.flight = this.newFlight(dur, 88, true);
+    this.flight = this.newFlight(dur, homeStart, true);
     this._mode = 'returning';
     this.interacted = true;
   }
@@ -201,12 +250,16 @@ export class Director {
     this.cutPending = false;
     const stormToggled = this.stormToggled;
     this.stormToggled = false;
+    this.wrappedThisFrame = false;
+    const loopLen = this.track.loopSeconds;
+    const cAspect = this.track.aspect;
 
     // fade-through-Prussian jump cuts
     if (this.fadePhase === 1) {
       this.fadeT += dt;
       if (this.fadeT >= FADE_UP) {
-        this.setCinematic(SHOT_STARTS[this.fadeShot]);
+        const starts = this.track.shotStarts;
+        this.setCinematic(starts[Math.min(this.fadeShot, starts.length - 1)]);
         cut = true;
         this.fadePhase = 2;
         this.fadeT = 0;
@@ -216,29 +269,27 @@ export class Director {
       if (this.fadeT >= FADE_DOWN) this.fadePhase = 0;
     }
 
-    if (!cut) this.animTime = wrap(this.animTime + dt);
+    if (!cut) this.animTime = wrap(this.animTime + dt, LOOP_SECONDS);
     // first boot covers the first pass of shot 1 (lay-in + inflation); jump cuts clear it in setCinematic
     if (this.firstBoot && this.bootSeconds >= 6) this.firstBoot = false;
 
     const aspect = this.camera.aspect || 16 / 9;
+    const homeStart = Math.max(0, loopLen - 8);
     let analyticVel = false;
     switch (this._mode) {
       case 'cinematic': {
         if (!cut) this.advanceLoop(dt);
         this.cinematicPose(this.loopTime, dt, cut);
-        this.timeline.velocity(this.loopTime, this.vel);
+        this.track.velocity(this.loopTime, this.vel);
         analyticVel = true;
-        timelineEnv(this.loopTime, this.pos.distanceTo(EYE), this._calm, this.env);
+        this.track.env(this.loopTime, this.pos.distanceTo(EYE), this._calm, this.env);
         if (!this.firstBoot && this.loopTime < 2) this.env.impastoGain = 1 + 0.15 * Math.sin((Math.PI * this.loopTime) / 2);
         break;
       }
       case 'free': {
         this.advanceLoop(dt);
         this.pilot.update(dt, this.input, this.inputEl.clientHeight || 720);
-        // The hand-off keeps the shot's FOV (no blend), then the lens relaxes to the canvas-pose FOV. Without this a
-        // pilot who took over at 26 or 78 deg could never reach uAlign > 0.95 at E (the matte, ring and warp demo
-        // all need the canvas FOV within 2 deg).
-        this.pilot.fov += (canvasPoseFovDeg(aspect) - this.pilot.fov) * (1 - Math.exp(-dt / FREE_FOV_RELAX_S));
+        this.pilot.fov += (canvasPoseFovDeg(aspect, cAspect) - this.pilot.fov) * (1 - Math.exp(-dt / FREE_FOV_RELAX_S));
         this.pos.copy(this.pilot.pos);
         this.quat.copy(this.pilot.quat);
         this.fov = this.pilot.fov;
@@ -252,14 +303,14 @@ export class Director {
         const F = this.flight!;
         F.t = Math.min(F.dur, F.t + dt);
         const s = ease.inOutSine(F.t / F.dur);
-        const tt = F.isStatic ? F.targetT : wrap(F.targetT + F.t);
+        const tt = F.isStatic ? F.targetT : wrap(F.targetT + F.t, loopLen);
         this.loopTime = tt;
-        this.timeline.pose(tt, this.target);
-        applyComfort(this.target, aspect, this._calm);
+        this.track.pose(tt, this.target);
+        applyComfort(this.target, aspect, this._calm, cAspect);
         logPolarAboutEye(F.fromPos, this.target.p, s, this.pos);
         this.quat.slerpQuaternions(F.fromQuat, poseQuaternion(this.target.d, this.target.roll, tq1), s);
         this.fov = F.fromFov + (this.target.fov - F.fromFov) * s;
-        timelineEnv(tt, this.pos.distanceTo(EYE), this._calm, this.envTmp);
+        this.track.env(tt, this.pos.distanceTo(EYE), this._calm, this.envTmp);
         lerpEnv(F.fromEnv, this.envTmp, s, this.env);
         if (this.input) this.input.warpK = F.fromWarp + (1 - F.fromWarp) * s;
         if (F.t >= F.dur) {
@@ -276,29 +327,28 @@ export class Director {
         if (F.phase === 1) {
           F.t = Math.min(F.dur, F.t + dt);
           const s = ease.inOutSine(F.t / F.dur);
-          this.timeline.pose(88, this.target);
-          applyComfort(this.target, aspect, this._calm);
+          this.track.pose(homeStart, this.target);
+          applyComfort(this.target, aspect, this._calm, cAspect);
           logPolarAboutEye(F.fromPos, this.target.p, s, this.pos);
           this.quat.slerpQuaternions(F.fromQuat, poseQuaternion(this.target.d, this.target.roll, tq1), s);
           this.fov = F.fromFov + (this.target.fov - F.fromFov) * s;
-          timelineEnv(88, this.pos.distanceTo(EYE), this._calm, this.envTmp);
+          this.track.env(homeStart, this.pos.distanceTo(EYE), this._calm, this.envTmp);
           lerpEnv(F.fromEnv, this.envTmp, s, this.env);
           if (this.input) this.input.warpK = F.fromWarp + (1 - F.fromWarp) * s;
           if (F.t >= F.dur) { F.phase = 2; F.t = 0; this.input?.resetWarp(); }
         } else {
           F.t += dt;
-          const tt = Math.min(LOOP_SECONDS, 88 + F.t);
-          this.timeline.pose(tt, this.target);
-          applyComfort(this.target, aspect, this._calm);
+          const tt = Math.min(loopLen, homeStart + F.t);
+          this.track.pose(tt, this.target);
+          applyComfort(this.target, aspect, this._calm, cAspect);
           this.pos.copy(this.target.p);
           poseQuaternion(this.target.d, this.target.roll, this.quat);
           this.fov = this.target.fov;
-          timelineEnv(tt, this.pos.distanceTo(EYE), this._calm, this.env);
-          if (88 + F.t >= LOOP_SECONDS) {
-            // home: free mode again at E in the canvas pose
+          this.track.env(tt, this.pos.distanceTo(EYE), this._calm, this.env);
+          if (homeStart + F.t >= loopLen) {
             this.flight = null;
             this._mode = 'free';
-            this.pilot.takeOver(EYE, this.quat, canvasPoseFovDeg(aspect), ZERO);
+            this.pilot.takeOver(EYE, this.quat, canvasPoseFovDeg(aspect, cAspect), ZERO);
             this.lastActivity = this.bootSeconds;
           }
         }
@@ -316,7 +366,7 @@ export class Director {
     }
     this.prevPos.copy(this.pos);
 
-    const align = alignOf(this.pos, this.quat, this.fov, aspect);
+    const align = alignOf(this.pos, this.quat, this.fov, aspect, cAspect);
     if (this._mode === 'free') this.env.matte = align;
 
     // stir the sky
@@ -328,12 +378,12 @@ export class Director {
 
     const fade = this.fadeValue();
     const env: ShotEnvelope = { ...this.env, fade };
-    const shot = shotAt(this.loopTime);
+    const shot = this.shotIndexAt(this.loopTime);
     const frame: DirectorFrameEx = {
       mode: this._mode,
       loopTime: this.loopTime,
       shot,
-      shotT: this.loopTime - SHOT_STARTS[shot],
+      shotT: this.loopTime - this.track.shotStarts[shot],
       firstBoot: this.firstBoot,
       bootSeconds: this.bootSeconds,
       cut,
@@ -346,24 +396,35 @@ export class Director {
       hud: this.hud,
       animTime: this.animTime,
       align,
+      wrapped: this.wrappedThisFrame,
+      canvasAspect: cAspect,
     };
     this.renderUi(frame);
     return frame;
   }
 
   // ------------------------------------------------------------ internals
+  private shotIndexAt(t: number): number {
+    const starts = this.track.shotStarts;
+    let i = 0;
+    for (let k = 1; k < starts.length; k++) if (t >= starts[k]) i = k;
+    return i;
+  }
+
   private advanceLoop(dt: number): void {
+    const loopLen = this.track.loopSeconds;
     const t = this.loopTime + dt;
-    if (t >= LOOP_SECONDS) {
+    if (t >= loopLen) {
       this.loopCount++;
-      this.loopTime = t - LOOP_SECONDS;
+      this.wrappedThisFrame = true;
+      this.loopTime = t - loopLen;
     } else this.loopTime = t;
   }
 
   /** Timeline pose at t with comfort caps and the 25 deg/s roll slew (skipped on cuts / dt = 0). */
   private cinematicPose(t: number, dt: number, cut: boolean): void {
-    const P = this.timeline.pose(t, this.pose);
-    applyComfort(P, this.camera.aspect || 16 / 9, this._calm);
+    const P = this.track.pose(t, this.pose);
+    applyComfort(P, this.camera.aspect || 16 / 9, this._calm, this.track.aspect);
     let roll = P.roll;
     if (!cut && dt > 0) {
       const m = COMFORT.rollRateMaxDegS * dt;
@@ -387,7 +448,8 @@ export class Director {
   private setCinematic(t: number): void {
     this._mode = 'cinematic';
     this.flight = null;
-    this.loopTime = this.animTime = wrap(t);
+    this.loopTime = wrap(t, this.track.loopSeconds);
+    this.animTime = wrap(t, LOOP_SECONDS);
     this.firstBoot = false;
     this.freeLock = false;
     this.input?.resetWarp();
@@ -437,6 +499,7 @@ export class Director {
   /** Idle / C hand-back (§5.3): best of the 960 samples by the log-distance + angle cost, flown to in 3-5 s. */
   startRejoin(): void {
     const dist = this.pos.distanceTo(EYE);
+    const stepDt = this.track.loopSeconds / REJOIN_SAMPLES;
     let best = 0;
     let bestCost = 0;
     if (dist >= 50) {
@@ -446,7 +509,7 @@ export class Director {
     }
     const dur = 3 + 2 * Math.min(1, bestCost / 1.5);
     this.cancelPendingJump();
-    this.flight = this.newFlight(dur, best * REJOIN_DT, dist < 50);
+    this.flight = this.newFlight(dur, best * stepDt, dist < 50);
     this._mode = 'rejoin';
     this.freeLock = false;
   }
@@ -472,8 +535,9 @@ export class Director {
 
   private buildTable(): void {
     const P = newPose();
+    const stepDt = this.track.loopSeconds / REJOIN_SAMPLES;
     for (let i = 0; i < REJOIN_SAMPLES; i++) {
-      this.timeline.pose(i * REJOIN_DT, P);
+      this.track.pose(i * stepDt, P);
       this.table.p[i * 3] = P.p.x; this.table.p[i * 3 + 1] = P.p.y; this.table.p[i * 3 + 2] = P.p.z;
       this.table.d[i * 3] = P.d.x; this.table.d[i * 3 + 1] = P.d.y; this.table.d[i * 3 + 2] = P.d.z;
     }
@@ -514,8 +578,9 @@ export class Director {
     const w = this.inputEl.clientWidth;
     const h = this.inputEl.clientHeight;
     let hint = 0;
-    if (this.loopCount === 0 && !this.interacted && this._mode === 'cinematic' && f.loopTime >= 90) {
-      hint = smooth(90, 90.6, f.loopTime) * (1 - smooth(95.3, 95.9, f.loopTime));
+    const loopLen = this.track.loopSeconds;
+    if (this.loopCount === 0 && !this.interacted && this._mode === 'cinematic' && f.loopTime >= loopLen - 6) {
+      hint = smooth(loopLen - 6, loopLen - 5.4, f.loopTime) * (1 - smooth(loopLen - 0.7, loopLen - 0.1, f.loopTime));
     }
     const ring = this._mode === 'free'
       ? projectEyeRing(this.camera, w, h, f.align)

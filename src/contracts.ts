@@ -227,6 +227,9 @@ export interface SharedUniforms {
   uSpecular: IUniform<number>;
   uVelStretch: IUniform<number>;
   uDustAlpha: IUniform<number>;
+  uFogNear: IUniform<Vector3>;
+  uFogFar: IUniform<Vector3>;
+  uSkyMode: IUniform<number>;
   [name: string]: IUniform<any>;
 }
 

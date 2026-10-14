@@ -197,20 +197,20 @@ export const COMFORT = {
 } as const;
 
 /** Widen a reference FOV (wide frame) for `aspect` with the same tan scale canvasPoseFovDeg uses. */
-export function aspectFov(fovDeg: number, aspect: number): number {
-  const k = Math.tan((canvasPoseFovDeg(aspect) * DEG) / 2) / T_HALF;
+export function aspectFov(fovDeg: number, aspect: number, canvasAspect?: number): number {
+  const k = Math.tan((canvasPoseFovDeg(aspect, canvasAspect) * DEG) / 2) / T_HALF;
   if (k === 1) return fovDeg;
   return (2 * Math.atan(k * Math.tan((fovDeg * DEG) / 2))) / DEG;
 }
 
 /** Comfort caps (§4.8, §8 risk 9) applied after path evaluation: roll <= 30 deg (x0.5 calm), FOV <= 80 (70 calm). */
-export function applyComfort(pose: CamPose, aspect: number, calm: boolean): CamPose {
+export function applyComfort(pose: CamPose, aspect: number, calm: boolean, canvasAspect?: number): CamPose {
   let roll = pose.roll * (calm ? COMFORT.calmRollScale : 1);
   roll = Math.max(-COMFORT.rollMaxDeg, Math.min(COMFORT.rollMaxDeg, roll));
   pose.roll = roll;
-  const canvasFov = canvasPoseFovDeg(aspect);
+  const canvasFov = canvasPoseFovDeg(aspect, canvasAspect);
   const cap = Math.max(calm ? COMFORT.calmFovMaxDeg : COMFORT.fovMaxDeg, canvasFov);
-  pose.fov = Math.min(cap, aspectFov(pose.fov, aspect));
+  pose.fov = Math.min(cap, aspectFov(pose.fov, aspect, canvasAspect));
   return pose;
 }
 

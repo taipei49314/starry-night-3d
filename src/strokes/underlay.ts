@@ -63,7 +63,7 @@ void main() {
   float dc = length(toCam);
   float dE = max(length(P - uEye), 1.0);
   float fog = 0.7 * (1.0 - exp(-0.5 * max(0.0, log(dc / dE))));
-  vec3 fogC = mix(0.5 * PAL_ULTRAMARINE, PAL_PRUSSIAN, smoothstep(3.0, 5.3, log2(dE) * 0.30102999566));
+  vec3 fogC = mix(uFogNear, uFogFar, smoothstep(3.0, 5.3, log2(dE) * 0.30102999566));
   col = mix(col, fogC, fog);
 #ifdef UL_VERTEX_FADE
   col = mix(fogC, col, smoothstep(0.0, 0.6, ulFade));   // the surviving speckle also melts into the fog colour

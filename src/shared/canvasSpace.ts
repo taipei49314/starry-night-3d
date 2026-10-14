@@ -73,9 +73,9 @@ export function groundHitDepth(u: number, v: number): number {
 }
 
 /** Vertical FOV of the canvas pose: 36 deg, or wider when the viewport is narrower than the canvas. */
-export function canvasPoseFovDeg(aspect: number): number {
-  if (aspect >= CANVAS_ASPECT) return VFOV_DEG;
-  return (2 * Math.atan((T_HALF * CANVAS_ASPECT) / aspect) * 180) / Math.PI;
+export function canvasPoseFovDeg(aspect: number, canvasAspect = CANVAS_ASPECT): number {
+  if (aspect >= canvasAspect) return VFOV_DEG;
+  return (2 * Math.atan((T_HALF * canvasAspect) / aspect) * 180) / Math.PI;
 }
 
 /** Gallery light: M * rotZ(az) * normalize(-0.45, 0.6, 0.66). */

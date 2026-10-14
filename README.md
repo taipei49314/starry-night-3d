@@ -9,6 +9,15 @@ TypeScript, Vite and three.js r186 (WebGL 2). Everything is procedural: no textu
 - **Interactive Showcase (GitHub Pages):** <https://taipei49314.github.io/starry-night-3d/>
 - **Single-File Bundle (`single.html`):** <https://taipei49314.github.io/starry-night-3d/single.html>
 
+### Provençal Van Gogh Suite (1888–1889)
+
+The engine strings four iconic Provençal masterpieces together through shared 3D anamorphic impasto math, custom camera choreography, and **Storm-Snap Morph** transitions (with automatic **Odyssey Auto-Chaining** enabled by default):
+
+1. **Act I — *Café Terrace at Night* (Arles, Sept 1888):** [`?painting=cafe`](https://taipei49314.github.io/starry-night-3d/?painting=cafe) — golden gaslit awning, cobblestone corridor, and cobalt star canyon (`aspect 0.81`).
+2. **Act II — *Starry Night Over the Rhône* (Arles, Sept 1888):** [`?painting=rhone`](https://taipei49314.github.io/starry-night-3d/?painting=rhone) — the seven stars of Ursa Major, Arles embankment gas lamps, shimmering golden water reflection pillars, moored boats, and lovers on the shore (`aspect 1.28`).
+3. **Act III — *The Starry Night* (Saint-Rémy, June 1889):** [`?painting=starry`](https://taipei49314.github.io/starry-night-3d/?painting=starry) — the 96-second canonical 250 km deep one-take journey (`aspect 1.2497`).
+4. **Act IV — *Wheat Field with Cypresses* (Saint-Rémy, July 1889):** [`?painting=wheat`](https://taipei49314.github.io/starry-night-3d/?painting=wheat) — sunlit turquoise sky, rolling zinc-white cumulus vortex funnels, blue-violet Alpilles ridges, twin dark-emerald cypresses, and wind-swept golden wheat (`aspect 1.27`).
+
 ## Run
 
 ```bash
@@ -28,13 +37,15 @@ Any input hands control to you; after 12 s idle the camera rejoins the loop.
 | Alt-drag or right-drag | stir the sky |
 | Shift + wheel | depth warp: at E the image does not change; step aside and the world refolds |
 | Space | fly back to the painter's eye and re-register the painting |
+| `[` / `]` or `PageUp` / `PageDown` | switch between the 4 Provençal paintings via Storm-Snap Morph |
+| `O` | toggle Odyssey Auto-Chaining (`∞ 四畫連映`) |
 | 1-9, 0 | jump to shot 1-10 |
 | C / R | resume the cinematic / restart |
 | G | storm |
 | M | calm mode (less roll and FOV; the default with reduced motion) |
 | H | HUD |
 
-URL flags: `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay` (canvas grid, landmarks, streamlines), `?seed=`, `?freeze` (hold the clock), `?boot=<sec>&freeze` (first-boot sequence at a given second).
+URL flags: `?painting=cafe|rhone|starry|wheat`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay` (canvas grid, landmarks, streamlines), `?seed=`, `?freeze` (hold the clock), `?boot=<sec>&freeze` (first-boot sequence at a given second).
 
 ## Layout
 
@@ -45,9 +56,10 @@ URL flags: `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?over
 | `src/engine/` | renderer, quality tiers, dynamic resolution |
 | `src/strokes/` | instanced stroke buffer, ribbon shader (animation, storm, impasto), underlay material |
 | `src/sky/`, `src/celestial/`, `src/earth/` | generators: sky, swirls, wind jet, backdrop, dust; stars and moon; cypress, hills, village |
-| `src/camera/` | 96 s shot timeline, free flight, rejoin, UI |
+| `src/chapters/` | multi-painting Provençal suite registry, aspect-invariant stroke emitters, procedural generators & camera tracks for *Café Terrace*, *Rhône*, and *Wheat Field with Cypresses* |
+| `src/camera/` | 96 s shot timeline, companion tracks, free flight, rejoin, Provençal Suite Bar & museum title card UI |
 | `src/post/` | bloom, painterly lens (isophote halo banding, pigment pull, smear, canvas weave, matte) |
-| `src/app/` | world assembly, frame loop, storm and snap, self-tests, debug overlay |
+| `src/app/` | world assembly, frame loop, storm and snap, multi-painting Odyssey transitions, self-tests, debug overlay |
 
 `docs/SPEC.md` is the build spec. `docs/*.json` are the module build and fix reports.
 
