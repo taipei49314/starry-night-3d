@@ -1,37 +1,13 @@
 // Multi-Punctum Chapter types and coordinate/stroke helpers for the Provençal Van Gogh Suite.
-import { BufferAttribute, BufferGeometry, Group, Mesh, Vector3 } from 'three';
+import { BufferAttribute, BufferGeometry, Mesh, Vector3 } from 'three';
 import {
   AT, CANVAS_ASPECT, CLASS_INFO, PALETTE, StrokeClass, StrokeFlag, T_HALF,
-  type QualitySettings, type Rng, type SharedUniforms, type StrokeRecord, type StrokeSink,
-  type UnderlayMaterialFactory, type VillageInfo,
+  type Rng, type StrokeRecord, type StrokeSink, type UnderlayMaterialFactory,
 } from '../contracts';
 import { canvasToWorld, EYE, segmentToStroke } from '../shared/canvasSpace';
 import { mixHex, packSrgb, rampHex, shadeHex } from '../shared/palette';
 
 export type PaintingId = 'cafe' | 'rhone' | 'starry' | 'wheat';
-
-export interface PaintingSpec {
-  id: PaintingId;
-  roman: string;
-  titleZh: string;
-  titleEn: string;
-  placeZh: string;
-  year: string;
-  aspect: number;
-  skyMode: number;
-  fogNearHex: number;
-  fogFarHex: number;
-  moonUVD: readonly [number, number, number];
-  loopSeconds: number;
-  shots: readonly ShotSpec[];
-  generate(
-    sink: StrokeSink,
-    seed: number,
-    mat: UnderlayMaterialFactory,
-    u: SharedUniforms,
-    q: QualitySettings,
-  ): { underlays: Group; village: VillageInfo; timings: Record<string, number> };
-}
 
 export const K_D = 2 * T_HALF;
 const TAU = Math.PI * 2;
