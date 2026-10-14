@@ -1,17 +1,17 @@
-// M8 DOM overlay (§4.8) + Multi-Punctum Provençal Suite Bar & Continuous Odyssey Scrubber Timeline:
-// end-of-loop hint, the H HUD, the free-mode gold ring at E's projection, the interactive 4-painting Suite Bar,
-// the bottom Continuous 4-Act Odyssey Scrubber Bar, and the museum chapter title card.
+// M8 DOM overlay (§4.8) + 8-Act Van Gogh Odyssey Suite Bar & Scrubber Timeline:
+// end-of-loop hint, the H HUD, the free-mode gold ring at E's projection, the interactive 8-painting Suite Bar,
+// the bottom Continuous 8-Act Odyssey Scrubber Bar, and the museum chapter title card with Portal subtitle.
 import { type PerspectiveCamera, Vector3 } from 'three';
 import { EYE, FORWARD } from '../shared/canvasSpace';
 import type { PaintingId } from '../chapters/types';
 
-export const HINT_TEXT = '拖曳探索 3D 筆觸 · Space 歸位凝視點 · [ ] 切換梵谷畫作';
+export const HINT_TEXT = '拖曳探索 3D 筆觸 · Space 歸位凝視點 · [ ] 切換梵谷八幕畫作';
 
 const STYLE_ID = 'pn-director-ui-style';
 const CSS = `
 .pn-ui{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20;overflow:hidden;
   font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;color:#e8edf0;-webkit-user-select:none;user-select:none}
-.pn-hint{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);max-width:calc(100% - 32px);box-sizing:border-box;
+.pn-hint{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);max-width:calc(100% - 32px);box-sizing:border-box;
   padding:6px 14px;border-radius:999px;background:rgba(5,10,24,.62);box-shadow:0 0 0 1px rgba(232,237,240,.12);
   letter-spacing:.03em;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.8);
   opacity:0;transition:opacity .25s linear}
@@ -22,38 +22,40 @@ const CSS = `
 .pn-ring{position:absolute;left:0;top:0;border-radius:50%;border:1.5px solid #f2c230;box-sizing:border-box;
   box-shadow:0 0 6px rgba(242,194,48,.55),inset 0 0 4px rgba(242,194,48,.35);display:none;will-change:transform}
 .pn-ring::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px 0 0 -1.5px;border-radius:50%;background:#f2c230}
-.pn-suite{position:absolute;left:50%;top:12px;transform:translateX(-50%);pointer-events:auto;display:flex;align-items:center;gap:4px;
-  padding:4px 6px;border-radius:999px;background:rgba(5,10,24,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.14);max-width:calc(100% - 16px);overflow-x:auto}
-.pn-suite-btn{appearance:none;border:0;background:transparent;color:rgba(232,237,240,.78);padding:4px 11px;border-radius:999px;
-  font:500 12px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.02em;cursor:pointer;
+.pn-suite{position:absolute;left:50%;top:10px;transform:translateX(-50%);pointer-events:auto;display:flex;align-items:center;gap:3px;
+  padding:4px 6px;border-radius:999px;background:rgba(5,10,24,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.14);max-width:calc(100% - 14px);overflow-x:auto}
+.pn-suite-btn{appearance:none;border:0;background:transparent;color:rgba(232,237,240,.78);padding:4px 9px;border-radius:999px;
+  font:500 11.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.01em;cursor:pointer;
   white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
 .pn-suite-btn:hover{color:#fff;background:rgba(232,237,240,.10)}
 .pn-suite-btn[data-active="1"]{color:#f5e27a;background:rgba(242,194,48,.18);box-shadow:inset 0 0 0 1px rgba(242,194,48,.52)}
 .pn-suite-sep{width:1px;height:14px;background:rgba(232,237,240,.16);margin:0 2px;flex-shrink:0}
-.pn-odyssey-btn{appearance:none;border:0;background:rgba(232,237,240,.07);color:rgba(232,237,240,.72);padding:4px 10px;border-radius:999px;
-  font:500 11.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.02em;cursor:pointer;
+.pn-odyssey-btn{appearance:none;border:0;background:rgba(232,237,240,.07);color:rgba(232,237,240,.72);padding:4px 9px;border-radius:999px;
+  font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.02em;cursor:pointer;
   white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
 .pn-odyssey-btn:hover{color:#fff;background:rgba(232,237,240,.14)}
 .pn-odyssey-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.16);box-shadow:inset 0 0 0 1px rgba(242,194,48,.45)}
-.pn-card{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);text-align:center;pointer-events:none;
-  padding:10px 22px;border-radius:14px;background:rgba(5,10,24,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  box-shadow:0 8px 28px rgba(0,0,0,.45),0 0 0 1px rgba(242,194,48,.24);opacity:0;transition:opacity .45s ease}
+.pn-card{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);text-align:center;pointer-events:none;
+  padding:10px 22px 11px;border-radius:14px;background:rgba(5,10,24,.68);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  box-shadow:0 8px 28px rgba(0,0,0,.48),0 0 0 1px rgba(242,194,48,.24);opacity:0;transition:opacity .45s ease;max-width:calc(100% - 28px)}
 .pn-card-sub{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#f2c230;margin-bottom:3px;opacity:.92}
 .pn-card-title{font-size:15px;font-weight:600;letter-spacing:.04em;color:#f4f7f9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
-.pn-tl{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(680px,calc(100% - 24px));box-sizing:border-box;
-  padding:7px 14px 8px;border-radius:14px;background:rgba(5,10,24,.68);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.42),0 0 0 1px rgba(232,237,240,.13);pointer-events:auto;display:none}
+.pn-card-portal{font-size:11.5px;color:rgba(245,226,122,.86);margin-top:4px;letter-spacing:.02em}
+.pn-tl{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(760px,calc(100% - 20px));box-sizing:border-box;
+  padding:7px 14px 8px;border-radius:14px;background:rgba(5,10,24,.70);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.13);pointer-events:auto;display:none}
 .pn-tl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11.5px;letter-spacing:.02em}
-.pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:75%}
+.pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76%}
 .pn-tl-time{color:rgba(232,237,240,.72);font:11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;flex-shrink:0}
 .pn-tl-track{position:relative;height:7px;border-radius:999px;background:rgba(232,237,240,.15);cursor:pointer;touch-action:none}
 .pn-tl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#d98a1e,#f2c230,#f5e27a);width:0%}
 .pn-tl-thumb{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#f5e27a;
   box-shadow:0 0 8px rgba(242,194,48,.85),0 0 0 1.5px #050a18;left:0%}
-.pn-tl-mark{position:absolute;top:-1px;bottom:-1px;width:1.5px;background:rgba(5,10,24,.85);z-index:1}
-.pn-tl-acts{display:grid;grid-template-columns:repeat(4,1fr);margin-top:4px;font-size:10.5px;color:rgba(232,237,240,.58)}
-.pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.pn-tl-mark{position:absolute;top:-1px;bottom:-1px;width:1.5px;background:rgba(5,10,24,.88);z-index:1}
+.pn-tl-acts{display:grid;grid-template-columns:repeat(8,1fr);margin-top:4px;font-size:10px;color:rgba(232,237,240,.58)}
+.pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 1px;cursor:pointer;transition:color .15s ease}
+.pn-tl-act:hover{color:#fff}
 .pn-tl-act[data-active="1"]{color:#f5e27a;font-weight:600}
 .pn-focusable:focus{outline:none}
 .pn-focusable:focus-visible{outline:2px solid #f2c230;outline-offset:-3px}
@@ -77,17 +79,63 @@ export interface SuiteItem {
   id: PaintingId;
   roman: string;
   shortZh: string;
+  tinyZh: string;
   titleZh: string;
   titleEn: string;
   placeZh: string;
   year: string;
+  portalZh: string;
 }
 
 export const SUITE_ITEMS: readonly SuiteItem[] = [
-  { id: 'cafe',   roman: 'I',   shortZh: '夜間咖啡座', titleZh: '夜間露天咖啡座', titleEn: 'Café Terrace at Night',       placeZh: '亞爾 · 論壇廣場',     year: '1888.09' },
-  { id: 'rhone',  roman: 'II',  shortZh: '隆河星夜',   titleZh: '隆河上的星夜',   titleEn: 'Starry Night Over the Rhône', placeZh: '亞爾 · 隆河河畔',     year: '1888.09' },
-  { id: 'starry', roman: 'III', shortZh: '星夜',       titleZh: '星夜',           titleEn: 'The Starry Night',            placeZh: '聖雷米 · 聖保羅療養院', year: '1889.06' },
-  { id: 'wheat',  roman: 'IV',  shortZh: '絲柏麥田',   titleZh: '有絲柏的麥田',   titleEn: 'Wheat Field with Cypresses',  placeZh: '聖雷米 · 阿爾皮耶山麓', year: '1889.07' },
+  {
+    id: 'cafe', roman: 'I', shortZh: '夜間咖啡座', tinyZh: 'I 咖啡座',
+    titleZh: '夜間露天咖啡座', titleEn: 'Café Terrace at Night',
+    placeZh: '亞爾 · 論壇廣場', year: '1888.09',
+    portalZh: '穿過鵝卵石街尾星谷 → 步入隆河河畔',
+  },
+  {
+    id: 'rhone', roman: 'II', shortZh: '隆河星夜', tinyZh: 'II 隆河',
+    titleZh: '隆河上的星夜', titleEn: 'Starry Night Over the Rhône',
+    placeZh: '亞爾 · 隆河河畔', year: '1888.09',
+    portalZh: '飛入對岸暖黃窗燈 → 走進亞爾黃色小屋臥室',
+  },
+  {
+    id: 'bedroom', roman: 'III', shortZh: '亞爾臥室', tinyZh: 'III 臥室',
+    titleZh: '在亞爾的臥室', titleEn: 'The Bedroom in Arles',
+    placeZh: '亞爾 · 黃色小屋', year: '1888.10',
+    portalZh: '推開半掩的綠色百葉窗 → 飛入聖雷米星夜',
+  },
+  {
+    id: 'starry', roman: 'IV', shortZh: '星夜', tinyZh: 'IV 星夜',
+    titleZh: '星夜', titleEn: 'The Starry Night',
+    placeZh: '聖雷米 · 聖保羅療養院', year: '1889.06',
+    portalZh: '迎向熾熱橘黃新月 → 聖雷米破曉化為金色麥田',
+  },
+  {
+    id: 'wheat', roman: 'V', shortZh: '絲柏麥田', tinyZh: 'V 麥田',
+    titleZh: '有絲柏的麥田', titleEn: 'Wheat Field with Cypresses',
+    placeZh: '聖雷米 · 阿爾皮耶山麓', year: '1889.07',
+    portalZh: '衝入松石綠晴空與翻滾白雲 → 凝結為春日盛開杏花',
+  },
+  {
+    id: 'almond', roman: 'VI', shortZh: '盛開杏花', tinyZh: 'VI 杏花',
+    titleZh: '盛開的杏花', titleEn: 'Almond Blossom',
+    placeZh: '聖雷米 · 新生禮讚', year: '1890.02',
+    portalZh: '穿越飄落花雨與蔚藍晴空 → 北上奧維爾哥德教堂',
+  },
+  {
+    id: 'church', roman: 'VII', shortZh: '奧維爾教堂', tinyZh: 'VII 教堂',
+    titleZh: '奧維爾的教堂', titleEn: 'The Church at Auvers',
+    placeZh: '奧維爾 · 瓦茲河谷', year: '1890.06',
+    portalZh: '攀升鐘樓尖頂暗藍風暴 → 拉開 2:1 超寬銀幕麥田群鴉',
+  },
+  {
+    id: 'crows', roman: 'VIII', shortZh: '麥田群鴉', tinyZh: 'VIII 群鴉',
+    titleZh: '麥田群鴉', titleEn: 'Wheatfield with Crows',
+    placeZh: '奧維爾 · 暴風雨前的麥海', year: '1890.07',
+    portalZh: '穿過迎面驚飛的黑鴉群 → 化為星塵重返亞爾夜間咖啡座',
+  },
 ];
 
 function fmtTime(sec: number): string {
@@ -111,6 +159,7 @@ export class DirectorUI {
   private readonly card: HTMLDivElement;
   private readonly cardSub: HTMLDivElement;
   private readonly cardTitle: HTMLDivElement;
+  private readonly cardPortal: HTMLDivElement;
   private readonly tlRoot: HTMLDivElement;
   private readonly tlShot: HTMLSpanElement;
   private readonly tlTime: HTMLSpanElement;
@@ -141,7 +190,7 @@ export class DirectorUI {
     this.root = doc.createElement('div');
     this.root.className = 'pn-ui';
 
-    // Top-center Provençal Suite Bar
+    // Top-center 8-Act Van Gogh Odyssey Suite Bar
     this.suiteBar = doc.createElement('div');
     this.suiteBar.className = 'pn-suite';
     this.suiteBar.style.display = 'none';
@@ -150,7 +199,7 @@ export class DirectorUI {
       btn.type = 'button';
       btn.className = 'pn-suite-btn';
       btn.textContent = `${item.roman} · ${item.shortZh}`;
-      btn.title = `${item.titleZh} (${item.titleEn}, ${item.year})`;
+      btn.title = `${item.titleZh} (${item.titleEn}, ${item.year})\n任意門：${item.portalZh}`;
       btn.dataset.active = item.id === 'cafe' ? '1' : '0';
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -165,8 +214,8 @@ export class DirectorUI {
     this.odysseyBtn = doc.createElement('button');
     this.odysseyBtn.type = 'button';
     this.odysseyBtn.className = 'pn-odyssey-btn';
-    this.odysseyBtn.textContent = '∞ 四畫連貫動畫：開';
-    this.odysseyBtn.title = '切換四幅畫一鏡到底連貫動畫 / 單幅循環 (快捷鍵 O)';
+    this.odysseyBtn.textContent = '∞ 八幕連貫史詩：開';
+    this.odysseyBtn.title = '切換八幅畫一鏡到底連貫動畫 / 單幅循環 (快捷鍵 O)';
     this.odysseyBtn.dataset.on = '1';
     this.odysseyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -175,7 +224,7 @@ export class DirectorUI {
     });
     this.suiteBar.append(sep, this.odysseyBtn);
 
-    // Bottom Continuous Odyssey Scrubber Timeline Bar
+    // Bottom Continuous 8-Act Odyssey Scrubber Timeline Bar
     this.tlRoot = doc.createElement('div');
     this.tlRoot.className = 'pn-tl';
     const tlHead = doc.createElement('div');
@@ -192,10 +241,10 @@ export class DirectorUI {
     this.tlFill.className = 'pn-tl-fill';
     this.tlThumb = doc.createElement('div');
     this.tlThumb.className = 'pn-tl-thumb';
-    for (const pct of [25, 50, 75]) {
+    for (let k = 1; k < SUITE_ITEMS.length; k++) {
       const m = doc.createElement('div');
       m.className = 'pn-tl-mark';
-      m.style.left = `${pct}%`;
+      m.style.left = `${(k * 100) / SUITE_ITEMS.length}%`;
       this.tlMarks.push(m);
       this.tlTrack.appendChild(m);
     }
@@ -232,20 +281,28 @@ export class DirectorUI {
     for (const item of SUITE_ITEMS) {
       const a = doc.createElement('div');
       a.className = 'pn-tl-act';
-      a.textContent = `${item.roman} · ${item.shortZh}`;
+      a.textContent = item.tinyZh;
+      a.title = `${item.roman} · ${item.titleZh} (${item.year})`;
+      a.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onSelectPainting?.(item.id);
+        this.input.focus();
+      });
       this.tlActEls.set(item.id, a);
       this.tlActsRow.appendChild(a);
     }
     this.tlRoot.append(tlHead, this.tlTrack, this.tlActsRow);
 
-    // Museum Chapter Title Card
+    // Museum Chapter Title Card with Diegetic Portal description
     this.card = doc.createElement('div');
     this.card.className = 'pn-card';
     this.cardSub = doc.createElement('div');
     this.cardSub.className = 'pn-card-sub';
     this.cardTitle = doc.createElement('div');
     this.cardTitle.className = 'pn-card-title';
-    this.card.append(this.cardSub, this.cardTitle);
+    this.cardPortal = doc.createElement('div');
+    this.cardPortal.className = 'pn-card-portal';
+    this.card.append(this.cardSub, this.cardTitle, this.cardPortal);
 
     this.hint = doc.createElement('div');
     this.hint.className = 'pn-hint';
@@ -295,12 +352,13 @@ export class DirectorUI {
     }
     this.tlActsRow.style.display = odyssey ? 'grid' : 'none';
     this.odysseyBtn.dataset.on = odyssey ? '1' : '0';
-    this.odysseyBtn.textContent = odyssey ? '∞ 四畫連貫動畫：開' : '∞ 單幅循環模式';
+    this.odysseyBtn.textContent = odyssey ? '∞ 八幕連貫史詩：開' : '∞ 單幅循環模式';
     if (showCard) {
       const item = SUITE_ITEMS.find((x) => x.id === active);
       if (item) {
         this.cardSub.textContent = `ACT ${item.roman} · ${item.placeZh} · ${item.year}`;
         this.cardTitle.textContent = `${item.titleZh}  ·  ${item.titleEn}`;
+        this.cardPortal.textContent = `✦ ${item.portalZh}`;
         this.card.style.opacity = '1';
         if (this.cardTimer !== null) window.clearTimeout(this.cardTimer);
         this.cardTimer = window.setTimeout(() => {

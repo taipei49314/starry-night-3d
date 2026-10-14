@@ -100,14 +100,16 @@ function readFlags(): Flags {
   const num = (k: string) => (p.has(k) && p.get(k) !== '' && Number.isFinite(Number(p.get(k))) ? Number(p.get(k)) : undefined);
   const tierRaw = p.get('tier');
   const paintRaw = p.get('painting')?.toLowerCase();
-  const validPaint = paintRaw === 'cafe' || paintRaw === 'rhone' || paintRaw === 'starry' || paintRaw === 'wheat'
-    ? paintRaw
-    : undefined;
+  const validPaint: PaintingId | undefined =
+    paintRaw === 'cafe' || paintRaw === 'rhone' || paintRaw === 'bedroom' || paintRaw === 'starry'
+    || paintRaw === 'wheat' || paintRaw === 'almond' || paintRaw === 'church' || paintRaw === 'crows'
+      ? paintRaw
+      : undefined;
   let calmStored = false;
   try { calmStored = localStorage.getItem('punctum.calm') === '1'; } catch { /* storage blocked */ }
   const isHarnessPin = num('t') !== undefined || p.has('freeze') || p.has('overlay');
   const odysseyParam = p.get('odyssey');
-  // Default to the continuous 4-Act Odyssey unless a harness pin (?t=, ?freeze, ?overlay) or ?odyssey=0 is set
+  // Default to the continuous 8-Act Odyssey unless a harness pin (?t=, ?freeze, ?overlay) or ?odyssey=0 is set
   const odyssey = odysseyParam === '0' ? false : odysseyParam === '1' ? true : !isHarnessPin;
   return {
     t: num('t'),
@@ -224,22 +226,38 @@ export async function boot(container: HTMLElement): Promise<void> {
   const masterDust = createDust(u, engine.quality, forkRng(flags.seed, 'dust:master'));
   masterScene.add(masterBackdrop, masterDust);
 
+  const MAX_CACHED_WORLDS = 4;
   const worldCache = new Map<PaintingId, BuiltWorld>();
   const getOrBuildWorld = (id: PaintingId): BuiltWorld => {
     let w = worldCache.get(id);
-    if (!w) {
-      const tb = performance.now();
-      w = buildWorld(u, engine.quality, flags.seed, id);
-      const self = runInvarianceSelfTest(w.buffer);
-      if (!self.ok) console.error(`[punctum:${id}] invariance self-test failed: max canvas error ${self.maxErr.toExponential(2)}`);
-      w.strokes.group.visible = false;
-      w.underlays.visible = false;
-      masterScene.add(w.strokes.group, w.underlays);
-      engine.renderer.compile(masterScene, engine.camera);
+    if (w) {
+      // Refresh LRU order
+      worldCache.delete(id);
       worldCache.set(id, w);
-      console.info(`[punctum:${id}] ${w.buffer.count} strokes, tier ${engine.quality.tier}, build ${Math.round(performance.now() - tb)} ms`, w.timings, `self-test ${self.maxErr.toExponential(1)}`);
+      return w;
     }
+    const tb = performance.now();
+    w = buildWorld(u, engine.quality, flags.seed, id);
+    const self = runInvarianceSelfTest(w.buffer);
+    if (!self.ok) console.error(`[punctum:${id}] invariance self-test failed: max canvas error ${self.maxErr.toExponential(2)}`);
+    w.strokes.group.visible = false;
+    w.underlays.visible = false;
+    masterScene.add(w.strokes.group, w.underlays);
+    engine.renderer.compile(masterScene, engine.camera);
+    worldCache.set(id, w);
+    console.info(`[punctum:${id}] ${w.buffer.count} strokes, tier ${engine.quality.tier}, build ${Math.round(performance.now() - tb)} ms`, w.timings, `self-test ${self.maxErr.toExponential(1)}`);
     return w;
+  };
+
+  const evictExcessWorlds = (keepA: PaintingId, keepB: PaintingId | null, keepC: PaintingId | null) => {
+    if (worldCache.size <= MAX_CACHED_WORLDS) return;
+    for (const [id, w] of worldCache.entries()) {
+      if (worldCache.size <= MAX_CACHED_WORLDS) break;
+      if (id === keepA || id === keepB || id === keepC) continue;
+      masterScene.remove(w.strokes.group, w.underlays);
+      w.strokes.dispose();
+      worldCache.delete(id);
+    }
   };
 
   let world = getOrBuildWorld(activeId);
@@ -349,7 +367,6 @@ export async function boot(container: HTMLElement): Promise<void> {
   let last = performance.now();
   let frames = 0;
   let shotFrames = 0;
-  const prewarmQueue: PaintingId[] = PAINTING_SUITE.map((s) => s.id).filter((id) => id !== activeId);
 
   const debug = {
     engine,
@@ -369,12 +386,6 @@ export async function boot(container: HTMLElement): Promise<void> {
     last = now;
     if (frames === 0 && flags.boot) for (let k = 0; k < Math.round(flags.boot / 0.1) - 1; k++) director.update(0.1);
     const dt = flags.freeze ? (frames === 0 && flags.boot ? 0.1 : 0) : dtMs / 1000;
-
-    // Staggered background pre-warming of companion paintings so Odyssey morph transitions are 100% hitch-free
-    if (!isHarnessPin && prewarmQueue.length > 0 && frames >= 24 && frames % 24 === 0) {
-      const nextPrewarm = prewarmQueue.shift();
-      if (nextPrewarm) getOrBuildWorld(nextPrewarm);
-    }
 
     engine.beginFrame();
     const f = director.update(dt);
@@ -444,6 +455,13 @@ export async function boot(container: HTMLElement): Promise<void> {
 
     world = getOrBuildWorld(primaryId);
     const secondaryWorld = secondaryId ? getOrBuildWorld(secondaryId) : null;
+
+    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across 8 Acts
+    const lookaheadId = nextPaintingId(primaryId, 1);
+    if (!isHarnessPin && !secondaryId && frames >= 36 && frames % 36 === 0 && !worldCache.has(lookaheadId)) {
+      getOrBuildWorld(lookaheadId);
+    }
+    evictExcessWorlds(primaryId, secondaryId, lookaheadId);
 
     applyBlendedAtmosphere(u, primaryId, secondaryId, atmoMix);
 

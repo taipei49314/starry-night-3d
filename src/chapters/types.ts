@@ -7,7 +7,15 @@ import {
 import { canvasToWorld, EYE, segmentToStroke } from '../shared/canvasSpace';
 import { mixHex, packSrgb, rampHex, shadeHex } from '../shared/palette';
 
-export type PaintingId = 'cafe' | 'rhone' | 'starry' | 'wheat';
+export type PaintingId =
+  | 'cafe'
+  | 'rhone'
+  | 'bedroom'
+  | 'starry'
+  | 'wheat'
+  | 'almond'
+  | 'church'
+  | 'crows';
 
 export const K_D = 2 * T_HALF;
 const TAU = Math.PI * 2;
