@@ -73,8 +73,8 @@ void main() {
   float alphaMul = 1.0;
   // minimum screen footprint (px) for small emissive strokes (windows, star cores) and the church
   bool emisFoot = a2.z >= 1.5;
-  float minWpx = emisFoot ? 1.5 : (cls == CLS_CHURCH ? 1.0 : 0.0);
-  float minLpx = emisFoot ? 2.0 : (cls == CLS_CHURCH ? 1.0 : 0.0);
+  float minWpx = emisFoot ? 1.5 : (cls == CLS_CHURCH ? 1.6 : 0.0);
+  float minLpx = emisFoot ? 2.0 : (cls == CLS_CHURCH ? 2.2 : 0.0);
 
   // ---- 2. animate in canvas space (all periods divide 96 s)
   if (kind == ANIM_VORTEX) {
@@ -272,6 +272,7 @@ void main() {
   float dc = length(toCam);
   float dE = max(length(Pv - uEye), 1.0);
   float fog = 0.7 * (1.0 - exp(-0.5 * max(0.0, log(dc / dE))));
+  if (cls == CLS_CHURCH) fog *= 0.35;
   float fogMix = smoothstep(3.0, 5.3, log2(dE) * 0.30102999566);
 
   vStk0 = vec4(sv, wv, seed, tLay);

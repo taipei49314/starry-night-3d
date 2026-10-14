@@ -1008,46 +1008,46 @@ Conventions:
 - The cypress grows from 170 m to 70 m away (2.4×) while the village holds.
 
 **Shot 4: Black Flame (20–32 s)**
-- Helix about the axis (−50, ·, −192): `pos = (−50 + r·sinθ, y, −192 + r·cosθ)`, with τ = smootherstep((t−20)/10).
-  - r = 70 − 46τ (to 24 m); θ = 450°·τ; y = 40 + 135τ (to 175 m).
-- Target: (−50, y + 30, −192) for τ < 0.75, then slerped to the **Venus core (−1949, 3823, −11520)** by τ = 1.
-- Bank 10° into the turn. FOV 54 → 60.
-- **Burst, 30–32 s:** pos (−26, 175, −192) → **(−45, 210, −235)** (outQuint); target Venus; FOV 60 → **78**.
+- Front-arc climbing spiral about the leaning trunk axis `(−50, 10, −200) → (−51, 154, −175)` with `τ = smootherstep((t−20)/10)`:
+  - `r = 75 − 45τ` (to 30 m); `y = 40 + 118τ` (to 158 m); `θ` swings out to the left flank (`≈ −49°` at 24.3 s, keeping the swirl and stars beside the trunk) and sweeps across the front to `+20°` at `τ = 1` (**BURST0 = (−40.77, 158, −146.11)**, front-right of the flame tip).
+- Target: trunk axis 30 m above the camera (soft-clamped at `y = 158 m`), biased 30% toward the **Venus core (−1949, 3823, −11520)** and slerped fully to Venus over `τ ∈ [0.55, 1]`.
+- Bank ≤ 10° following orbit rate. FOV 54 → 60.
+- **Burst, 30–32 s:** pos `(−40.77, 158, −146.11)` → **(−45, 210, −235)** (outQuint); target Venus; FOV 60 → **78**.
 - Bloom rises 0.7 → 0.9. The black flame drops away below-left and the sky opens.
 
 **Shot 5: Venus Gate (32–42 s)**
 - **32.0–37.5:** ride the wind jet.
-  - `pos = jetPoint(σ)` mapped through canvasToWorld, plus 6·(1−σ) m along U. σ runs 0.12 → 1.0 with `σ(t) = ease.inOutSine((t−32)/5.5)`.
+  - `pos = jetPoint(σ)` mapped through canvasToWorld, plus 6·(1−σ) m along U, converging smoothly onto the Venus ray over `σ ∈ [0.7, 1.0]`. σ runs 0.12 → 1.0 with a Hermite ease whose end speed matches the ring-tunnel entry speed.
   - Depth runs 360 m → 12 km (log, by the jet law). Look: path tangent 0.4 s ahead. FOV 78.
   - The jet strokes stream alongside at nearly camera speed.
 - **37.5: punch through the core.** Exposure 1.0 → 0.5 (37.30–37.55), held to 37.85, back to 1.0 by 38.6. Bloom 1.6 at 37.5, then 1.3.
 - **37.5–42.0:** straight along the Venus ray, `pos = E + d·dir_V` with dir_V = (−0.1588, 0.3075, −0.9384).
   - d = 12,000·2^(outCubic((t−37.5)/4.5)), ending at **(−3898, 7597, −23040)**.
-  - Look along dir_V. FOV 78 → 72. Roll 0 → −15° (3.3°/s).
+  - Look along dir_V. FOV 78 → 72. Roll 0 → −15° (trapEase, 3.3°/s mean).
   - Nine rings pass about every 0.5 s.
 
 **Shot 6: Twin Funnels (42–52 s)**
-- **42–48:** van Wijk–Nuij (ρ = 1.4) from (−3898, 7597, −23040) to **V6 = (−22600, 44000, −31700)**.
+- **42–48:** van Wijk–Nuij (ρ = 1.4) from (−3898, 7597, −23040) to **V6 = (−26150, 3033, −46184)** (`canvasToWorld(−0.20, 0.33, 46000)`, below-left of the funnels so both sit broadside against the painted sky decks).
   - Target slerps from the ray ahead to **P_mid = (504, 16173, −60114)** (canvas (0.51, 0.635) at 62 km).
-  - FOV 72 → 56. Roll −15 → 0.
-- **48–52:** linear push V6 → **V6b = (−18201, 40775, −44746)**. Target P_mid. FOV 56.
-- Frame: both funnels flaring from 520 m throats to 7.6 km mouths; eddies; decks as tilted strata behind.
+  - FOV 72 → 60. Roll −15 → 0.
+- **48–52:** linear push V6 → **V6b = (−18759, 2209, −55468)** (`canvasToWorld(0.08, 0.29, 55000)`). Target P_mid. FOV 60.
+- Frame: both funnels flaring broadside from 520 m throats to 7.6 km mouths; eddies; decks as tilted strata behind.
 
 **Shot 7: The Fall (52–64 s)**
-- **52.0–55.5 swoop:** Hermite from V6b to the **c1 mouth entry (−5003, 31100, −83883)** (canvas (0.43, 0.78), 88 km).
-  - The exit tangent equals the spiral tangent.
-  - Target: c1 axis at 70 km. FOV 56 → 70.
+- **52.0–55.5 swoop:** Hermite from V6b to the **c1 mouth entry (−5013, 30133, −82975)** (`funnelCameraPoint(0, 0.12, 90°, 0.8)`; table approx `(−5003, 31100, −83883)`).
+  - Leaves with the Shot 6b push velocity and arrives along the spiral tangent.
+  - Look: carries P_mid smoothly with the camera (`P_mid + x·(P − V6b)`) and slerps (`trapEase(x, 0.3)`) into the spiral entry direction. FOV 60 → 70.
 - **55.5–64.0 spiral:** `τ = inOutSine((t−55.5)/8.5)`.
   - r = 0.12·0.25^τ (h-units); θ = 90° − 360°·τ (clockwise).
   - Camera at canvas `c1 + 0.8·r·(cosθ/A, sinθ)` and depth `40 km·(r/0.02)^0.433` (inside the wall).
   - Midpoint ≈ (−3659, 15346, −62661). End ≈ (−2700, 13900, −45800) at 47.7 km.
   - Look: the path point 0.6 rad ahead, blended 30% toward the axis point 6 km nearer E.
-  - Roll = clamp(0.6 × yaw rate) (yaw rate is about 42°/s, so roll ≈ 25°), slew 25°/s.
+  - Roll = clamp(0.6 × yaw rate) (yaw rate is about 42°/s, so roll ≈ 25°), unwinding smoothly to `−20/3°` at 64 s.
   - FOV 70 → 74. Velocity stretch is visible.
 
 **Shot 8: Eye of the Vortex (64–73 s)**
-- **64.0–66.5:** glide onto the axis at **A47 = (−2672, 13024, −45437)**. Orientation slerps to look at **E (0, 50, 0)**. Roll unwinds to −10°, then drifts at −4°/s (co-rotation), clamped to −30°. FOV 74 → 70.
-- **67.0–71.0 telephoto push:** A47 → **A44 = (−2501, 12196, −42537)**. FOV 70 → **26** (inOutCubic). The 520 m throat 4 km ahead fills about 57% of frame height; the lit village sits at its centre (≈ 10% of frame height).
+- **64.0–66.5:** glide onto the axis at **A47 = (−2672, 13024, −45437)**. Orientation slerps to look at **E (0, 50, 0)**. Roll winds on to −10°, then drifts at −4°/s (co-rotation), soft-clamped to −30°. FOV 74 → 70.
+- **67.0–71.0 telephoto push:** A47 → **A44 = (−2501, 12196, −42537)**. FOV 70 → **26** (inOutCubic). The 520 m throat 4 km ahead fills about 57% of frame height; the lit village and dark steeple needle sit at its centre (≈ 10% of frame height), with foreground dust dipped to 0.25.
 - **70.0–73.0:** storm envelope 0 → 1 (smoothstep). The nave walls tear into coherent curl sheets. Bloom 1.0. Exposure 1.1 (lifts the windows).
 
 **Shot 9: Storm & Return (73–88 s)**
@@ -1056,8 +1056,8 @@ Conventions:
   - Direction from E slerps from dir(c1) to F.
   - The path passes through the c1 throat at about 74 s and stays above the hills (v ≥ 0.45).
 - Orientation:
-  - 73–77: look at E (through the hurricane toward Earth)
-  - **77.0–82.5:** 180° yaw pirouette (≤ 33°/s) to face F
+  - 73–76: look at E (through the hurricane toward Earth)
+  - **76.0–82.5:** 180° yaw pirouette (≤ 33°/s) to face F
   - 82.5–88: face F with zero roll, flying **backward** into the painting
 - FOV 26 → 60 (73–77), 60 → **70.0** (82.5–88).
 - Scatter is gated by distance, so the near world calms progressively.
@@ -1082,7 +1082,7 @@ Conventions:
 | 37.5–42 | 1.3 | 1.0 | 0 | 0.6 | 0 | 1 | |
 | 42–52 | 0.9 | 1.0 | 0 | 0.4 → 0 | 0 | 1 | |
 | 52–64 | 0.9 | 1.0 | 0 | 0.7 | 0 | 1 | |
-| 64–73 | 1.0 | 1.1 | 0 | 0 | 0 → 1 (70–73) | 1 | |
+| 64–73 | 1.0 | 1.1 | 0 | 0 | 0 → 1 (70–73) | 1 → 0.25 (67–72.5) → 1 | |
 | 73–88 | 0.9 | 1.0 | 0 | 0.6 → 0.2 | 1 (gated) | 1 → 0.3 | |
 | 88–96 | 0.45 (+0.4 pulse) | 1.0 | 0 → 1 (93–95.5) | 0 | snap | → 0 (uOff) | light sweep back |
 
@@ -1167,10 +1167,10 @@ Conventions:
 | SKY_BAND | 32,000 | 0.55 | 0.25 |
 | SWIRL | 30,000 | 0.6 | 0.3 |
 | EDDY | 6,000 | 0.5 | 0.25 |
-| STAR_CORE | 2,200 | 1 | 0.7 |
-| STAR_RING | 14,000 | 0.6 | 0.35 |
-| MOON | 1,800 | 0.8 | 0.5 |
-| MOON_RING | 4,200 | 0.6 | 0.35 |
+| STAR_CORE | 2,200 | 1 | 1 |
+| STAR_RING | 14,000 | 1 | 1 |
+| MOON | 1,800 | 1 | 1 |
+| MOON_RING | 4,200 | 1 | 1 |
 | WIND_JET | 2,400 | 0.6 | 0.35 |
 | HILL | 15,000 | 0.55 | 0.3 |
 | GROUND | 8,000 | 0.55 | 0.25 |
@@ -1180,7 +1180,7 @@ Conventions:
 | CHURCH | 3,600 | 0.8 | 0.5 |
 | CYPRESS | 18,000 | 0.6 | 0.3 |
 | UNDERLAYER | 6,000 | 1 | 1 |
-| **Total** | **≈ 166,600** | **≈ 104k** | **≈ 57k** |
+| **Total** | **≈ 166,600** | **≈ 112k** | **≈ 70k** |
 
 ### 7.3 Tier table
 

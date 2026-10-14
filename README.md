@@ -4,6 +4,11 @@ A real-time 3D piece built from Van Gogh's *The Starry Night* (1889). About 180,
 
 TypeScript, Vite and three.js r186 (WebGL 2). Everything is procedural: no textures, models or network requests.
 
+## Live Demo
+
+- **Interactive Showcase (GitHub Pages):** <https://taipei49314.github.io/starry-night-3d/>
+- **Single-File Bundle (`single.html`):** <https://taipei49314.github.io/starry-night-3d/single.html>
+
 ## Run
 
 ```bash

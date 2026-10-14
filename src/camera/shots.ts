@@ -162,8 +162,9 @@ export const ENV_KEYS: Record<EnvChannel, readonly EnvKey[]> = {
     [42, 0.6], [42.5, 0.4], [52, 0], [52.5, 0.7], [64, 0.7], [64.5, 0], [73, 0], [73.5, 0.6], [88, 0.2], [88.5, 0], [96, 0]],
   // stays 1 until 88.5 so the snap (|C-E| first < 360 m, just after 88.0) fires while the storm is armed
   storm: [[0, 0], [70, 0], [73, 1, 'smoothstep'], [88.5, 1], [89, 0], [96, 0]],
+  // 64-73.5: dip to 0.25 in the calm vortex eye so foreground dust does not speckle the telephoto village;
   // 88-96: 0.3 * smoothstep(0.5, 40, |C-E|) (follows uOff), evaluated in timelineEnv
-  dust: [[0, 0], [6, 0], [12, 1], [73, 1], [88, 0.3], [96, 0.3]],
+  dust: [[0, 0], [6, 0], [12, 1], [64, 1], [67, 0.25, 'inOutSine'], [72.5, 0.25], [73.5, 1, 'inOutSine'], [88, 0.3], [96, 0.3]],
   galleryLightDeg: [[0, -15], [2, -15], [6, 15, 'inOutSine'], [92, 15], [96, -15, 'inOutSine']],
 };
 /** Bloom pulse +0.4 during 88.6-88.9 (sine bump). */
@@ -518,9 +519,12 @@ export class Timeline {
     this.add(52, 55.5,
       (t, o) => hermite(K.V6B, swoopM0, spiralStart, swoopM1, Math.max(0, Math.min(1, (t - 52) / 3.5)), o),
       (t, P) => {
-        const e = ease.inOutSine((t - 52) / 3.5);
-        swoopTgt.subVectors(P.p, K.V6B).multiplyScalar(ease.smoothstep((t - 52) / 0.8)).add(K.P_MID);
-        slerpUnit(lookAt(P.p, swoopTgt, tC), spiralStartDir, e, P.d);
+        const x = Math.max(0, Math.min(1, (t - 52) / 3.5));
+        const e = ease.inOutSine(x);
+        // P.p(52) == V6B, so x * (P.p - V6B) has both value 0 and derivative 0 at t = 52 (exact C1 with shot 6b)
+        // without the 0.8 s catch-up jerk
+        swoopTgt.subVectors(P.p, K.V6B).multiplyScalar(x).add(K.P_MID);
+        slerpUnit(lookAt(P.p, swoopTgt, tC), spiralStartDir, trapEase(x, 0.3), P.d);
         P.roll = 0;
         P.fov = K.FOV6 + (70 - K.FOV6) * e;
       });
