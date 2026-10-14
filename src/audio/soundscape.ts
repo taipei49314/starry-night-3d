@@ -36,6 +36,18 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     chimeInterval: 4.4,
     chimeStyle: 'lullaby',
   },
+  // Chapter I (Earth): A Pair of Shoes — Warm F Minor / Ab Major earthen studio & wooden footsteps resonance
+  shoes: {
+    padFreqs: [103.83, 155.56, 207.65, 261.63], // Ab2, Eb3, Ab3, C4
+    chimePool: [311.13, 392.00, 466.16, 523.25],
+    envFreq: 210,
+    envQ: 1.9,
+    envGain: 0.025,
+    lfoRate: 0.11,
+    lfoDepth: 55,
+    chimeInterval: 3.9,
+    chimeStyle: 'lullaby',
+  },
   // Chapter II (Color): Boulevard de Clichy — Sparkling Impressionist A Major 9 pointillist awakening
   paris: {
     padFreqs: [164.81, 220.00, 277.18, 329.63], // E3, A3, C#4, E4
@@ -47,6 +59,30 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     lfoDepth: 165,
     chimeInterval: 2.1,
     chimeStyle: 'blossom',
+  },
+  // Chapter II (Color): Self-Portrait with Straw Hat — Luminous B Minor / D Major 9 introspective gaze & aura
+  selfportrait: {
+    padFreqs: [146.83, 220.00, 277.18, 369.99], // D3, A3, C#4, F#4
+    chimePool: [440.00, 554.37, 659.25, 739.99, 880.00],
+    envFreq: 390,
+    envQ: 1.8,
+    envGain: 0.028,
+    lfoRate: 0.16,
+    lfoDepth: 110,
+    chimeInterval: 2.9,
+    chimeStyle: 'glass',
+  },
+  // Chapter III (Sun): Sunflowers — Radiant D Lydian / Major 9 golden solar warmth
+  sunflowers: {
+    padFreqs: [146.83, 220.00, 293.66, 369.99], // D3, A3, D4, F#4
+    chimePool: [587.33, 739.99, 880.00, 1108.73, 1174.66],
+    envFreq: 420,
+    envQ: 1.5,
+    envGain: 0.030,
+    lfoRate: 0.17,
+    lfoDepth: 130,
+    chimeInterval: 2.5,
+    chimeStyle: 'warm',
   },
   // Chapter III (Sun): Café Terrace at Night — Warm F Major 9 gaslit nocturnal square
   cafe: {
@@ -60,19 +96,19 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     chimeInterval: 3.4,
     chimeStyle: 'warm',
   },
-  // Act II: Starry Night Over the Rhône — Serene Db Major 9 + lapping river water
+  // Chapter III (Sun): Starry Night Over the Rhône — Serene Db Major 9 + lapping river water
   rhone: {
     padFreqs: [138.59, 207.65, 261.63, 311.13], // Db3, Ab3, C4, Eb4
     chimePool: [523.25, 622.25, 698.46, 830.61, 1046.50, 1244.51],
     envFreq: 380,
     envQ: 2.2,
     envGain: 0.042,
-    lfoRate: 0.24, // gentle Rhône river wave periodicity (~4.2 s per wave)
+    lfoRate: 0.24,
     lfoDepth: 190,
     chimeInterval: 2.8,
     chimeStyle: 'celesta',
   },
-  // Act III: The Bedroom in Arles — Intimate Bb Major 7 wooden sanctuary
+  // Chapter III (Sun): The Bedroom in Arles — Intimate Bb Major 7 wooden sanctuary
   bedroom: {
     padFreqs: [116.54, 174.61, 220.00, 293.66], // Bb2, F3, A3, D4
     chimePool: [440.00, 587.33, 698.46, 880.00],
@@ -84,7 +120,7 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     chimeInterval: 4.0,
     chimeStyle: 'lullaby',
   },
-  // Act IV: The Starry Night — Cosmic C# Minor 9 / Dorian 250 km vortex
+  // Chapter IV (Cosmos): The Starry Night — Cosmic C# Minor 9 / Dorian 250 km vortex
   starry: {
     padFreqs: [138.59, 207.65, 246.94, 329.63], // C#3, G#3, B3, E4
     chimePool: [493.88, 659.25, 739.99, 987.77, 1108.73, 1318.51],
@@ -96,7 +132,19 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     chimeInterval: 2.6,
     chimeStyle: 'glass',
   },
-  // Act V: Wheat Field with Cypresses — Sunlit G Major 9 + Mistral wind in golden grain
+  // Chapter IV (Cosmos): Irises — Lush Eb Major 9 garden breeze & solitary white iris celesta
+  irises: {
+    padFreqs: [155.56, 233.08, 293.66, 349.23], // Eb3, Bb3, D4, F4
+    chimePool: [587.33, 698.46, 783.99, 932.33, 1174.66],
+    envFreq: 480,
+    envQ: 1.7,
+    envGain: 0.036,
+    lfoRate: 0.18,
+    lfoDepth: 175,
+    chimeInterval: 2.3,
+    chimeStyle: 'celesta',
+  },
+  // Chapter IV (Cosmos): Wheat Field with Cypresses — Sunlit G Major 9 + Mistral wind in golden grain
   wheat: {
     padFreqs: [196.00, 293.66, 369.99, 440.00], // G3, D4, F#4, A4
     chimePool: [587.33, 739.99, 880.00, 987.77, 1174.66],
@@ -108,7 +156,7 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     chimeInterval: 3.1,
     chimeStyle: 'pastoral',
   },
-  // Act VI: Almond Blossom — Radiant E Major Pentatonic spring awakening
+  // Chapter IV (Cosmos): Almond Blossom — Radiant E Major Pentatonic spring awakening
   almond: {
     padFreqs: [164.81, 246.94, 329.63, 369.99], // E3, B3, E4, F#4
     chimePool: [659.25, 739.99, 830.61, 987.77, 1108.73, 1318.51],
@@ -120,7 +168,7 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     chimeInterval: 1.95,
     chimeStyle: 'blossom',
   },
-  // Act VII: The Church at Auvers — Solemn D Minor Add9 Gothic organ & bronze bell
+  // Chapter V (Road): The Church at Auvers — Solemn D Minor Add9 Gothic organ & bronze bell
   church: {
     padFreqs: [146.83, 220.00, 261.63, 329.63], // D3, A3, C4, E4
     chimePool: [293.66, 440.00, 523.25, 587.33],
@@ -132,7 +180,19 @@ const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
     chimeInterval: 4.6,
     chimeStyle: 'bell',
   },
-  // Act VIII: Wheatfield with Crows — Tempestuous A Minor storm & murder of crows
+  // Chapter V (Road): Portrait of Dr. Gachet — Melancholic E Minor 9 / G Major 7 chamber elegy
+  gachet: {
+    padFreqs: [130.81, 196.00, 246.94, 329.63], // C3, G3, B3, E4
+    chimePool: [392.00, 493.88, 587.33, 659.25, 783.99],
+    envFreq: 310,
+    envQ: 2.1,
+    envGain: 0.032,
+    lfoRate: 0.14,
+    lfoDepth: 95,
+    chimeInterval: 3.5,
+    chimeStyle: 'lullaby',
+  },
+  // Chapter V (Road): Wheatfield with Crows — Tempestuous A Minor storm & murder of crows
   crows: {
     padFreqs: [110.00, 164.81, 220.00, 246.94], // A2, E3, A3, B3
     chimePool: [440.00, 493.88, 523.25, 659.25, 880.00],

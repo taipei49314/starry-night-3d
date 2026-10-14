@@ -9,14 +9,19 @@ import { mixHex, packSrgb, rampHex, shadeHex } from '../shared/palette';
 
 export type PaintingId =
   | 'potato'
+  | 'shoes'
   | 'paris'
+  | 'selfportrait'
+  | 'sunflowers'
   | 'cafe'
   | 'rhone'
   | 'bedroom'
   | 'starry'
+  | 'irises'
   | 'wheat'
   | 'almond'
   | 'church'
+  | 'gachet'
   | 'crows';
 
 export type ChapterId = 'earth' | 'color' | 'sun' | 'cosmos' | 'road';

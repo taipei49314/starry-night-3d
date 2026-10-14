@@ -144,58 +144,88 @@ export const SUITE_ITEMS: readonly SuiteItem[] = [
     id: 'potato', chapterId: 'earth', roman: 'I', shortZh: '食薯者', tinyZh: 'I 食薯者',
     titleZh: '食薯者', titleEn: 'The Potato Eaters',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)', year: '1885.04',
-    portalZh: '飛入中央懸掛油燈的暖金火芯 → 甦醒為巴黎點描色彩',
+    portalZh: '飛入中央懸掛油燈的暖金火芯 → 照亮地面踏上旅途的《一雙舊鞋》',
   },
   {
-    id: 'paris', chapterId: 'color', roman: 'II', shortZh: '克利希大道', tinyZh: 'II 巴黎',
+    id: 'shoes', chapterId: 'earth', roman: 'II', shortZh: '一雙舊鞋', tinyZh: 'II 舊鞋',
+    titleZh: '一雙舊鞋', titleEn: 'A Pair of Shoes',
+    placeZh: 'Chapter I · 黑土與人 (Nuenen / Paris)', year: '1886.09',
+    portalZh: '順著蜿蜒鬆開的鞋帶迎向金色門檻光束 → 踏上巴黎克利希大道',
+  },
+  {
+    id: 'paris', chapterId: 'color', roman: 'III', shortZh: '克利希大道', tinyZh: 'III 巴黎',
     titleZh: '克利希大道', titleEn: 'Boulevard de Clichy',
     placeZh: 'Chapter II · 巴黎與覺醒 (Paris)', year: '1887.03',
-    portalZh: '沿點描林蔭大道衝向南方驕陽 → 步入亞爾夜間咖啡座',
+    portalZh: '穿過點描林蔭大道晨光 → 轉身對視畫家《戴草帽的自畫像》雙眸',
   },
   {
-    id: 'cafe', chapterId: 'sun', roman: 'III', shortZh: '夜間咖啡座', tinyZh: 'III 咖啡座',
+    id: 'selfportrait', chapterId: 'color', roman: 'IV', shortZh: '自畫像', tinyZh: 'IV 自畫像',
+    titleZh: '戴草帽的自畫像', titleEn: 'Self-Portrait with Straw Hat',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Paris)', year: '1887.08',
+    portalZh: '飛入畫家翠綠瞳孔與金黃草帽光環 → 綻放為亞爾盛開的《向日葵》',
+  },
+  {
+    id: 'sunflowers', chapterId: 'sun', roman: 'V', shortZh: '向日葵', tinyZh: 'V 向日葵',
+    titleZh: '向日葵', titleEn: 'Sunflowers',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.08',
+    portalZh: '穿過中央向日葵燃燒的金色花盤核心 → 化為亞爾夜間咖啡座瓦斯燈棚',
+  },
+  {
+    id: 'cafe', chapterId: 'sun', roman: 'VI', shortZh: '夜間咖啡座', tinyZh: 'VI 咖啡座',
     titleZh: '夜間露天咖啡座', titleEn: 'Café Terrace at Night',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.09',
     portalZh: '穿過鵝卵石街尾星谷 → 步入隆河河畔',
   },
   {
-    id: 'rhone', chapterId: 'sun', roman: 'IV', shortZh: '隆河星夜', tinyZh: 'IV 隆河',
+    id: 'rhone', chapterId: 'sun', roman: 'VII', shortZh: '隆河星夜', tinyZh: 'VII 隆河',
     titleZh: '隆河上的星夜', titleEn: 'Starry Night Over the Rhône',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.09',
     portalZh: '飛入對岸暖黃窗燈 → 走進亞爾黃色小屋臥室',
   },
   {
-    id: 'bedroom', chapterId: 'sun', roman: 'V', shortZh: '亞爾臥室', tinyZh: 'V 臥室',
+    id: 'bedroom', chapterId: 'sun', roman: 'VIII', shortZh: '亞爾臥室', tinyZh: 'VIII 臥室',
     titleZh: '在亞爾的臥室', titleEn: 'The Bedroom in Arles',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.10',
     portalZh: '推開半掩的綠色百葉窗 → 飛入聖雷米星夜',
   },
   {
-    id: 'starry', chapterId: 'cosmos', roman: 'VI', shortZh: '星夜', tinyZh: 'VI 星夜',
+    id: 'starry', chapterId: 'cosmos', roman: 'IX', shortZh: '星夜', tinyZh: 'IX 星夜',
     titleZh: '星夜', titleEn: 'The Starry Night',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1889.06',
-    portalZh: '迎向熾熱橘黃新月 → 聖雷米破曉化為金色麥田',
+    portalZh: '迎向熾熱橘黃新月 → 晨光降落聖保羅療養院花園的《鳶尾花》',
   },
   {
-    id: 'wheat', chapterId: 'cosmos', roman: 'VII', shortZh: '絲柏麥田', tinyZh: 'VII 麥田',
+    id: 'irises', chapterId: 'cosmos', roman: 'X', shortZh: '鳶尾花', tinyZh: 'X 鳶尾花',
+    titleZh: '鳶尾花', titleEn: 'Irises',
+    placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1889.05',
+    portalZh: '穿過萬紫叢中孤傲盛開的純白鳶尾花 → 迎風展開《有絲柏的麥田》',
+  },
+  {
+    id: 'wheat', chapterId: 'cosmos', roman: 'XI', shortZh: '絲柏麥田', tinyZh: 'XI 麥田',
     titleZh: '有絲柏的麥田', titleEn: 'Wheat Field with Cypresses',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1889.07',
     portalZh: '衝入松石綠晴空與翻滾白雲 → 凝結為春日盛開杏花',
   },
   {
-    id: 'almond', chapterId: 'cosmos', roman: 'VIII', shortZh: '盛開杏花', tinyZh: 'VIII 杏花',
+    id: 'almond', chapterId: 'cosmos', roman: 'XII', shortZh: '盛開杏花', tinyZh: 'XII 杏花',
     titleZh: '盛開的杏花', titleEn: 'Almond Blossom',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1890.02',
     portalZh: '穿越飄落花雨與蔚藍晴空 → 北上奧維爾哥德教堂',
   },
   {
-    id: 'church', chapterId: 'road', roman: 'IX', shortZh: '奧維爾教堂', tinyZh: 'IX 教堂',
+    id: 'church', chapterId: 'road', roman: 'XIII', shortZh: '奧維爾教堂', tinyZh: 'XIII 教堂',
     titleZh: '奧維爾的教堂', titleEn: 'The Church at Auvers',
     placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.06',
-    portalZh: '攀升鐘樓尖頂暗藍風暴 → 拉開 2:1 超寬銀幕麥田群鴉',
+    portalZh: '穿過鐘樓群青風暴 → 對視奧維爾知己《嘉舍醫師畫像》',
   },
   {
-    id: 'crows', chapterId: 'road', roman: 'X', shortZh: '麥田群鴉', tinyZh: 'X 群鴉',
+    id: 'gachet', chapterId: 'road', roman: 'XIV', shortZh: '嘉舍醫師', tinyZh: 'XIV 嘉舍',
+    titleZh: '嘉舍醫師畫像', titleEn: 'Portrait of Dr. Gachet',
+    placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.06',
+    portalZh: '穿過醫師憂鬱雙眸與背後翻湧的深藍漩渦 → 拉開 2:1 超寬銀幕《麥田群鴉》',
+  },
+  {
+    id: 'crows', chapterId: 'road', roman: 'XV', shortZh: '麥田群鴉', tinyZh: 'XV 群鴉',
     titleZh: '麥田群鴉', titleEn: 'Wheatfield with Crows',
     placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.07',
     portalZh: '穿過迎面驚飛的黑鴉群 → 落回最初的黑土與《食薯者》油燈',
@@ -271,7 +301,7 @@ export class DirectorUI {
     this.root = doc.createElement('div');
     this.root.className = 'pn-ui';
 
-    // Top-center 10-World / 5-Chapter Suite Bar
+    // Top-center 15-World / 5-Chapter Suite Bar
     this.suiteBar = doc.createElement('div');
     this.suiteBar.className = 'pn-suite';
     this.suiteBar.style.display = 'none';
@@ -302,8 +332,8 @@ export class DirectorUI {
     this.odysseyBtn = doc.createElement('button');
     this.odysseyBtn.type = 'button';
     this.odysseyBtn.className = 'pn-odyssey-btn';
-    this.odysseyBtn.textContent = '∞ 五章史詩';
-    this.odysseyBtn.title = '模式 A：五大章 10 幕完整長篇 Odyssey (快捷鍵 O)';
+    this.odysseyBtn.textContent = '∞ 五章十五幕';
+    this.odysseyBtn.title = '模式 A：五大章 15 幕完整長篇 Odyssey (快捷鍵 O)';
     this.odysseyBtn.dataset.on = '1';
     this.odysseyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -315,7 +345,7 @@ export class DirectorUI {
     this.themeBtn.type = 'button';
     this.themeBtn.className = 'pn-odyssey-btn';
     this.themeBtn.textContent = '⟁ 主題路徑';
-    this.themeBtn.title = '模式 C：依六大母題編排主題路徑（光與夜 / 道路 / 居所 / 繁花 / 單幅循環）';
+    this.themeBtn.title = '模式 C：依六大母題編排主題路徑（光與夜 / 道路 / 居所 / 繁花 / 凝視 / 單幅循環）';
     this.themeBtn.dataset.on = '0';
     this.themeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -357,10 +387,11 @@ export class DirectorUI {
     this.pathBar = doc.createElement('div');
     this.pathBar.className = 'pn-pathbar';
     const pathOptions: Array<{ id: string; label: string; title: string }> = [
-      { id: 'nights', label: '✦ 光與夜之路 (5幕)', title: '食薯者油燈 → 夜間咖啡座 → 隆河星夜 → 聖雷米星夜 → 麥田群鴉' },
-      { id: 'roads', label: '⟁ 道路與遠方 (5幕)', title: '巴黎克利希大道 → 夜間咖啡座 → 隆河堤岸 → 奧維爾教堂 → 麥田三岔路' },
-      { id: 'dwellings', label: '⌂ 居所與視線 (4幕)', title: '荷蘭農舍木桌 → 街角咖啡座 → 亞爾黃色小屋臥室 → 奧維爾哥德教堂' },
-      { id: 'flora', label: '❀ 黑土繁花與風 (5幕)', title: '荷蘭黑土馬鈴薯 → 巴黎春芽 → 聖雷米絲柏麥田 → 盛開杏花 → 狂風麥田' },
+      { id: 'nights', label: '✦ 光與夜之路 (6幕)', title: '食薯者油燈 → 向日葵花盤 → 夜間咖啡座 → 隆河星夜 → 聖雷米星夜 → 麥田群鴉' },
+      { id: 'roads', label: '⟁ 道路與遠方 (6幕)', title: '一雙舊鞋 → 巴黎克利希大道 → 夜間咖啡座 → 隆河堤岸 → 奧維爾教堂 → 麥田三岔路' },
+      { id: 'dwellings', label: '⌂ 居所與聖殿 (5幕)', title: '荷蘭農舍木桌 → 向日葵陶罐 → 街角咖啡座 → 亞爾黃色小屋臥室 → 奧維爾哥德教堂' },
+      { id: 'flora', label: '❀ 黑土繁花與風 (6幕)', title: '食薯者馬鈴薯 → 亞爾向日葵 → 聖雷米鳶尾花 → 絲柏麥浪 → 盛開杏花 → 狂風麥田' },
+      { id: 'gaze', label: '❖ 凝視與靈魂 (5幕)', title: '食薯者農民臉龐 → 戴草帽的自畫像 → 亞爾臥室百葉窗 → 嘉舍醫師憂鬱凝視 → 星夜渦流' },
       { id: 'single', label: '◎ 單幅沉浸循環 (1幕)', title: '鎖定當前畫作進行單幅 3D 空間深度巡禮' },
     ];
     for (const po of pathOptions) {
@@ -414,7 +445,7 @@ export class DirectorUI {
     const allBtn = doc.createElement('button');
     allBtn.type = 'button';
     allBtn.className = 'pn-motif-pill';
-    allBtn.textContent = '全部母題 (10幅)';
+    allBtn.textContent = '全部母題 (15幅)';
     allBtn.dataset.active = '1';
     allBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -771,7 +802,7 @@ export class DirectorUI {
       if (item) {
         const pathSpec = THEME_PATHS.find((p) => p.id === opts.pathId);
         const modeTag = opts.mode === 'odyssey'
-          ? '五章十幕史詩'
+          ? '五章十五幕史詩'
           : opts.mode === 'theme' && pathSpec
             ? pathSpec.nameZh
             : '單幅世界巡禮';

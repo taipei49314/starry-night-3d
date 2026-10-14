@@ -1,14 +1,19 @@
-// Multi-Punctum Suite & Van Gogh World System Registry (5 Grand Chapters, 10 Iconic Worlds, 1885–1890):
+// Multi-Punctum Suite & Van Gogh World System Registry (5 Grand Chapters, 15 Iconic Worlds, 1885–1890):
 //   Chapter I   (Earth · Nuenen):    1. The Potato Eaters (1885)
-//   Chapter II  (Color · Paris):     2. Boulevard de Clichy (1887)
-//   Chapter III (Sun · Arles):       3. Café Terrace at Night (1888)
-//                                    4. Starry Night Over the Rhône (1888)
-//                                    5. The Bedroom in Arles (1888)
-//   Chapter IV  (Cosmos · St-Rémy):  6. The Starry Night (1889)
-//                                    7. Wheat Field with Cypresses (1889)
-//                                    8. Almond Blossom (1890)
-//   Chapter V   (Road · Auvers):     9. The Church at Auvers (1890)
-//                                   10. Wheatfield with Crows (1890)
+//                                    2. A Pair of Shoes (1886)
+//   Chapter II  (Color · Paris):     3. Boulevard de Clichy (1887)
+//                                    4. Self-Portrait with Straw Hat (1887)
+//   Chapter III (Sun · Arles):       5. Sunflowers (1888)
+//                                    6. Café Terrace at Night (1888)
+//                                    7. Starry Night Over the Rhône (1888)
+//                                    8. The Bedroom in Arles (1888)
+//   Chapter IV  (Cosmos · St-Rémy):  9. The Starry Night (1889)
+//                                   10. Irises (1889)
+//                                   11. Wheat Field with Cypresses (1889)
+//                                   12. Almond Blossom (1890)
+//   Chapter V   (Road · Auvers):    13. The Church at Auvers (1890)
+//                                   14. Portrait of Dr. Gachet (1890)
+//                                   15. Wheatfield with Crows (1890)
 // Includes standalone tracks AND the Dynamic Path Compiler `compilePathTrack(sequence)` that weaves ANY
 // sequence of worlds (Mode A Odyssey, Mode C Theme Paths, or custom chains) into a seamless one-take 3D journey.
 import { Group, Vector3 } from 'three';
@@ -30,13 +35,18 @@ import { generateGround } from '../earth/terrain';
 import { generateHills } from '../earth/hillsGen';
 import { createLandUnderlays, generateVillage } from '../earth/villageGen';
 import { POTATO_ASPECT, generatePotatoChapter } from './potatoGen';
+import { SHOES_ASPECT, generateShoesChapter } from './shoesGen';
 import { PARIS_ASPECT, generateParisChapter } from './parisGen';
+import { SELFPORTRAIT_ASPECT, generateSelfPortraitChapter } from './selfPortraitGen';
+import { SUNFLOWERS_ASPECT, generateSunflowersChapter } from './sunflowersGen';
 import { CAFE_ASPECT, generateCafeChapter } from './cafeGen';
 import { RHONE_ASPECT, generateRhoneChapter } from './rhoneGen';
 import { BEDROOM_ASPECT, generateBedroomChapter } from './bedroomGen';
+import { IRISES_ASPECT, generateIrisesChapter } from './irisesGen';
 import { WHEAT_ASPECT, generateWheatChapter } from './wheatGen';
 import { ALMOND_ASPECT, generateAlmondChapter } from './almondGen';
 import { CHURCH_ASPECT, generateChurchChapter } from './churchGen';
+import { GACHET_ASPECT, generateGachetChapter } from './gachetGen';
 import { CROWS_ASPECT, generateCrowsChapter } from './crowsGen';
 import { clamp, clamp01, smoothstep, uFromPaint, type ChapterId, type PaintingId } from './types';
 
@@ -230,18 +240,18 @@ interface PortalWp {
 function makeChapterTracks(
   aspect: number,
   actLabel: string,
-  shotNames: readonly [string, string, string, string],
-  portalPts: readonly [PortalWp, PortalWp, PortalWp, PortalWp, PortalWp],
-  baseBloom: number,
+  shotNames: [string, string, string, string],
+  portalPts: [PortalWp, PortalWp, PortalWp, PortalWp, PortalWp],
+  baseBloom = 0.5,
 ): { standalone: CompanionTrack; odysseyAct: CompanionTrack } {
   const standalone = new CompanionTrack(
     aspect,
     [
-      { index: 0, name: shotNames[0], t0: 0, t1: 6, setPiece: `${actLabel} · 畫框凝視` },
-      { index: 1, name: shotNames[1], t0: 6, t1: 18, setPiece: shotNames[1] },
-      { index: 2, name: shotNames[2], t0: 18, t1: 30, setPiece: shotNames[2] },
-      { index: 3, name: shotNames[3], t0: 30, t1: 40, setPiece: shotNames[3] },
-      { index: 4, name: '重返畫家之眼', t0: 40, t1: 48, setPiece: '任意門歸位' },
+      { index: 0, name: shotNames[0], t0: 0,  t1: 6,  setPiece: 'locked at the painter’s eye' },
+      { index: 1, name: shotNames[1], t0: 6,  t1: 18, setPiece: 'entering the 3D impasto world' },
+      { index: 2, name: shotNames[2], t0: 18, t1: 31, setPiece: 'soaring through the heart of the canvas' },
+      { index: 3, name: shotNames[3], t0: 31, t1: 40, setPiece: 'approaching the Spatial Portal' },
+      { index: 4, name: '凝視歸位',   t0: 40, t1: 48, setPiece: 'reverse dolly-zoom back to the eye' },
     ],
     [
       { t: 6,  pos: EYE.clone(), lookAt: E_TARGET.clone(), fov: 36, roll: 0 },
@@ -284,10 +294,10 @@ function makeChapterTracks(
   return { standalone, odysseyAct };
 }
 
-// 1. Chapter I (Earth): The Potato Eaters -> Portal: Hanging Oil Lamp Flame -> Paris
+// 1. Chapter I (Earth): The Potato Eaters -> Portal: Hanging Oil Lamp Flame -> A Pair of Shoes
 const POTATO_TRACKS = makeChapterTracks(
   POTATO_ASPECT, 'Ch.I 食薯者',
-  ['荷蘭農舍黑土畫幅', '粗陶木桌與熱氣馬鈴薯盤', '油燈明暗對比下的農夫臉龐', '飛入懸掛油燈火芯任意門 → 巴黎覺醒'],
+  ['荷蘭農舍黑土畫幅', '粗陶木桌與熱氣馬鈴薯盤', '油燈明暗對比下的農夫臉龐', '飛入懸掛油燈火芯任意門 → 一雙舊鞋'],
   [
     { pos: pt(POTATO_ASPECT, 0.32, 0.24, 195), lookAt: pt(POTATO_ASPECT, 0.48, 0.34, 460),   fov: 42, roll: -1.5 },
     { pos: pt(POTATO_ASPECT, 0.44, 0.32, 260), lookAt: pt(POTATO_ASPECT, 0.65, 0.48, 510),   fov: 45, roll: 1.5 },
@@ -298,10 +308,24 @@ const POTATO_TRACKS = makeChapterTracks(
   0.42,
 );
 
-// 2. Chapter II (Color): Boulevard de Clichy -> Portal: Sunlit Avenue Vanishing Point -> Arles
+// 2. Chapter I (Earth): A Pair of Shoes -> Portal: Trailing Laces & Golden Threshold -> Paris
+const SHOES_TRACKS = makeChapterTracks(
+  SHOES_ASPECT, 'Ch.I 一雙舊鞋',
+  ['泥土舊鞋靜物畫幅', '斑駁皮革皺褶與鐵釘鞋底', '蜿蜒鬆開的皮鞋帶小徑', '迎向金色門檻光束任意門 → 巴黎克利希大道'],
+  [
+    { pos: pt(SHOES_ASPECT, 0.30, 0.16, 185), lookAt: pt(SHOES_ASPECT, 0.36, 0.38, 470),   fov: 42, roll: -1.5 },
+    { pos: pt(SHOES_ASPECT, 0.44, 0.22, 265), lookAt: pt(SHOES_ASPECT, 0.62, 0.34, 485),   fov: 45, roll: 1.5 },
+    { pos: pt(SHOES_ASPECT, 0.56, 0.28, 340), lookAt: pt(SHOES_ASPECT, 0.48, 0.38, 495),   fov: 47, roll: -1.2 },
+    { pos: pt(SHOES_ASPECT, 0.58, 0.48, 410), lookAt: pt(SHOES_ASPECT, 0.62, 0.72, 650),   fov: 49, roll: 1.0 },
+    { pos: pt(SHOES_ASPECT, 0.62, 0.68, 480), lookAt: pt(SHOES_ASPECT, 0.62, 0.72, 12600), fov: 52, roll: 0 },
+  ],
+  0.40,
+);
+
+// 3. Chapter II (Color): Boulevard de Clichy -> Portal: Sunlit Avenue Vanishing Point -> Self-Portrait
 const PARIS_TRACKS = makeChapterTracks(
   PARIS_ASPECT, 'Ch.II 克利希大道',
-  ['巴黎印象派點描畫幅', '粉藍珊瑚點描人行道與漫步市民', '奧斯曼公寓立面與行道春芽', '衝向大道驕陽消失點任意門 → 亞爾咖啡座'],
+  ['巴黎印象派點描畫幅', '粉藍珊瑚點描人行道與漫步市民', '奧斯曼公寓立面與行道春芽', '穿過大道晨光任意門 → 戴草帽的自畫像'],
   [
     { pos: pt(PARIS_ASPECT, 0.36, 0.16, 185), lookAt: pt(PARIS_ASPECT, 0.46, 0.34, 520),   fov: 45, roll: -2 },
     { pos: pt(PARIS_ASPECT, 0.52, 0.24, 310), lookAt: pt(PARIS_ASPECT, 0.38, 0.38, 680),   fov: 48, roll: 2 },
@@ -312,7 +336,35 @@ const PARIS_TRACKS = makeChapterTracks(
   0.46,
 );
 
-// 3. Chapter III (Sun): Café Terrace at Night -> Portal: Rue du Palais Star Canyon -> Rhône
+// 4. Chapter II (Color): Self-Portrait with Straw Hat -> Portal: Emerald Gaze & Golden Brim -> Sunflowers
+const SELFPORTRAIT_TRACKS = makeChapterTracks(
+  SELFPORTRAIT_ASPECT, 'Ch.II 自畫像',
+  ['巴黎自畫像直幅畫框', '鈷藍松石放射光環與金黃草帽', '火焰紅鬍鬚與立體輪廓筆觸', '飛入畫家翠綠瞳孔任意門 → 亞爾向日葵'],
+  [
+    { pos: pt(SELFPORTRAIT_ASPECT, 0.34, 0.22, 190), lookAt: pt(SELFPORTRAIT_ASPECT, 0.49, 0.45, 470),   fov: 42, roll: -1.8 },
+    { pos: pt(SELFPORTRAIT_ASPECT, 0.62, 0.38, 275), lookAt: pt(SELFPORTRAIT_ASPECT, 0.48, 0.58, 480),   fov: 45, roll: 1.8 },
+    { pos: pt(SELFPORTRAIT_ASPECT, 0.40, 0.66, 350), lookAt: pt(SELFPORTRAIT_ASPECT, 0.52, 0.62, 510),   fov: 47, roll: -1.5 },
+    { pos: pt(SELFPORTRAIT_ASPECT, 0.48, 0.55, 410), lookAt: pt(SELFPORTRAIT_ASPECT, 0.49, 0.56, 465),   fov: 46, roll: 0.8 },
+    { pos: pt(SELFPORTRAIT_ASPECT, 0.49, 0.56, 445), lookAt: pt(SELFPORTRAIT_ASPECT, 0.49, 0.56, 12400), fov: 52, roll: 0 },
+  ],
+  0.48,
+);
+
+// 5. Chapter III (Sun): Sunflowers -> Portal: Golden Crown Sunflower Disc -> Café Terrace
+const SUNFLOWERS_TRACKS = makeChapterTracks(
+  SUNFLOWERS_ASPECT, 'Ch.III 向日葵',
+  ['亞爾黃色交響曲畫幅', 'Vincent 簽名雙色陶罐與翠綠花莖', '穿梭十五朵盛開金黃向日葵花海', '飛入中央向日葵花盤任意門 → 夜間咖啡座'],
+  [
+    { pos: pt(SUNFLOWERS_ASPECT, 0.34, 0.20, 185), lookAt: pt(SUNFLOWERS_ASPECT, 0.50, 0.32, 470),   fov: 43, roll: -2 },
+    { pos: pt(SUNFLOWERS_ASPECT, 0.64, 0.42, 265), lookAt: pt(SUNFLOWERS_ASPECT, 0.46, 0.52, 465),   fov: 46, roll: 2 },
+    { pos: pt(SUNFLOWERS_ASPECT, 0.32, 0.60, 340), lookAt: pt(SUNFLOWERS_ASPECT, 0.58, 0.66, 485),   fov: 48, roll: -1.8 },
+    { pos: pt(SUNFLOWERS_ASPECT, 0.48, 0.68, 410), lookAt: pt(SUNFLOWERS_ASPECT, 0.50, 0.72, 475),   fov: 49, roll: 1.0 },
+    { pos: pt(SUNFLOWERS_ASPECT, 0.50, 0.72, 448), lookAt: pt(SUNFLOWERS_ASPECT, 0.50, 0.72, 12600), fov: 53, roll: 0 },
+  ],
+  0.52,
+);
+
+// 6. Chapter III (Sun): Café Terrace at Night -> Portal: Rue du Palais Star Canyon -> Rhône
 const CAFE_TRACKS = makeChapterTracks(
   CAFE_ASPECT, 'Ch.III 夜間咖啡座',
   ['論壇廣場畫幅', '煤氣燈金黃遮雨棚與圓桌', '鵝卵石長街與藍紫街屋', '穿過街尾星谷任意門 → 隆河星夜'],
@@ -326,7 +378,7 @@ const CAFE_TRACKS = makeChapterTracks(
   0.52,
 );
 
-// 4. Chapter III (Sun): Starry Night Over the Rhône -> Portal: Warm Golden Embankment Window -> Bedroom
+// 7. Chapter III (Sun): Starry Night Over the Rhône -> Portal: Warm Golden Embankment Window -> Bedroom
 const RHONE_TRACKS = makeChapterTracks(
   RHONE_ASPECT, 'Ch.III 隆河星夜',
   ['隆河河畔畫幅', '停泊木船與河岸戀人', '煤氣燈金色水波倒影柱與北斗七星', '飛入河岸暖黃窗燈任意門 → 亞爾臥室'],
@@ -340,7 +392,7 @@ const RHONE_TRACKS = makeChapterTracks(
   0.50,
 );
 
-// 5. Chapter III (Sun): The Bedroom in Arles -> Portal: Half-Open Green Shuttered Window -> Starry Night
+// 8. Chapter III (Sun): The Bedroom in Arles -> Portal: Half-Open Green Shuttered Window -> Starry Night
 const BEDROOM_TRACKS = makeChapterTracks(
   BEDROOM_ASPECT, 'Ch.III 亞爾的臥室',
   ['黃色小屋臥室畫幅', '暖赭木地板與黃色藤椅', '鮮紅被單木床與牆上肖像畫', '推開綠色百葉窗任意門 → 聖雷米星夜'],
@@ -354,10 +406,10 @@ const BEDROOM_TRACKS = makeChapterTracks(
   0.46,
 );
 
-// 6. Chapter IV (Cosmos): The Starry Night -> Portal: Orange Crescent Moon -> Wheat Field
+// 9. Chapter IV (Cosmos): The Starry Night -> Portal: Orange Crescent Moon -> Irises
 const STARRY_ODYSSEY_TRACK = makeChapterTracks(
   CANVAS_ASPECT, 'Ch.IV 星夜',
-  ['聖雷米夜空畫幅', '黑焰絲柏與金星光冕隧道', '穿越雙星雲大漩渦回望教堂尖塔', '衝入橘黃新月破曉任意門 → 絲柏麥田'],
+  ['聖雷米夜空畫幅', '黑焰絲柏與金星光冕隧道', '穿越雙星雲大漩渦回望教堂尖塔', '迎向橘黃新月晨光任意門 → 療養院鳶尾花'],
   [
     { pos: pt(CANVAS_ASPECT, 0.20, 0.32, 185),   lookAt: pt(CANVAS_ASPECT, 0.28, 0.52, 420),   fov: 46, roll: -3 },
     { pos: pt(CANVAS_ASPECT, 0.33, 0.38, 2200),  lookAt: pt(CANVAS_ASPECT, 0.35, 0.36, 11800), fov: 50, roll: 2 },
@@ -368,7 +420,21 @@ const STARRY_ODYSSEY_TRACK = makeChapterTracks(
   0.55,
 ).odysseyAct;
 
-// 7. Chapter IV (Cosmos): Wheat Field with Cypresses -> Portal: White Cumulus Vortex -> Almond Blossom
+// 10. Chapter IV (Cosmos): Irises -> Portal: Solitary Pearl-White Iris -> Wheat Field with Cypresses
+const IRISES_TRACKS = makeChapterTracks(
+  IRISES_ASPECT, 'Ch.IV 鳶尾花',
+  ['聖保羅療養院花園畫幅', '紅褐泥土與迎風彎曲的翠綠劍葉', '穿梭三十二朵紫藍鳶尾花海', '飛入孤傲純白鳶尾花任意門 → 絲柏麥田'],
+  [
+    { pos: pt(IRISES_ASPECT, 0.72, 0.16, 185), lookAt: pt(IRISES_ASPECT, 0.58, 0.32, 520),   fov: 44, roll: 2 },
+    { pos: pt(IRISES_ASPECT, 0.56, 0.28, 290), lookAt: pt(IRISES_ASPECT, 0.38, 0.44, 580),   fov: 47, roll: -2 },
+    { pos: pt(IRISES_ASPECT, 0.40, 0.40, 365), lookAt: pt(IRISES_ASPECT, 0.26, 0.56, 480),   fov: 49, roll: 1.5 },
+    { pos: pt(IRISES_ASPECT, 0.28, 0.52, 420), lookAt: pt(IRISES_ASPECT, 0.24, 0.58, 470),   fov: 48, roll: -1.0 },
+    { pos: pt(IRISES_ASPECT, 0.24, 0.58, 452), lookAt: pt(IRISES_ASPECT, 0.24, 0.58, 12400), fov: 52, roll: 0 },
+  ],
+  0.46,
+);
+
+// 11. Chapter IV (Cosmos): Wheat Field with Cypresses -> Portal: White Cumulus Vortex -> Almond Blossom
 const WHEAT_TRACKS = makeChapterTracks(
   WHEAT_ASPECT, 'Ch.IV 絲柏麥田',
   ['聖雷米白晝畫幅', '密斯特拉爾強風與金黃麥浪', '雙絲柏與阿爾皮耶藍紫山脊', '衝入松石綠白雲漩渦任意門 → 盛開的杏花'],
@@ -382,7 +448,7 @@ const WHEAT_TRACKS = makeChapterTracks(
   0.38,
 );
 
-// 8. Chapter IV (Cosmos): Almond Blossom -> Portal: Deep Cerulean Sky Canopy -> The Church at Auvers
+// 12. Chapter IV (Cosmos): Almond Blossom -> Portal: Deep Cerulean Sky Canopy -> The Church at Auvers
 const ALMOND_TRACKS = makeChapterTracks(
   ALMOND_ASPECT, 'Ch.IV 盛開的杏花',
   ['春日晴空杏花畫幅', '蒼勁枝幹與粉白花苞', '穿梭五瓣立體杏花與飄落花雨', '飛向蔚藍天際任意門 → 奧維爾的教堂'],
@@ -396,10 +462,10 @@ const ALMOND_TRACKS = makeChapterTracks(
   0.44,
 );
 
-// 9. Chapter V (Road): The Church at Auvers -> Portal: Swirling Ultramarine Spire Sky -> Wheatfield with Crows
+// 13. Chapter V (Road): The Church at Auvers -> Portal: Swirling Ultramarine Spire Sky -> Portrait of Dr. Gachet
 const CHURCH_TRACKS = makeChapterTracks(
   CHURCH_ASPECT, 'Ch.V 奧維爾的教堂',
-  ['奧維爾直幅畫框', '分叉黃沙小徑與農婦背影', '扭曲哥德石牆與彩繪玻璃窗', '攀升鐘樓暗藍風暴任意門 → 麥田群鴉'],
+  ['奧維爾直幅畫框', '分叉黃沙小徑與農婦背影', '扭曲哥德石牆與彩繪玻璃窗', '穿過鐘樓群青風暴任意門 → 嘉舍醫師畫像'],
   [
     { pos: pt(CHURCH_ASPECT, 0.32, 0.14, 185),  lookAt: pt(CHURCH_ASPECT, 0.18, 0.28, 320),   fov: 45, roll: -2.5 },
     { pos: pt(CHURCH_ASPECT, 0.24, 0.26, 285),  lookAt: pt(CHURCH_ASPECT, 0.48, 0.38, 350),   fov: 48, roll: 2 },
@@ -410,7 +476,21 @@ const CHURCH_TRACKS = makeChapterTracks(
   0.48,
 );
 
-// 10. Chapter V (Road): Wheatfield with Crows -> Portal: Ascending Flock of Crows -> Return to Earth
+// 14. Chapter V (Road): Portrait of Dr. Gachet -> Portal: Melancholic Gaze & Ultramarine Swirls -> Wheatfield with Crows
+const GACHET_TRACKS = makeChapterTracks(
+  GACHET_ASPECT, 'Ch.V 嘉舍醫師',
+  ['奧維爾肖像直幅畫框', '傾斜紅桌、黃皮小說與紫紅毛地黃', '普魯士藍大衣與支頤沉思的手', '穿過憂鬱雙眸與深藍漩渦任意門 → 麥田群鴉'],
+  [
+    { pos: pt(GACHET_ASPECT, 0.26, 0.18, 185), lookAt: pt(GACHET_ASPECT, 0.32, 0.30, 465),   fov: 43, roll: -2 },
+    { pos: pt(GACHET_ASPECT, 0.38, 0.28, 265), lookAt: pt(GACHET_ASPECT, 0.58, 0.42, 480),   fov: 46, roll: 2 },
+    { pos: pt(GACHET_ASPECT, 0.64, 0.44, 345), lookAt: pt(GACHET_ASPECT, 0.56, 0.60, 470),   fov: 48, roll: -1.5 },
+    { pos: pt(GACHET_ASPECT, 0.52, 0.56, 415), lookAt: pt(GACHET_ASPECT, 0.54, 0.60, 462),   fov: 47, roll: 1.0 },
+    { pos: pt(GACHET_ASPECT, 0.54, 0.60, 448), lookAt: pt(GACHET_ASPECT, 0.54, 0.60, 12500), fov: 53, roll: 0 },
+  ],
+  0.46,
+);
+
+// 15. Chapter V (Road): Wheatfield with Crows -> Portal: Ascending Flock of Crows -> Return to Earth
 const CROWS_TRACKS = makeChapterTracks(
   CROWS_ASPECT, 'Ch.V 麥田群鴉',
   ['奧維爾 2:1 超寬銀幕畫幅', '紅綠分叉小徑與狂暴麥海', '迎風振翅驚飛的五十二隻黑鴉', '穿過鴉群風暴任意門 → 重返最初的黑土'],
@@ -438,20 +518,29 @@ export const STARRY_TRACK: ChapterTrack = {
 
 const ODYSSEY_ACT_BY_ID: Record<PaintingId, CompanionTrack> = {
   potato: POTATO_TRACKS.odysseyAct,
+  shoes: SHOES_TRACKS.odysseyAct,
   paris: PARIS_TRACKS.odysseyAct,
+  selfportrait: SELFPORTRAIT_TRACKS.odysseyAct,
+  sunflowers: SUNFLOWERS_TRACKS.odysseyAct,
   cafe: CAFE_TRACKS.odysseyAct,
   rhone: RHONE_TRACKS.odysseyAct,
   bedroom: BEDROOM_TRACKS.odysseyAct,
   starry: STARRY_ODYSSEY_TRACK,
+  irises: IRISES_TRACKS.odysseyAct,
   wheat: WHEAT_TRACKS.odysseyAct,
   almond: ALMOND_TRACKS.odysseyAct,
   church: CHURCH_TRACKS.odysseyAct,
+  gachet: GACHET_TRACKS.odysseyAct,
   crows: CROWS_TRACKS.odysseyAct,
 };
 
 export const ACT_SECONDS = 30;
 export const DEFAULT_ODYSSEY_SEQUENCE: readonly PaintingId[] = [
-  'potato', 'paris', 'cafe', 'rhone', 'bedroom', 'starry', 'wheat', 'almond', 'church', 'crows',
+  'potato', 'shoes',
+  'paris', 'selfportrait',
+  'sunflowers', 'cafe', 'rhone', 'bedroom',
+  'starry', 'irises', 'wheat', 'almond',
+  'church', 'gachet', 'crows',
 ];
 
 export interface OdysseyMorphState {
@@ -615,7 +704,7 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     titleEn: 'The Potato Eaters',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)',
     year: '1885.04',
-    portalZh: '飛入中央懸掛油燈的暖金火芯 → 甦醒為巴黎點描色彩',
+    portalZh: '飛入中央懸掛油燈的暖金火芯 → 照亮地面踏上旅途的《一雙舊鞋》',
     aspect: POTATO_ASPECT,
     skyMode: 0.6,
     fogNearHex: 0x261d14,
@@ -625,15 +714,33 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     generate: generatePotatoChapter,
   },
   {
+    id: 'shoes',
+    chapterId: 'earth',
+    roman: 'II',
+    shortZh: '一雙舊鞋',
+    titleZh: '一雙舊鞋',
+    titleEn: 'A Pair of Shoes',
+    placeZh: 'Chapter I · 黑土與人 (Nuenen / Paris)',
+    year: '1886.09',
+    portalZh: '順著蜿蜒鬆開的鞋帶迎向金色門檻光束 → 踏上巴黎克利希大道',
+    aspect: SHOES_ASPECT,
+    skyMode: 0.8,
+    fogNearHex: 0x2e2116,
+    fogFarHex: 0x16110c,
+    moonUVD: [uFromPaint(0.62, SHOES_ASPECT), 0.72, 12600],
+    track: SHOES_TRACKS.standalone,
+    generate: generateShoesChapter,
+  },
+  {
     id: 'paris',
     chapterId: 'color',
-    roman: 'II',
+    roman: 'III',
     shortZh: '克利希大道',
     titleZh: '克利希大道',
     titleEn: 'Boulevard de Clichy',
     placeZh: 'Chapter II · 巴黎與覺醒 (Paris)',
     year: '1887.03',
-    portalZh: '沿點描林蔭大道衝向南方驕陽 → 步入亞爾夜間咖啡座',
+    portalZh: '穿過點描林蔭大道晨光 → 轉身對視畫家《戴草帽的自畫像》雙眸',
     aspect: PARIS_ASPECT,
     skyMode: 3,
     fogNearHex: 0x7a9eb8,
@@ -643,9 +750,45 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     generate: generateParisChapter,
   },
   {
+    id: 'selfportrait',
+    chapterId: 'color',
+    roman: 'IV',
+    shortZh: '自畫像',
+    titleZh: '戴草帽的自畫像',
+    titleEn: 'Self-Portrait with Straw Hat',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Paris)',
+    year: '1887.08',
+    portalZh: '飛入畫家翠綠瞳孔與金黃草帽光環 → 綻放為亞爾盛開的《向日葵》',
+    aspect: SELFPORTRAIT_ASPECT,
+    skyMode: 2.2,
+    fogNearHex: 0x244678,
+    fogFarHex: 0x162b52,
+    moonUVD: [uFromPaint(0.49, SELFPORTRAIT_ASPECT), 0.56, 12400],
+    track: SELFPORTRAIT_TRACKS.standalone,
+    generate: generateSelfPortraitChapter,
+  },
+  {
+    id: 'sunflowers',
+    chapterId: 'sun',
+    roman: 'V',
+    shortZh: '向日葵',
+    titleZh: '向日葵',
+    titleEn: 'Sunflowers',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)',
+    year: '1888.08',
+    portalZh: '穿過中央向日葵燃燒的金色花盤核心 → 化為亞爾夜間咖啡座瓦斯燈棚',
+    aspect: SUNFLOWERS_ASPECT,
+    skyMode: 2.6,
+    fogNearHex: 0x8c6818,
+    fogFarHex: 0xb88e28,
+    moonUVD: [uFromPaint(0.50, SUNFLOWERS_ASPECT), 0.72, 12600],
+    track: SUNFLOWERS_TRACKS.standalone,
+    generate: generateSunflowersChapter,
+  },
+  {
     id: 'cafe',
     chapterId: 'sun',
-    roman: 'III',
+    roman: 'VI',
     shortZh: '夜間咖啡座',
     titleZh: '夜間露天咖啡座',
     titleEn: 'Café Terrace at Night',
@@ -663,7 +806,7 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   {
     id: 'rhone',
     chapterId: 'sun',
-    roman: 'IV',
+    roman: 'VII',
     shortZh: '隆河星夜',
     titleZh: '隆河上的星夜',
     titleEn: 'Starry Night Over the Rhône',
@@ -681,8 +824,8 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   {
     id: 'bedroom',
     chapterId: 'sun',
-    roman: 'V',
-    shortZh: '亞爾的臥室',
+    roman: 'VIII',
+    shortZh: '亞爾臥室',
     titleZh: '在亞爾的臥室',
     titleEn: 'The Bedroom in Arles',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)',
@@ -699,13 +842,13 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   {
     id: 'starry',
     chapterId: 'cosmos',
-    roman: 'VI',
+    roman: 'IX',
     shortZh: '星夜',
     titleZh: '星夜',
     titleEn: 'The Starry Night',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)',
     year: '1889.06',
-    portalZh: '迎向熾熱橘黃新月 → 聖雷米破曉化為金色麥田',
+    portalZh: '迎向熾熱橘黃新月 → 晨光降落聖保羅療養院花園的《鳶尾花》',
     aspect: CANVAS_ASPECT,
     skyMode: 0,
     fogNearHex: 0x0e1837,
@@ -715,9 +858,27 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     generate: generateStarryChapter,
   },
   {
+    id: 'irises',
+    chapterId: 'cosmos',
+    roman: 'X',
+    shortZh: '鳶尾花',
+    titleZh: '鳶尾花',
+    titleEn: 'Irises',
+    placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)',
+    year: '1889.05',
+    portalZh: '穿過萬紫叢中孤傲盛開的純白鳶尾花 → 迎風展開《有絲柏的麥田》',
+    aspect: IRISES_ASPECT,
+    skyMode: 2.8,
+    fogNearHex: 0x3c684e,
+    fogFarHex: 0x628c6c,
+    moonUVD: [uFromPaint(0.24, IRISES_ASPECT), 0.58, 12400],
+    track: IRISES_TRACKS.standalone,
+    generate: generateIrisesChapter,
+  },
+  {
     id: 'wheat',
     chapterId: 'cosmos',
-    roman: 'VII',
+    roman: 'XI',
     shortZh: '絲柏麥田',
     titleZh: '有絲柏的麥田',
     titleEn: 'Wheat Field with Cypresses',
@@ -735,8 +896,8 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   {
     id: 'almond',
     chapterId: 'cosmos',
-    roman: 'VIII',
-    shortZh: '盛開的杏花',
+    roman: 'XII',
+    shortZh: '盛開杏花',
     titleZh: '盛開的杏花',
     titleEn: 'Almond Blossom',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)',
@@ -753,13 +914,13 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   {
     id: 'church',
     chapterId: 'road',
-    roman: 'IX',
+    roman: 'XIII',
     shortZh: '奧維爾教堂',
     titleZh: '奧維爾的教堂',
     titleEn: 'The Church at Auvers',
     placeZh: 'Chapter V · 奧維爾的路與風 (Auvers-sur-Oise)',
     year: '1890.06',
-    portalZh: '攀升鐘樓尖頂暗藍風暴 → 拉開 2:1 超寬銀幕麥田群鴉',
+    portalZh: '穿過鐘樓群青風暴 → 對視奧維爾知己《嘉舍醫師畫像》',
     aspect: CHURCH_ASPECT,
     skyMode: 0.4,
     fogNearHex: 0x16265c,
@@ -769,9 +930,27 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     generate: generateChurchChapter,
   },
   {
+    id: 'gachet',
+    chapterId: 'road',
+    roman: 'XIV',
+    shortZh: '嘉舍醫師',
+    titleZh: '嘉舍醫師畫像',
+    titleEn: 'Portrait of Dr. Gachet',
+    placeZh: 'Chapter V · 奧維爾的路與風 (Auvers-sur-Oise)',
+    year: '1890.06',
+    portalZh: '穿過醫師憂鬱雙眸與背後翻湧的深藍漩渦 → 拉開 2:1 超寬銀幕《麥田群鴉》',
+    aspect: GACHET_ASPECT,
+    skyMode: 0.9,
+    fogNearHex: 0x1c3468,
+    fogFarHex: 0x102044,
+    moonUVD: [uFromPaint(0.54, GACHET_ASPECT), 0.60, 12500],
+    track: GACHET_TRACKS.standalone,
+    generate: generateGachetChapter,
+  },
+  {
     id: 'crows',
     chapterId: 'road',
-    roman: 'X',
+    roman: 'XV',
     shortZh: '麥田群鴉',
     titleZh: '麥田群鴉',
     titleEn: 'Wheatfield with Crows',
@@ -791,7 +970,7 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
 export const ODYSSEY_TRACK: ChapterTrack = compilePathTrack(DEFAULT_ODYSSEY_SEQUENCE);
 
 export function getPaintingSpec(id: PaintingId): PaintingSpec {
-  return PAINTING_SUITE.find((p) => p.id === id) ?? PAINTING_SUITE[5];
+  return PAINTING_SUITE.find((p) => p.id === id) ?? PAINTING_SUITE[8];
 }
 
 export function getPaintingActStart(

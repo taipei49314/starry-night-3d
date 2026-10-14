@@ -105,9 +105,10 @@ function readFlags(): Flags {
   const tierRaw = p.get('tier');
   const paintRaw = p.get('painting')?.toLowerCase();
   const validPaint: PaintingId | undefined =
-    paintRaw === 'potato' || paintRaw === 'paris' || paintRaw === 'cafe' || paintRaw === 'rhone'
-    || paintRaw === 'bedroom' || paintRaw === 'starry' || paintRaw === 'wheat' || paintRaw === 'almond'
-    || paintRaw === 'church' || paintRaw === 'crows'
+    paintRaw === 'potato' || paintRaw === 'shoes' || paintRaw === 'paris' || paintRaw === 'selfportrait'
+    || paintRaw === 'sunflowers' || paintRaw === 'cafe' || paintRaw === 'rhone' || paintRaw === 'bedroom'
+    || paintRaw === 'starry' || paintRaw === 'irises' || paintRaw === 'wheat' || paintRaw === 'almond'
+    || paintRaw === 'church' || paintRaw === 'gachet' || paintRaw === 'crows'
       ? paintRaw
       : undefined;
   let calmStored = false;
