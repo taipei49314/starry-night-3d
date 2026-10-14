@@ -1,5 +1,5 @@
-// M10: world assembly, Multi-Punctum Provençal Suite orchestration, dual-world 3D brushstroke cross-dissolve,
-// and the per-frame loop (§4.10).
+// M10: world assembly, Van Gogh World System orchestration (5 Chapters, 10 Worlds, Dynamic Path Compiler,
+// 3 Viewing Modes: Odyssey / Theme Path / Atlas), dual-world 3D brushstroke cross-dissolve, and per-frame loop (§4.10).
 import { Scene, Vector2, Vector3, type Material, type PerspectiveCamera } from 'three';
 import {
   CANVAS_ASPECT, LOOP_SECONDS, type DirectorFrame, type Engine, type PostFrame, type QualitySettings, type SharedUniforms,
@@ -16,9 +16,11 @@ import { srgbHexToLinear } from '../shared/palette';
 import { forkRng } from '../shared/rng';
 import { createSharedUniforms } from '../shared/uniforms';
 import {
-  evalOdysseyMorph, getPaintingActStart, getPaintingSpec, nextPaintingId, ODYSSEY_TRACK, PAINTING_SUITE,
+  compilePathTrack, DEFAULT_ODYSSEY_SEQUENCE, evalOdysseyMorph, getPaintingActStart, getPaintingSpec,
+  nextPaintingId, PAINTING_SUITE,
 } from '../chapters/suite';
-import type { PaintingId } from '../chapters/types';
+import { getThemePathSpec, WORLD_GRAPH } from '../chapters/worldGraph';
+import type { PaintingId, ViewMode } from '../chapters/types';
 import { StormController } from './storm';
 import { assertPaintOrder, runInvarianceSelfTest } from './selfTest';
 import { DebugOverlay } from './debugOverlay';
@@ -93,7 +95,8 @@ interface Flags {
   freeze: boolean;
   hud: boolean;
   painting: PaintingId;
-  odyssey: boolean;
+  mode: ViewMode;
+  pathId: string;
 }
 
 function readFlags(): Flags {
@@ -102,16 +105,37 @@ function readFlags(): Flags {
   const tierRaw = p.get('tier');
   const paintRaw = p.get('painting')?.toLowerCase();
   const validPaint: PaintingId | undefined =
-    paintRaw === 'cafe' || paintRaw === 'rhone' || paintRaw === 'bedroom' || paintRaw === 'starry'
-    || paintRaw === 'wheat' || paintRaw === 'almond' || paintRaw === 'church' || paintRaw === 'crows'
+    paintRaw === 'potato' || paintRaw === 'paris' || paintRaw === 'cafe' || paintRaw === 'rhone'
+    || paintRaw === 'bedroom' || paintRaw === 'starry' || paintRaw === 'wheat' || paintRaw === 'almond'
+    || paintRaw === 'church' || paintRaw === 'crows'
       ? paintRaw
       : undefined;
   let calmStored = false;
   try { calmStored = localStorage.getItem('punctum.calm') === '1'; } catch { /* storage blocked */ }
   const isHarnessPin = num('t') !== undefined || p.has('freeze') || p.has('overlay');
   const odysseyParam = p.get('odyssey');
-  // Default to the continuous 8-Act Odyssey unless a harness pin (?t=, ?freeze, ?overlay) or ?odyssey=0 is set
-  const odyssey = odysseyParam === '0' ? false : odysseyParam === '1' ? true : !isHarnessPin;
+  const modeParam = p.get('mode')?.toLowerCase();
+  const pathParam = p.get('path')?.toLowerCase();
+
+  let mode: ViewMode = 'odyssey';
+  let pathId = 'odyssey';
+
+  if (odysseyParam === '0' || isHarnessPin) {
+    mode = 'theme';
+    pathId = 'single';
+  } else if (modeParam === 'atlas') {
+    mode = 'atlas';
+    pathId = pathParam ?? 'odyssey';
+  } else if (modeParam === 'theme' || (pathParam && pathParam !== 'odyssey')) {
+    mode = 'theme';
+    pathId = pathParam ?? 'nights';
+  }
+
+  const defaultPaint: PaintingId =
+    pathId === 'single'
+      ? 'starry'
+      : getThemePathSpec(pathId).sequence[0] ?? 'potato';
+
   return {
     t: num('t'),
     boot: num('boot'),
@@ -122,8 +146,9 @@ function readFlags(): Flags {
     calm: p.has('calm') || calmStored || matchMedia('(prefers-reduced-motion: reduce)').matches,
     freeze: p.has('freeze'),
     hud: p.has('hud'),
-    painting: validPaint ?? (odyssey ? 'cafe' : 'starry'),
-    odyssey,
+    painting: validPaint ?? defaultPaint,
+    mode,
+    pathId,
   };
 }
 
@@ -207,6 +232,11 @@ interface ManualMorph {
   t: number;
 }
 
+function resolveSequence(pathId: string, activeId: PaintingId): readonly PaintingId[] {
+  if (pathId === 'single') return [activeId];
+  return getThemePathSpec(pathId).sequence;
+}
+
 export async function boot(container: HTMLElement): Promise<void> {
   const flags = readFlags();
   let engine: Engine;
@@ -218,7 +248,9 @@ export async function boot(container: HTMLElement): Promise<void> {
   }
   const u = createSharedUniforms();
   let activeId: PaintingId = flags.painting;
-  let odyssey = flags.odyssey;
+  let viewMode: ViewMode = flags.mode;
+  let pathId: string = flags.pathId;
+  let activeSequence: readonly PaintingId[] = resolveSequence(pathId, activeId);
   applyBlendedAtmosphere(u, activeId, null, 0);
 
   // Master scene holds shared backdrop + dust + all cached paintings' stroke & underlay groups for dual-world 3D cross-dissolve
@@ -264,17 +296,18 @@ export async function boot(container: HTMLElement): Promise<void> {
   let world = getOrBuildWorld(activeId);
   const post = createPost(engine.renderer, u, engine.quality);
   const initialSpec = getPaintingSpec(activeId);
+  const isMultiAct = () => activeSequence.length > 1;
   const initialStartTime = flags.t !== undefined
     ? flags.t
-    : odyssey
-      ? getPaintingActStart(activeId)
+    : isMultiAct()
+      ? getPaintingActStart(activeId, activeSequence)
       : 0;
   const director = new Director(engine.camera, engine.canvas, {
     calm: flags.calm,
     startTime: initialStartTime,
     free: flags.free,
     firstBoot: flags.t === undefined,
-    track: odyssey ? ODYSSEY_TRACK : initialSpec.track,
+    track: isMultiAct() ? compilePathTrack(activeSequence) : initialSpec.track,
   });
   const storm = new StormController();
   const overlay = flags.overlay ? new DebugOverlay(container) : null;
@@ -287,16 +320,35 @@ export async function boot(container: HTMLElement): Promise<void> {
   let snapHoldId: PaintingId | null = null;
   let snapHoldTimer = 0;
 
+  const syncUi = (showCard = true) => {
+    director.ui?.setWorldState({
+      active: activeId,
+      mode: viewMode,
+      pathId,
+      sequence: activeSequence,
+      showCard,
+    });
+  };
+
   const triggerTransition = (targetId: PaintingId) => {
     getOrBuildWorld(targetId);
     const prevId = activeId;
     activeId = targetId;
-    if (odyssey) {
-      director.seekTo(getPaintingActStart(targetId));
-    } else {
+
+    if (pathId === 'single') {
+      activeSequence = [activeId];
       director.setTrack(getPaintingSpec(targetId).track, 0, false);
+    } else if (!activeSequence.includes(targetId)) {
+      // Jumping to a painting outside the current theme sequence switches to the full 10-Act Odyssey sequence
+      pathId = 'odyssey';
+      if (viewMode === 'theme') viewMode = 'odyssey';
+      activeSequence = DEFAULT_ODYSSEY_SEQUENCE;
+      director.setTrack(compilePathTrack(activeSequence), getPaintingActStart(targetId, activeSequence), false);
+    } else {
+      director.seekTo(getPaintingActStart(targetId, activeSequence));
     }
-    director.ui?.setSuiteState(activeId, odyssey, true);
+
+    syncUi(true);
     soundscape.triggerSnapChord(targetId);
     if (prevId !== targetId) {
       manualMorph = { fromId: prevId, toId: targetId, t: 0 };
@@ -306,14 +358,32 @@ export async function boot(container: HTMLElement): Promise<void> {
     }
   };
 
-  const toggleOdyssey = () => {
-    odyssey = !odyssey;
-    if (odyssey) {
-      director.setTrack(ODYSSEY_TRACK, getPaintingActStart(activeId), false);
-    } else {
-      director.setTrack(getPaintingSpec(activeId).track, 0, false);
+  const selectModeAndPath = (nextMode: ViewMode, nextPathId?: string) => {
+    const resolvedPath = nextPathId ?? (nextMode === 'odyssey' ? 'odyssey' : pathId);
+    const prevPath = pathId;
+    viewMode = nextMode;
+    pathId = resolvedPath;
+    activeSequence = resolveSequence(pathId, activeId);
+
+    if (prevPath !== pathId) {
+      if (pathId === 'single') {
+        director.setTrack(getPaintingSpec(activeId).track, 0, false);
+      } else {
+        if (!activeSequence.includes(activeId)) {
+          const prevId = activeId;
+          activeId = activeSequence[0];
+          getOrBuildWorld(activeId);
+          manualMorph = { fromId: prevId, toId: activeId, t: 0 };
+        }
+        director.setTrack(
+          compilePathTrack(activeSequence),
+          getPaintingActStart(activeId, activeSequence),
+          false,
+        );
+      }
+      soundscape.triggerSnapChord(activeId);
     }
-    director.ui?.setSuiteState(activeId, odyssey, true);
+    syncUi(prevPath !== pathId);
   };
 
   const toggleSound = () => {
@@ -324,38 +394,52 @@ export async function boot(container: HTMLElement): Promise<void> {
   const isHarnessPin = flags.t !== undefined || flags.freeze || flags.overlay;
   director.ui?.wireSuite({
     active: activeId,
-    odyssey,
+    mode: viewMode,
+    pathId,
+    sequence: activeSequence,
     soundEnabled: soundscape.enabled,
     showBar: !isHarnessPin,
     onSelect: (id) => triggerTransition(id),
-    onToggleOdyssey: toggleOdyssey,
+    onSelectMode: (m, p) => selectModeAndPath(m, p),
     onToggleSound: toggleSound,
     onSeek: (fraction) => {
       const targetT = fraction * director.activeTrack.loopSeconds;
       director.seekTo(targetT);
       manualMorph = null;
-      if (odyssey) {
-        const ms = evalOdysseyMorph(targetT);
+      if (isMultiAct()) {
+        const ms = evalOdysseyMorph(targetT, activeSequence);
         if (ms.activeId !== activeId) {
           activeId = ms.activeId;
-          director.ui?.setSuiteState(activeId, odyssey, true);
+          syncUi(true);
         }
       }
     },
   });
 
-  // Keyboard shortcuts for Multi-Punctum navigation: [ / ] (prev/next painting), O (toggle Odyssey), V (toggle Sound)
+  // Keyboard shortcuts: [ / ] (prev/next painting), O (toggle Odyssey/Single), U (toggle World Graph Atlas), V (toggle Sound)
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    const navSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
     if (e.key === '[' || e.key === 'PageUp') {
       e.preventDefault();
-      triggerTransition(nextPaintingId(activeId, -1));
+      triggerTransition(nextPaintingId(activeId, -1, navSeq));
     } else if (e.key === ']' || e.key === 'PageDown') {
       e.preventDefault();
-      triggerTransition(nextPaintingId(activeId, 1));
+      triggerTransition(nextPaintingId(activeId, 1, navSeq));
     } else if (e.key === 'o' || e.key === 'O') {
       e.preventDefault();
-      toggleOdyssey();
+      if (pathId === 'single') selectModeAndPath('odyssey', 'odyssey');
+      else selectModeAndPath('theme', 'single');
+    } else if (e.key === 'u' || e.key === 'U') {
+      e.preventDefault();
+      if (viewMode === 'atlas') {
+        selectModeAndPath(pathId === 'odyssey' ? 'odyssey' : 'theme', pathId);
+      } else {
+        selectModeAndPath('atlas', pathId);
+      }
+    } else if (e.key === 'Escape' && viewMode === 'atlas') {
+      e.preventDefault();
+      selectModeAndPath(pathId === 'odyssey' ? 'odyssey' : 'theme', pathId);
     } else if (e.key === 'v' || e.key === 'V') {
       e.preventDefault();
       toggleSound();
@@ -392,7 +476,9 @@ export async function boot(container: HTMLElement): Promise<void> {
     storm,
     soundscape,
     suite: PAINTING_SUITE,
+    worldGraph: WORLD_GRAPH,
     switchPainting: triggerTransition,
+    selectModeAndPath,
     frames: () => frames,
   };
   (window as unknown as { __punctum: typeof debug }).__punctum = debug;
@@ -445,8 +531,8 @@ export async function boot(container: HTMLElement): Promise<void> {
         manualMorph = null;
         snapTriggered = true;
       }
-    } else if (odyssey) {
-      const ms = evalOdysseyMorph(f.loopTime);
+    } else if (isMultiAct()) {
+      const ms = evalOdysseyMorph(f.loopTime, activeSequence);
       primaryId = ms.primaryId;
       secondaryId = ms.secondaryId;
       primaryFade = ms.primaryFade;
@@ -465,7 +551,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       }
       if (ms.activeId !== activeId) {
         activeId = ms.activeId;
-        director.ui?.setSuiteState(activeId, odyssey, true);
+        syncUi(true);
       }
     } else {
       primaryId = activeId;
@@ -475,8 +561,9 @@ export async function boot(container: HTMLElement): Promise<void> {
     world = getOrBuildWorld(primaryId);
     const secondaryWorld = secondaryId ? getOrBuildWorld(secondaryId) : null;
 
-    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across 8 Acts
-    const lookaheadId = nextPaintingId(primaryId, 1);
+    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 10 worlds
+    const lookaheadSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
+    const lookaheadId = nextPaintingId(primaryId, 1, lookaheadSeq);
     if (!isHarnessPin && !secondaryId && frames >= 36 && frames % 36 === 0 && !worldCache.has(lookaheadId)) {
       getOrBuildWorld(lookaheadId);
     }
@@ -564,7 +651,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     if (f.hud || flags.hud) {
       const s = engine.stats;
       const spec = getPaintingSpec(activeId);
-      director.setHudText(`${spec.roman} ${spec.titleZh} · ${s.fps.toFixed(0)} fps · ${s.frameMs.toFixed(1)} ms${s.gpuMs !== null ? ` (gpu ${s.gpuMs.toFixed(1)})` : ''} · ${engine.quality.tier} · scale ${engine.renderScale.toFixed(2)} · t ${f.loopTime.toFixed(1)} s · ${f.mode}`);
+      director.setHudText(`${spec.roman} ${spec.titleZh} [${pathId}] · ${s.fps.toFixed(0)} fps · ${s.frameMs.toFixed(1)} ms${s.gpuMs !== null ? ` (gpu ${s.gpuMs.toFixed(1)})` : ''} · ${engine.quality.tier} · scale ${engine.renderScale.toFixed(2)} · t ${f.loopTime.toFixed(1)} s · ${f.mode}`);
     }
     overlay?.draw(engine.camera);
     frames++;

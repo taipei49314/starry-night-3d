@@ -24,7 +24,31 @@ interface ActSoundProfile {
 }
 
 const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
-  // Act I: Café Terrace at Night — Warm F Major 9 gaslit nocturnal square
+  // Chapter I (Earth): The Potato Eaters — Deep earthen C Dorian / Minor 7 cello warmth & hearth glow
+  potato: {
+    padFreqs: [98.00, 130.81, 196.00, 233.08], // G2, C3, G3, Bb3
+    chimePool: [261.63, 311.13, 392.00, 466.16],
+    envFreq: 185,
+    envQ: 2.0,
+    envGain: 0.024,
+    lfoRate: 0.09,
+    lfoDepth: 45,
+    chimeInterval: 4.4,
+    chimeStyle: 'lullaby',
+  },
+  // Chapter II (Color): Boulevard de Clichy — Sparkling Impressionist A Major 9 pointillist awakening
+  paris: {
+    padFreqs: [164.81, 220.00, 277.18, 329.63], // E3, A3, C#4, E4
+    chimePool: [554.37, 659.25, 880.00, 987.77, 1108.73, 1318.51],
+    envFreq: 490,
+    envQ: 1.6,
+    envGain: 0.032,
+    lfoRate: 0.22,
+    lfoDepth: 165,
+    chimeInterval: 2.1,
+    chimeStyle: 'blossom',
+  },
+  // Chapter III (Sun): Café Terrace at Night — Warm F Major 9 gaslit nocturnal square
   cafe: {
     padFreqs: [174.61, 220.00, 261.63, 329.63], // F3, A3, C4, E4
     chimePool: [523.25, 659.25, 783.99, 880.00, 1046.50],

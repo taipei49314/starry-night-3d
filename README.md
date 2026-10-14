@@ -1,33 +1,60 @@
-# PUNCTUM: The Starry Night, 250 km Deep
+# PUNCTUM: The Van Gogh World System, 250 km Deep
 
-A real-time 3D piece built from Van Gogh's *The Starry Night* (1889). About 180,000 procedural brushstrokes sit up to 250 km deep in a 3D world. From one viewpoint (the painter's eye E) they line up exactly into the painting. Anywhere else the painting tears open into a world of paint. A 96-second one-take camera loop goes through it: the canvas paints itself in, the camera climbs the black-flame cypress, rides the wind into Venus's halo tunnel, sees the great swirl as two 50 km maelstroms, falls down one of them, looks back at the village from the eye of the vortex, and returns through a storm until the strokes snap back into the painting.
+A real-time 3D procedural painting universe built from Vincent van Gogh's masterpieces (1885–1890). Up to 180,000 procedural brushstrokes per painting sit up to 250 km deep in a 3D world. From one viewpoint (the painter's eye $E$) they line up into the painting; anywhere else the painting tears open into a living world of impasto paint, spatial portals, and procedural Web Audio soundscapes.
 
-TypeScript, Vite and three.js r186 (WebGL 2). Everything is procedural: no textures, models or network requests.
+TypeScript, Vite and three.js r186 (WebGL 2). Everything—3D brushstrokes, camera paths, and spatial audio—is 100% procedural: zero textures, external models, or audio files.
 
 ## Live Demo
 
 - **Interactive Showcase (GitHub Pages):** <https://taipei49314.github.io/starry-night-3d/>
 - **Single-File Bundle (`single.html`):** <https://taipei49314.github.io/starry-night-3d/single.html>
 
-### Eight-Act Van Gogh Odyssey (1888–1890)
+---
 
-The engine weaves eight iconic Van Gogh masterpieces (spanning Arles, Saint-Rémy, and Auvers-sur-Oise) into a continuous 240-second one-take 3D animation (`ODYSSEY_TRACK`) through shared 3D anamorphic impasto math, **Diegetic Spatial Portal** camera choreography, and **Dual-World 3D Brushstroke Cross-Dissolve** transitions:
+## Architecture: The 4-Level Van Gogh World System
 
-1. **Act I — *Café Terrace at Night* (Arles, Sept 1888):** [`?painting=cafe`](https://taipei49314.github.io/starry-night-3d/?painting=cafe) — golden gaslit awning, cobblestone corridor, and cobalt star canyon (`aspect 0.81`). *Portal: fly down the street-end star canyon toward the Rhône embankment.*
-2. **Act II — *Starry Night Over the Rhône* (Arles, Sept 1888):** [`?painting=rhone`](https://taipei49314.github.io/starry-night-3d/?painting=rhone) — the seven stars of Ursa Major, Arles embankment gas lamps, shimmering golden water reflection pillars, moored boats, and lovers on the shore (`aspect 1.28`). *Portal: glide across the water reflections into the warm embankment window light.*
-3. **Act III — *The Bedroom in Arles* (Arles, Oct 1888):** [`?painting=bedroom`](https://taipei49314.github.io/starry-night-3d/?painting=bedroom) — perspective floorboards, lavender-blue plaster walls, scarlet-blanketed oak bed, yellow cane chairs, washstand pitcher, and half-open green window shutters (`aspect 1.26`). *Portal: push through the half-open green shutters into the Saint-Rémy night sky.*
-4. **Act IV — *The Starry Night* (Saint-Rémy, June 1889):** [`?painting=starry`](https://taipei49314.github.io/starry-night-3d/?painting=starry) — the canonical 250 km deep nocturnal vortex, black-flame cypress, and glowing village (`aspect 1.2497`). *Portal: ascend into the blazing orange crescent moon as night turns into Provençal day.*
-5. **Act V — *Wheat Field with Cypresses* (Saint-Rémy, July 1889):** [`?painting=wheat`](https://taipei49314.github.io/starry-night-3d/?painting=wheat) — sunlit turquoise sky, rolling zinc-white cumulus vortex funnels, blue-violet Alpilles ridges, twin dark-emerald cypresses, and wind-swept golden wheat (`aspect 1.27`). *Portal: rise into the white cumulus cloud vortex toward the spring blossom sky.*
-6. **Act VI — *Almond Blossom* (Saint-Rémy, Feb 1890):** [`?painting=almond`](https://taipei49314.github.io/starry-night-3d/?painting=almond) — turquoise spring sky, 3D gnarled almond branches, 175 five-petal pearl-white and blush-rose blossom clusters, and drifting petals (`aspect 1.26`). *Portal: weave through the uppermost blooming boughs into the northern sky.*
-7. **Act VII — *The Church at Auvers* (Auvers-sur-Oise, June 1890):** [`?painting=church`](https://taipei49314.github.io/starry-night-3d/?painting=church) — brooding ultramarine cobalt sky, forking golden-ochre sandy paths, writhing Gothic apse & buttresses, lancet stained-glass windows, and soaring bell-tower spire (`aspect 0.78`). *Portal: climb past the spire cross into the gathering storm clouds.*
-8. **Act VIII — *Wheatfield with Crows* (Auvers-sur-Oise, July 1890):** [`?painting=crows`](https://taipei49314.github.io/starry-night-3d/?painting=crows) — tempestuous midnight-Prussian storm sky, three diverging crimson-sienna & emerald paths through 26,000 wind-lashed golden wheat stalks, and 52 flapping 3D black crows (`aspect 1.98`). *Portal: rise with the flock of crows into the midnight horizon, returning to the warm lantern of Café Terrace.*
+### Level 1 — Single Painting = An Enterable 3D World
+Every painting is an independent 3D space with its own canvas aspect ratio, brushwork DNA, atmospheric fog, lighting, procedural Web Audio soundscape, and **Diegetic Spatial Portals** (`portalIn` / `portalOut`).
+
+### Level 2 — Multi-Painting = Dynamic Thematic Paths (`compilePathTrack`)
+Instead of a single rigid sequence, paintings are connected in a directed **Van Gogh World Graph (`WORLD_GRAPH`)**. The dynamic path compiler `compilePathTrack(sequence)` weaves any sequence of paintings into a continuous one-take 3D camera trajectory with **Dual-World 3D Brushstroke Cross-Dissolve** transitions.
+
+### Level 3 — Five Grand Chapters (1885–1890, 10 Worlds)
+
+| Chapter | Era & Theme | Worlds |
+|---|---|---|
+| **Chapter I · Earth (`earth`)** | **黑土與人** · Nuenen (1883–1885)<br>Peat-umber chiaroscuro, heavy palette-knife strokes, single oil lamp warmth | **I. *The Potato Eaters* (`?painting=potato`)** — Low timber cottage rafters, hanging oil-lamp portal, steaming potatoes, and five peasant figures (`aspect 1.38`). |
+| **Chapter II · Color (`color`)** | **巴黎與覺醒** · Paris (1886–1888)<br>Divisionist pointillist strokes, complementary color vibration, open boulevard | **II. *Boulevard de Clichy* (`?painting=paris`)** — Sunlit pastel-blue & coral-peach divisionist avenue, Haussmann facades, spring trees, and strollers (`aspect 1.29`). |
+| **Chapter III · Sun (`sun`)** | **亞爾的黃金時代** · Arles (1888–1889)<br>High-chroma yellow vs. cobalt night, gaslight halos, intimate sanctuary | **III. *Café Terrace at Night* (`?painting=cafe`)** — Golden gaslit awning, cobblestone street, and star canyon (`aspect 0.81`).<br>**IV. *Starry Night Over the Rhône* (`?painting=rhone`)** — Ursa Major, embankment gas lamps, shimmering water reflections, and lovers (`aspect 1.28`).<br>**V. *The Bedroom in Arles* (`?painting=bedroom`)** — Lavender walls, scarlet bed, yellow chairs, and half-open green window shutters (`aspect 1.26`). |
+| **Chapter IV · Cosmos (`cosmos`)** | **聖雷米的內在宇宙** · Saint-Rémy (1889–1890)<br>250 km twin-swirl flow fields, flame cypresses, blossoming boughs | **VI. *The Starry Night* (`?painting=starry`)** — The canonical 250 km nocturnal vortex, black-flame cypress, and village (`aspect 1.25`).<br>**VII. *Wheat Field with Cypresses* (`?painting=wheat`)** — Turquoise sky, white cumulus vortex, Alpilles hills, and golden wheat (`aspect 1.27`).<br>**VIII. *Almond Blossom* (`?painting=almond`)** — 3D gnarled branches, 175 five-petal pearl blossom clusters, and drifting petals (`aspect 1.26`). |
+| **Chapter V · Road (`road`)** | **奧維爾的路與風** · Auvers-sur-Oise (1890)<br>Forking paths, low tempestuous horizons, 2:1 widescreen wind tension | **IX. *The Church at Auvers* (`?painting=church`)** — Ultramarine sky, forking sandy roads, writhing Gothic apse, and bell tower (`aspect 0.78`).<br>**X. *Wheatfield with Crows* (`?painting=crows`)** — Storm sky, three diverging paths through 26,000 wheat stalks, and 52 flapping crows returning to the dark earth of Nuenen (`aspect 1.98`). |
+
+### Six Motif Backbones (`MOTIF_SPECS`)
+1. **✦ Light (`light`)** — Oil lamp, gas lamp, star halos, crescent moon, Provençal sun, stained glass.
+2. **⟁ Road (`road`)** — Parisian boulevard, cobblestone alley, Rhône embankment, church fork, three wheat paths.
+3. **◎ Sky (`sky`)** — Pointillist morning sky, twin nocturnal maelstroms, cumulus vortices, turquoise spring sky, storm clouds.
+4. **❀ Flora (`flora`)** — Potatoes of the earth, budding boulevard trees, flame cypresses, golden wheat, almond blossoms.
+5. **⌂ Dwelling (`dwelling`)** — Peasant cottage table, street-corner café, Arles bedroom, Gothic church at Auvers.
+6. **❖ Gaze (`gaze`)** — Half-open window shutters, paintings-within-paintings, street vanishing points, distant horizons.
+
+### Three Viewing Modes (`ViewMode`)
+- **Mode A — Odyssey Mode (`?mode=odyssey`)**: Complete 5-Chapter, 10-Act continuous feature film (`300 s`).
+- **Mode B — Atlas Mode (`?mode=atlas` or shortcut `U`)**: Interactive **Van Gogh World Graph Atlas** displaying the 5 Grand Chapters, 6 Motif filters, portal inspectors, and clickable **Connected Neighbor Portals**.
+- **Mode C — Theme Path Mode (`?mode=theme&path=nights|roads|dwellings|flora|single`)**: Curated thematic journeys across the World Graph:
+  - `✦ 光與夜之路 (Nights & Lamps)`: `potato → cafe → rhone → starry → crows`
+  - `⟁ 道路與遠方 (Roads & Horizons)`: `paris → cafe → rhone → church → crows`
+  - `⌂ 居所與視線 (Rooms & Sanctuaries)`: `potato → cafe → bedroom → church`
+  - `❀ 黑土繁花與風 (Earth to Blossoms)`: `potato → paris → wheat → almond → crows`
+  - `◎ 單幅沉浸循環 (Single World Loop)`: Continuous standalone loop of the active painting.
+
+---
 
 ## Run
 
 ```bash
 npm install
 npm run dev          # http://127.0.0.1:5199
-npm run build:single # one self-contained dist-single/index.html (~780 kB)
+npm run build:single # one self-contained dist-single/index.html (~820 kB)
 ```
 
 ## Controls
@@ -41,39 +68,15 @@ Any input hands control to you; after 12 s idle the camera rejoins the loop.
 | Alt-drag or right-drag | stir the sky |
 | Shift + wheel | depth warp: at E the image does not change; step aside and the world refolds |
 | Space | fly back to the painter's eye and re-register the painting |
-| `[` / `]` or `PageUp` / `PageDown` | switch between the 8 paintings via 3D Brushstroke Cross-Dissolve |
-| `O` | toggle 8-Act Continuous Odyssey (`∞ 八幕連貫史詩`) vs. single-painting loop (`單幅循環模式`) |
-| `V` | toggle 8-Act Procedural Soundscape (`♪ 聲景：開 / 靜音`) |
-| Scrubber Timeline (bottom) | drag or click anywhere along the 240 s 8-Act Odyssey timeline |
+| `[` / `]` or `PageUp` / `PageDown` | switch to previous / next painting in the active sequence via 3D Brushstroke Cross-Dissolve |
+| `O` | toggle 5-Chapter 10-Act Odyssey (`∞ 五章史詩`) vs. single-painting loop (`◎ 單幅沉浸循環`) |
+| `U` | toggle the interactive **Van Gogh World Graph Atlas (`🌌 宇宙星圖`)** |
+| `V` | toggle 10-World Procedural Soundscape (`♪ 聲景：開 / 靜音`) |
+| Scrubber Timeline (bottom) | drag or click anywhere along the active Odyssey / Theme Path timeline |
 | 1-9, 0 | jump to shot 1-10 |
 | C / R | resume the cinematic / restart |
 | G | storm |
 | M | calm mode (less roll and FOV; the default with reduced motion) |
 | H | HUD |
 
-URL flags: `?painting=cafe|rhone|bedroom|starry|wheat|almond|church|crows`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay` (canvas grid, landmarks, streamlines), `?seed=`, `?freeze` (hold the clock), `?boot=<sec>&freeze` (first-boot sequence at a given second).
-
-## Layout
-
-| Path | Module |
-|---|---|
-| `src/contracts.ts` | frozen shared types and constants |
-| `src/shared/` | canvas-to-world mapping, flow field, palette, RNG, shared uniforms, GLSL prelude (TS and GLSL agree to 1e-6) |
-| `src/engine/` | renderer, quality tiers, dynamic resolution |
-| `src/strokes/` | instanced stroke buffer, ribbon shader (animation, storm, impasto, layer cross-dissolve), underlay material |
-| `src/sky/`, `src/celestial/`, `src/earth/` | generators: sky, swirls, wind jet, backdrop, dust; stars and moon; cypress, hills, village |
-| `src/chapters/` | 8-Act Van Gogh Odyssey registry, aspect-invariant stroke emitters, procedural 3D generators & Diegetic Spatial Portal camera choreography |
-| `src/audio/` | 100% procedural Web Audio soundscape engine (8-Act harmonic drones, stereo reverb, river waves, wheat surf, bronze church bells, crow wings, flight wind & sky-stirring chimes) |
-| `src/camera/` | shot timeline, Odyssey track, free flight, rejoin, 8-Act Suite Bar, interactive timeline scrubber & museum title card UI |
-| `src/post/` | bloom, painterly lens (isophote halo banding, pigment pull, smear, canvas weave, matte) |
-| `src/app/` | world assembly, frame loop, dual-world 3D brushstroke cross-dissolve, smart lookahead pre-warming + LRU cache, self-tests, debug overlay |
-
-`docs/SPEC.md` is the build spec. `docs/*.json` are the module build and fix reports.
-
-## Verification
-
-- `harness/*.html`: per-module test pages. `harness/shared.html` checks the TS/GLSL parity of the mapping and flow field.
-- `node tools/shot.mjs "index.html?t=45&freeze&tier=high" --dgpu --out shots/x.png` renders a frame in headless Chrome and prints console errors. `--dgpu` asks for the discrete GPU.
-- `python tools/sheet.py out.png <cols> <width> img label ...` builds a contact sheet.
-
-Measured on an RTX 5060 Laptop GPU at 1080p, High tier: about 5.6 ms GPU per frame on the heaviest shots. Intel UHD (auto Low tier): 45-90 fps.
+URL flags: `?painting=potato|paris|cafe|rhone|bedroom|starry|wheat|almond|church|crows`, `?mode=odyssey|theme|atlas`, `?path=odyssey|nights|roads|dwellings|flora|single`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay`, `?seed=`, `?freeze`, `?boot=<sec>&freeze`.

@@ -1,14 +1,16 @@
-// Multi-Punctum Suite Registry: defines the 8-Act Van Gogh Odyssey (1888-1890)
-//   I.   Café Terrace at Night (Arles, Sept 1888)
-//   II.  Starry Night Over the Rhône (Arles, Sept 1888)
-//   III. The Bedroom in Arles (Arles, Oct 1888 / Saint-Rémy 1889)
-//   IV.  The Starry Night (Saint-Rémy, June 1889)
-//   V.   Wheat Field with Cypresses (Saint-Rémy, July 1889)
-//   VI.  Almond Blossom (Saint-Rémy, Feb 1890)
-//   VII. The Church at Auvers (Auvers-sur-Oise, June 1890)
-//   VIII.Wheatfield with Crows (Auvers-sur-Oise, July 1890)
-// Includes standalone 48s/96s chapter tracks AND the unified 240-second 8-Act Continuous Odyssey Track
-// with Diegetic Spatial Portal choreography and Dual-World 3D Brushstroke Cross-Dissolve.
+// Multi-Punctum Suite & Van Gogh World System Registry (5 Grand Chapters, 10 Iconic Worlds, 1885–1890):
+//   Chapter I   (Earth · Nuenen):    1. The Potato Eaters (1885)
+//   Chapter II  (Color · Paris):     2. Boulevard de Clichy (1887)
+//   Chapter III (Sun · Arles):       3. Café Terrace at Night (1888)
+//                                    4. Starry Night Over the Rhône (1888)
+//                                    5. The Bedroom in Arles (1888)
+//   Chapter IV  (Cosmos · St-Rémy):  6. The Starry Night (1889)
+//                                    7. Wheat Field with Cypresses (1889)
+//                                    8. Almond Blossom (1890)
+//   Chapter V   (Road · Auvers):     9. The Church at Auvers (1890)
+//                                   10. Wheatfield with Crows (1890)
+// Includes standalone tracks AND the Dynamic Path Compiler `compilePathTrack(sequence)` that weaves ANY
+// sequence of worlds (Mode A Odyssey, Mode C Theme Paths, or custom chains) into a seamless one-take 3D journey.
 import { Group, Vector3 } from 'three';
 import {
   CANVAS_ASPECT, LOOP_SECONDS, MOON_DEF, PALETTE,
@@ -27,6 +29,8 @@ import { createCypressCore, generateCypress } from '../earth/cypressGen';
 import { generateGround } from '../earth/terrain';
 import { generateHills } from '../earth/hillsGen';
 import { createLandUnderlays, generateVillage } from '../earth/villageGen';
+import { POTATO_ASPECT, generatePotatoChapter } from './potatoGen';
+import { PARIS_ASPECT, generateParisChapter } from './parisGen';
 import { CAFE_ASPECT, generateCafeChapter } from './cafeGen';
 import { RHONE_ASPECT, generateRhoneChapter } from './rhoneGen';
 import { BEDROOM_ASPECT, generateBedroomChapter } from './bedroomGen';
@@ -34,7 +38,7 @@ import { WHEAT_ASPECT, generateWheatChapter } from './wheatGen';
 import { ALMOND_ASPECT, generateAlmondChapter } from './almondGen';
 import { CHURCH_ASPECT, generateChurchChapter } from './churchGen';
 import { CROWS_ASPECT, generateCrowsChapter } from './crowsGen';
-import { clamp, clamp01, smoothstep, uFromPaint, type PaintingId } from './types';
+import { clamp, clamp01, smoothstep, uFromPaint, type ChapterId, type PaintingId } from './types';
 
 export interface ChapterTrack {
   readonly loopSeconds: number;
@@ -50,6 +54,7 @@ export interface ChapterTrack {
 
 export interface PaintingSpec {
   id: PaintingId;
+  chapterId: ChapterId;
   roman: string;
   shortZh: string;
   titleZh: string;
@@ -120,142 +125,146 @@ class CompanionTrack implements ChapterTrack {
       const s = tc >= this.tHome + span ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
       return out.copy(EYE).addScaledVector(FORWARD, s);
     }
-    this.evalSplinePos(tc, out);
-    return out;
+    const wps = this.waypoints;
+    let i = 0;
+    while (i < wps.length - 2 && tc >= wps[i + 1].t) i++;
+    const w0 = wps[Math.max(0, i - 1)];
+    const w1 = wps[i];
+    const w2 = wps[i + 1];
+    const w3 = wps[Math.min(wps.length - 1, i + 2)];
+    const dt = w2.t - w1.t;
+    const u = clamp01((tc - w1.t) / Math.max(1e-5, dt));
+    _m0.subVectors(w2.pos, w0.pos).multiplyScalar(0.5 * (dt / Math.max(1e-5, w2.t - w0.t)));
+    _m1.subVectors(w3.pos, w1.pos).multiplyScalar(0.5 * (dt / Math.max(1e-5, w3.t - w1.t)));
+    return hermite(w1.pos, _m0, w2.pos, _m1, u, out);
+  }
+
+  private sampleLook(tc: number, out: Vector3): Vector3 {
+    const wps = this.waypoints;
+    let i = 0;
+    while (i < wps.length - 2 && tc >= wps[i + 1].t) i++;
+    const w0 = wps[Math.max(0, i - 1)];
+    const w1 = wps[i];
+    const w2 = wps[i + 1];
+    const w3 = wps[Math.min(wps.length - 1, i + 2)];
+    const dt = w2.t - w1.t;
+    const u = clamp01((tc - w1.t) / Math.max(1e-5, dt));
+    _m0.subVectors(w2.lookAt, w0.lookAt).multiplyScalar(0.5 * (dt / Math.max(1e-5, w2.t - w0.t)));
+    _m1.subVectors(w3.lookAt, w1.lookAt).multiplyScalar(0.5 * (dt / Math.max(1e-5, w3.t - w1.t)));
+    return hermite(w1.lookAt, _m0, w2.lookAt, _m1, u, out);
   }
 
   pose(t: number, out: CamPose): CamPose {
     const tc = clamp(t, 0, this.loopSeconds);
+    this.position(tc, out.pos);
     if (tc <= this.tHold) {
-      out.p.copy(EYE);
-      out.d.copy(FORWARD);
-      out.roll = 0;
-      out.fov = 36;
+      out.dir.copy(FORWARD);
+      out.fovDeg = 36;
+      out.rollDeg = 0;
+      out.shotIndex = 0;
+      out.shotT = tc / Math.max(1e-4, this.tHold);
+      out.cut = tc < 1e-4;
       return out;
     }
     if (tc >= this.tHome) {
       const span = Math.max(0.5, this.loopSeconds - this.tHome - 0.35);
       const s = tc >= this.tHome + span ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
-      out.p.copy(EYE).addScaledVector(FORWARD, s);
-      out.d.copy(FORWARD);
-      out.roll = 0;
-      out.fov = s === 0 ? 36 : dollyZoomFov(36, 675, 675 - s);
+      out.dir.copy(FORWARD);
+      out.fovDeg = dollyZoomFov(36, 675, Math.max(0, 675 - s));
+      out.rollDeg = 0;
+      out.shotIndex = this.shots.length - 1;
+      out.shotT = (tc - this.tHome) / Math.max(1e-4, this.loopSeconds - this.tHome);
+      out.cut = false;
       return out;
     }
-    this.evalSplinePose(tc, out);
+    const wps = this.waypoints;
+    let i = 0;
+    while (i < wps.length - 2 && tc >= wps[i + 1].t) i++;
+    const w1 = wps[i];
+    const w2 = wps[i + 1];
+    const u = ease.inOutSine(clamp01((tc - w1.t) / Math.max(1e-5, w2.t - w1.t)));
+    this.sampleLook(tc, _look);
+    out.dir.subVectors(_look, out.pos);
+    if (out.dir.lengthSq() < 1e-9) out.dir.copy(FORWARD);
+    else out.dir.normalize();
+    out.fovDeg = w1.fov + (w2.fov - w1.fov) * u;
+    out.rollDeg = w1.roll + (w2.roll - w1.roll) * u;
+    let si = 0;
+    for (let k = this.shots.length - 1; k >= 0; k--) {
+      if (tc >= this.shots[k].t0) { si = k; break; }
+    }
+    const sh = this.shots[si];
+    out.shotIndex = si;
+    out.shotT = clamp01((tc - sh.t0) / Math.max(1e-4, sh.t1 - sh.t0));
+    out.cut = false;
     return out;
   }
 
   velocity(t: number, out: Vector3): Vector3 {
-    const h = 1e-3;
-    const t0 = Math.max(0, t - h);
-    const t1 = Math.min(this.loopSeconds, t + h);
+    const dt = 0.02;
+    const t0 = Math.max(0, t - dt);
+    const t1 = Math.min(this.loopSeconds, t + dt);
     this.position(t0, _p0);
     this.position(t1, _p1);
-    return out.subVectors(_p1, _p0).divideScalar(Math.max(1e-6, t1 - t0));
+    return out.subVectors(_p1, _p0).divideScalar(Math.max(1e-5, t1 - t0));
   }
 
   env(t: number, camDistFromE: number, calm: boolean, out: EnvSample): EnvSample {
     const tc = clamp(t, 0, this.loopSeconds);
-    const hEnd = this.loopSeconds - 0.35;
-    const mClose0 = this.loopSeconds - 2.4;
-    out.matte = tc <= this.tHold
-      ? 1
-      : tc < this.tHold + 1.6
-        ? 1 - ease.inOutCubic((tc - this.tHold) / 1.6)
-        : tc < mClose0
-          ? 0
-          : tc < hEnd
-            ? ease.inOutCubic((tc - mClose0) / (hEnd - mClose0))
-            : 1;
-    const st0 = this.tHome - 5.5;
-    out.storm = tc < st0 ? 0 : tc < st0 + 2.2 ? smoothstep(st0, st0 + 2.2, tc) : tc < this.tHome + 0.5 ? 1 : tc < this.tHome + 1.2 ? 1 - smoothstep(this.tHome + 0.5, this.tHome + 1.2, tc) : 0;
-    let bloom = this.baseBloom + 0.35 * smoothstep(this.tHold + 2, this.tHome - 6, tc) * (1 - smoothstep(this.tHome - 2, this.tHome + 1, tc));
-    if (tc > this.tHome + 0.4 && tc < this.tHome + 0.9) bloom += 0.38 * Math.sin((Math.PI * (tc - (this.tHome + 0.4))) / 0.5);
-    out.bloom = bloom;
-    out.exposure = 1.0;
-    out.smear = calm ? 0 : 0.35 * smoothstep(this.tHold + 3, this.tHome - 8, tc) * (1 - smoothstep(this.tHome - 2, this.tHome + 1, tc));
-    out.dust = tc < this.tHold ? 0 : tc < this.tHold + 3.5 ? smoothstep(this.tHold, this.tHold + 3.5, tc) : tc > this.tHome ? 0.3 * smoothstep(0.5, 40, camDistFromE) : 0.85;
-    out.galleryLightDeg = tc < 1.5 ? -15 : tc < this.tHold ? -15 + 30 * ease.inOutSine((tc - 1.5) / Math.max(1, this.tHold - 1.5)) : tc < this.loopSeconds - 3.5 ? 15 : 15 - 30 * ease.inOutSine((tc - (this.loopSeconds - 3.5)) / 3.5);
-    out.impastoGain = 1;
+    const stormStart = this.tHome - 2.6;
+    const stormPeak = this.tHome + 0.8;
+    const snapAt = this.loopSeconds - 1.2;
+    out.matte = tc < this.tHold
+      ? 1 - smoothstep(this.tHold - 1.0, this.tHold, tc)
+      : tc > snapAt - 0.8
+        ? smoothstep(snapAt - 0.8, this.loopSeconds - 0.15, tc)
+        : 0;
+    out.impastoGain = 0.3 + 0.7 * smoothstep(2, 80, camDistFromE);
+    out.galleryLightDeg = 32;
+    out.exposure = 0;
+    out.bloom = this.baseBloom + 0.18 * smoothstep(14, 24, tc) * (1 - smoothstep(26, 38, tc));
+    const smPeak = calm ? 0.12 : 0.28;
+    out.smear = smPeak * smoothstep(this.tHold + 1, this.tHold + 7, tc) * (1 - smoothstep(stormStart - 2, this.tHome, tc));
+    out.storm = tc >= stormStart && tc < snapAt
+      ? smoothstep(stormStart, stormPeak, tc) * (1 - 0.18 * smoothstep(stormPeak, snapAt, tc))
+      : 0;
+    out.snapTrigger = Math.abs(tc - snapAt) < 0.12;
     out.fade = 0;
+    out.dust = 0.55 * smoothstep(5, 80, camDistFromE) * (1 - smoothstep(this.tHome + 1, this.loopSeconds, tc));
     return out;
-  }
-
-  private findSeg(t: number): { i: number; s: number } {
-    const W = this.waypoints;
-    for (let i = 0; i < W.length - 1; i++) {
-      if (t <= W[i + 1].t || i === W.length - 2) {
-        const span = Math.max(1e-6, W[i + 1].t - W[i].t);
-        return { i, s: clamp01((t - W[i].t) / span) };
-      }
-    }
-    return { i: W.length - 2, s: 1 };
-  }
-
-  private evalSplinePos(t: number, out: Vector3): void {
-    const W = this.waypoints;
-    const { i, s } = this.findSeg(t);
-    const w0 = W[Math.max(0, i - 1)];
-    const w1 = W[i];
-    const w2 = W[i + 1];
-    const w3 = W[Math.min(W.length - 1, i + 2)];
-    const dt = w2.t - w1.t;
-    _m0.subVectors(w2.pos, w0.pos).multiplyScalar(dt / Math.max(1e-3, w2.t - w0.t));
-    _m1.subVectors(w3.pos, w1.pos).multiplyScalar(dt / Math.max(1e-3, w3.t - w1.t));
-    if (i === 0) _m0.set(0, 0, 0);
-    if (i === W.length - 2) _m1.copy(FORWARD).multiplyScalar(-80 * dt);
-    hermite(w1.pos, _m0, w2.pos, _m1, ease.smootherstep(s), out);
-  }
-
-  private evalSplinePose(t: number, out: CamPose): void {
-    this.evalSplinePos(t, out.p);
-    const W = this.waypoints;
-    const { i, s } = this.findSeg(t);
-    const w1 = W[i];
-    const w2 = W[i + 1];
-    const es = ease.inOutSine(s);
-    _look.copy(w1.lookAt).lerp(w2.lookAt, es);
-    out.d.subVectors(_look, out.p).normalize();
-    if (t > this.tHome - 3.2) {
-      const k = ease.inOutSine((t - (this.tHome - 3.2)) / 3.2);
-      out.d.lerp(FORWARD, k).normalize();
-    }
-    out.roll = w1.roll + (w2.roll - w1.roll) * es;
-    out.fov = w1.fov + (w2.fov - w1.fov) * es;
   }
 }
 
-/** Helper to build both a 48 s standalone track and a 30 s Odyssey Act track from the same 5 normalized 3D portal waypoints. */
+interface PortalWp {
+  pos: Vector3;
+  lookAt: Vector3;
+  fov: number;
+  roll: number;
+}
+
 function makeChapterTracks(
   aspect: number,
-  actIndex: number,
   actLabel: string,
   shotNames: readonly [string, string, string, string],
-  portalPts: readonly [
-    { pos: Vector3; lookAt: Vector3; fov: number; roll: number },
-    { pos: Vector3; lookAt: Vector3; fov: number; roll: number },
-    { pos: Vector3; lookAt: Vector3; fov: number; roll: number },
-    { pos: Vector3; lookAt: Vector3; fov: number; roll: number },
-    { pos: Vector3; lookAt: Vector3; fov: number; roll: number },
-  ],
+  portalPts: readonly [PortalWp, PortalWp, PortalWp, PortalWp, PortalWp],
   baseBloom: number,
 ): { standalone: CompanionTrack; odysseyAct: CompanionTrack } {
   const standalone = new CompanionTrack(
     aspect,
     [
-      { index: 0, name: shotNames[0], t0: 0, t1: 6, setPiece: shotNames[0] },
+      { index: 0, name: shotNames[0], t0: 0, t1: 6, setPiece: `${actLabel} · 畫框凝視` },
       { index: 1, name: shotNames[1], t0: 6, t1: 18, setPiece: shotNames[1] },
       { index: 2, name: shotNames[2], t0: 18, t1: 30, setPiece: shotNames[2] },
-      { index: 3, name: shotNames[3], t0: 30, t1: 48, setPiece: shotNames[3] },
+      { index: 3, name: shotNames[3], t0: 30, t1: 40, setPiece: shotNames[3] },
+      { index: 4, name: '重返畫家之眼', t0: 40, t1: 48, setPiece: '任意門歸位' },
     ],
     [
       { t: 6,  pos: EYE.clone(), lookAt: E_TARGET.clone(), fov: 36, roll: 0 },
-      { t: 11, ...portalPts[0] },
-      { t: 17, ...portalPts[1] },
-      { t: 23, ...portalPts[2] },
-      { t: 29, ...portalPts[3] },
-      { t: 35, ...portalPts[4] },
+      { t: 12, ...portalPts[0] },
+      { t: 18, ...portalPts[1] },
+      { t: 25, ...portalPts[2] },
+      { t: 31, ...portalPts[3] },
+      { t: 36, ...portalPts[4] },
       { t: 40, pos: H0.clone(),  lookAt: E_TARGET.clone(), fov: dollyZoomFov(36, 675, 315), roll: 0 },
     ],
     baseBloom,
@@ -264,14 +273,13 @@ function makeChapterTracks(
     40,
   );
 
-  const tBase = actIndex * 30;
   const odysseyAct = new CompanionTrack(
     aspect,
     [
-      { index: actIndex * 4,     name: `${actLabel} · ${shotNames[0]}`, t0: tBase + 0,    t1: tBase + 3.8,  setPiece: shotNames[0] },
-      { index: actIndex * 4 + 1, name: `${actLabel} · ${shotNames[1]}`, t0: tBase + 3.8,  t1: tBase + 11.5, setPiece: shotNames[1] },
-      { index: actIndex * 4 + 2, name: `${actLabel} · ${shotNames[2]}`, t0: tBase + 11.5, t1: tBase + 19.5, setPiece: shotNames[2] },
-      { index: actIndex * 4 + 3, name: `${actLabel} · ${shotNames[3]}`, t0: tBase + 19.5, t1: tBase + 30.0, setPiece: shotNames[3] },
+      { index: 0, name: `${actLabel} · ${shotNames[0]}`, t0: 0,    t1: 3.8,  setPiece: shotNames[0] },
+      { index: 1, name: `${actLabel} · ${shotNames[1]}`, t0: 3.8,  t1: 11.5, setPiece: shotNames[1] },
+      { index: 2, name: `${actLabel} · ${shotNames[2]}`, t0: 11.5, t1: 19.5, setPiece: shotNames[2] },
+      { index: 3, name: `${actLabel} · ${shotNames[3]}`, t0: 19.5, t1: 30.0, setPiece: shotNames[3] },
     ],
     [
       { t: 3.8,  pos: EYE.clone(), lookAt: E_TARGET.clone(), fov: 36, roll: 0 },
@@ -291,9 +299,37 @@ function makeChapterTracks(
   return { standalone, odysseyAct };
 }
 
-// Act I: Café Terrace at Night -> Portal: Rue du Palais Star Canyon -> Rhône
+// 1. Chapter I (Earth): The Potato Eaters -> Portal: Hanging Oil Lamp Flame -> Paris
+const POTATO_TRACKS = makeChapterTracks(
+  POTATO_ASPECT, 'Ch.I 食薯者',
+  ['荷蘭農舍黑土畫幅', '粗陶木桌與熱氣馬鈴薯盤', '油燈明暗對比下的農夫臉龐', '飛入懸掛油燈火芯任意門 → 巴黎覺醒'],
+  [
+    { pos: pt(POTATO_ASPECT, 0.32, 0.24, 195), lookAt: pt(POTATO_ASPECT, 0.48, 0.34, 460),   fov: 42, roll: -1.5 },
+    { pos: pt(POTATO_ASPECT, 0.44, 0.32, 260), lookAt: pt(POTATO_ASPECT, 0.65, 0.48, 510),   fov: 45, roll: 1.5 },
+    { pos: pt(POTATO_ASPECT, 0.58, 0.40, 310), lookAt: pt(POTATO_ASPECT, 0.35, 0.52, 520),   fov: 46, roll: -1.5 },
+    { pos: pt(POTATO_ASPECT, 0.48, 0.62, 360), lookAt: pt(POTATO_ASPECT, 0.50, 0.78, 480),   fov: 48, roll: 1.0 },
+    { pos: pt(POTATO_ASPECT, 0.50, 0.76, 440), lookAt: pt(POTATO_ASPECT, 0.50, 0.78, 12200), fov: 52, roll: 0 },
+  ],
+  0.42,
+);
+
+// 2. Chapter II (Color): Boulevard de Clichy -> Portal: Sunlit Avenue Vanishing Point -> Arles
+const PARIS_TRACKS = makeChapterTracks(
+  PARIS_ASPECT, 'Ch.II 克利希大道',
+  ['巴黎印象派點描畫幅', '粉藍珊瑚點描人行道與漫步市民', '奧斯曼公寓立面與行道春芽', '衝向大道驕陽消失點任意門 → 亞爾咖啡座'],
+  [
+    { pos: pt(PARIS_ASPECT, 0.36, 0.16, 185), lookAt: pt(PARIS_ASPECT, 0.46, 0.34, 520),   fov: 45, roll: -2 },
+    { pos: pt(PARIS_ASPECT, 0.52, 0.24, 310), lookAt: pt(PARIS_ASPECT, 0.38, 0.38, 680),   fov: 48, roll: 2 },
+    { pos: pt(PARIS_ASPECT, 0.42, 0.32, 480), lookAt: pt(PARIS_ASPECT, 0.48, 0.44, 960),   fov: 50, roll: -2 },
+    { pos: pt(PARIS_ASPECT, 0.46, 0.42, 740), lookAt: pt(PARIS_ASPECT, 0.46, 0.52, 2400),  fov: 52, roll: 1.5 },
+    { pos: pt(PARIS_ASPECT, 0.46, 0.50, 1250), lookAt: pt(PARIS_ASPECT, 0.46, 0.56, 13200), fov: 55, roll: 0 },
+  ],
+  0.46,
+);
+
+// 3. Chapter III (Sun): Café Terrace at Night -> Portal: Rue du Palais Star Canyon -> Rhône
 const CAFE_TRACKS = makeChapterTracks(
-  CAFE_ASPECT, 0, 'I 夜間咖啡座',
+  CAFE_ASPECT, 'Ch.III 夜間咖啡座',
   ['論壇廣場畫幅', '煤氣燈金黃遮雨棚與圓桌', '鵝卵石長街與藍紫街屋', '穿過街尾星谷任意門 → 隆河星夜'],
   [
     { pos: pt(CAFE_ASPECT, 0.24, 0.28, 175),  lookAt: pt(CAFE_ASPECT, 0.22, 0.50, 460),   fov: 45, roll: -3 },
@@ -305,9 +341,9 @@ const CAFE_TRACKS = makeChapterTracks(
   0.52,
 );
 
-// Act II: Starry Night Over the Rhône -> Portal: Warm Golden Embankment Window -> Bedroom in Arles
+// 4. Chapter III (Sun): Starry Night Over the Rhône -> Portal: Warm Golden Embankment Window -> Bedroom
 const RHONE_TRACKS = makeChapterTracks(
-  RHONE_ASPECT, 1, 'II 隆河星夜',
+  RHONE_ASPECT, 'Ch.III 隆河星夜',
   ['隆河河畔畫幅', '停泊木船與河岸戀人', '煤氣燈金色水波倒影柱與北斗七星', '飛入河岸暖黃窗燈任意門 → 亞爾臥室'],
   [
     { pos: pt(RHONE_ASPECT, 0.72, 0.14, 155),  lookAt: pt(RHONE_ASPECT, 0.72, 0.16, 320),   fov: 44, roll: 2.5 },
@@ -319,9 +355,9 @@ const RHONE_TRACKS = makeChapterTracks(
   0.50,
 );
 
-// Act III: The Bedroom in Arles -> Portal: Half-Open Green Shuttered Window -> The Starry Night
+// 5. Chapter III (Sun): The Bedroom in Arles -> Portal: Half-Open Green Shuttered Window -> Starry Night
 const BEDROOM_TRACKS = makeChapterTracks(
-  BEDROOM_ASPECT, 2, 'III 亞爾的臥室',
+  BEDROOM_ASPECT, 'Ch.III 亞爾的臥室',
   ['黃色小屋臥室畫幅', '暖赭木地板與黃色藤椅', '鮮紅被單木床與牆上肖像畫', '推開綠色百葉窗任意門 → 聖雷米星夜'],
   [
     { pos: pt(BEDROOM_ASPECT, 0.22, 0.22, 185), lookAt: pt(BEDROOM_ASPECT, 0.68, 0.32, 340), fov: 45, roll: -2 },
@@ -333,9 +369,9 @@ const BEDROOM_TRACKS = makeChapterTracks(
   0.46,
 );
 
-// Act IV: The Starry Night (Odyssey 30 s version; standalone uses canonical 96 s STARRY_TRACK) -> Portal: Orange Crescent Moon -> Wheat Field
+// 6. Chapter IV (Cosmos): The Starry Night -> Portal: Orange Crescent Moon -> Wheat Field
 const STARRY_ODYSSEY_TRACK = makeChapterTracks(
-  CANVAS_ASPECT, 3, 'IV 星夜',
+  CANVAS_ASPECT, 'Ch.IV 星夜',
   ['聖雷米夜空畫幅', '黑焰絲柏與金星光冕隧道', '穿越雙星雲大漩渦回望教堂尖塔', '衝入橘黃新月破曉任意門 → 絲柏麥田'],
   [
     { pos: pt(CANVAS_ASPECT, 0.20, 0.32, 185),   lookAt: pt(CANVAS_ASPECT, 0.28, 0.52, 420),   fov: 46, roll: -3 },
@@ -347,9 +383,9 @@ const STARRY_ODYSSEY_TRACK = makeChapterTracks(
   0.55,
 ).odysseyAct;
 
-// Act V: Wheat Field with Cypresses -> Portal: White & Turquoise Cumulus Vortex -> Almond Blossom
+// 7. Chapter IV (Cosmos): Wheat Field with Cypresses -> Portal: White Cumulus Vortex -> Almond Blossom
 const WHEAT_TRACKS = makeChapterTracks(
-  WHEAT_ASPECT, 4, 'V 絲柏麥田',
+  WHEAT_ASPECT, 'Ch.IV 絲柏麥田',
   ['聖雷米白晝畫幅', '密斯特拉爾強風與金黃麥浪', '雙絲柏與阿爾皮耶藍紫山脊', '衝入松石綠白雲漩渦任意門 → 盛開的杏花'],
   [
     { pos: pt(WHEAT_ASPECT, 0.28, 0.12, 175),   lookAt: pt(WHEAT_ASPECT, 0.52, 0.20, 460),   fov: 46, roll: -2.5 },
@@ -361,9 +397,9 @@ const WHEAT_TRACKS = makeChapterTracks(
   0.38,
 );
 
-// Act VI: Almond Blossom -> Portal: Deep Cerulean Sky Canopy -> The Church at Auvers
+// 8. Chapter IV (Cosmos): Almond Blossom -> Portal: Deep Cerulean Sky Canopy -> The Church at Auvers
 const ALMOND_TRACKS = makeChapterTracks(
-  ALMOND_ASPECT, 5, 'VI 盛開的杏花',
+  ALMOND_ASPECT, 'Ch.IV 盛開的杏花',
   ['春日晴空杏花畫幅', '蒼勁枝幹與粉白花苞', '穿梭五瓣立體杏花與飄落花雨', '飛向蔚藍天際任意門 → 奧維爾的教堂'],
   [
     { pos: pt(ALMOND_ASPECT, 0.66, 0.28, 172),  lookAt: pt(ALMOND_ASPECT, 0.46, 0.54, 210),  fov: 44, roll: -2 },
@@ -375,9 +411,9 @@ const ALMOND_TRACKS = makeChapterTracks(
   0.44,
 );
 
-// Act VII: The Church at Auvers -> Portal: Swirling Ultramarine Spire Sky -> Wheatfield with Crows
+// 9. Chapter V (Road): The Church at Auvers -> Portal: Swirling Ultramarine Spire Sky -> Wheatfield with Crows
 const CHURCH_TRACKS = makeChapterTracks(
-  CHURCH_ASPECT, 6, 'VII 奧維爾的教堂',
+  CHURCH_ASPECT, 'Ch.V 奧維爾的教堂',
   ['奧維爾直幅畫框', '分叉黃沙小徑與農婦背影', '扭曲哥德石牆與彩繪玻璃窗', '攀升鐘樓暗藍風暴任意門 → 麥田群鴉'],
   [
     { pos: pt(CHURCH_ASPECT, 0.32, 0.14, 185),  lookAt: pt(CHURCH_ASPECT, 0.18, 0.28, 320),   fov: 45, roll: -2.5 },
@@ -389,10 +425,10 @@ const CHURCH_TRACKS = makeChapterTracks(
   0.48,
 );
 
-// Act VIII: Wheatfield with Crows -> Portal: Ascending Flock of Crows into the Night -> Café Terrace at Night
+// 10. Chapter V (Road): Wheatfield with Crows -> Portal: Ascending Flock of Crows -> Return to Earth
 const CROWS_TRACKS = makeChapterTracks(
-  CROWS_ASPECT, 7, 'VIII 麥田群鴉',
-  ['奧維爾 2:1 超寬銀幕畫幅', '紅綠分叉小徑與狂暴麥海', '迎風振翅驚飛的五十二隻黑鴉', '穿過鴉群風暴任意門 → 輪迴重返亞爾咖啡座'],
+  CROWS_ASPECT, 'Ch.V 麥田群鴉',
+  ['奧維爾 2:1 超寬銀幕畫幅', '紅綠分叉小徑與狂暴麥海', '迎風振翅驚飛的五十二隻黑鴉', '穿過鴉群風暴任意門 → 重返最初的黑土'],
   [
     { pos: pt(CROWS_ASPECT, 0.48, 0.10, 175),  lookAt: pt(CROWS_ASPECT, 0.50, 0.28, 420),   fov: 48, roll: -2.5 },
     { pos: pt(CROWS_ASPECT, 0.32, 0.24, 210),  lookAt: pt(CROWS_ASPECT, 0.24, 0.38, 220),   fov: 52, roll: 3 },
@@ -415,24 +451,23 @@ export const STARRY_TRACK: ChapterTrack = {
   env: (t, dist, calm, out) => timelineEnv(t, dist, calm, out),
 };
 
-// ------------------------------------------------------------------ Unified 240 s 8-Act Continuous Odyssey Track
+const ODYSSEY_ACT_BY_ID: Record<PaintingId, CompanionTrack> = {
+  potato: POTATO_TRACKS.odysseyAct,
+  paris: PARIS_TRACKS.odysseyAct,
+  cafe: CAFE_TRACKS.odysseyAct,
+  rhone: RHONE_TRACKS.odysseyAct,
+  bedroom: BEDROOM_TRACKS.odysseyAct,
+  starry: STARRY_ODYSSEY_TRACK,
+  wheat: WHEAT_TRACKS.odysseyAct,
+  almond: ALMOND_TRACKS.odysseyAct,
+  church: CHURCH_TRACKS.odysseyAct,
+  crows: CROWS_TRACKS.odysseyAct,
+};
+
 export const ACT_SECONDS = 30;
-export const SUITE_COUNT = 8;
-export const ODYSSEY_SECONDS = ACT_SECONDS * SUITE_COUNT; // 240 s (4m 00s) across all 8 paintings
-
-const ODYSSEY_ACT_TRACKS: readonly CompanionTrack[] = [
-  CAFE_TRACKS.odysseyAct,
-  RHONE_TRACKS.odysseyAct,
-  BEDROOM_TRACKS.odysseyAct,
-  STARRY_ODYSSEY_TRACK,
-  WHEAT_TRACKS.odysseyAct,
-  ALMOND_TRACKS.odysseyAct,
-  CHURCH_TRACKS.odysseyAct,
-  CROWS_TRACKS.odysseyAct,
+export const DEFAULT_ODYSSEY_SEQUENCE: readonly PaintingId[] = [
+  'potato', 'paris', 'cafe', 'rhone', 'bedroom', 'starry', 'wheat', 'almond', 'church', 'crows',
 ];
-
-const ODYSSEY_SHOTS: readonly ShotDef[] = ODYSSEY_ACT_TRACKS.flatMap((tr) => tr.shots);
-const ODYSSEY_SHOT_STARTS: readonly number[] = ODYSSEY_SHOTS.map((s) => s.t0);
 
 export interface OdysseyMorphState {
   activeId: PaintingId;
@@ -448,20 +483,25 @@ export interface OdysseyMorphState {
 }
 
 /**
- * Evaluate the closed-form 8-Act Continuous Odyssey state at master clock `t` in [0, 240).
+ * Evaluate the Continuous Path Morph state at master clock `t` for ANY sequence of paintings (`sequence`).
  * During the last 5.4 s of each 30 s Act (tau in [24.3, 29.7]), the outgoing painting's brushstrokes
  * unbind through its Spatial Portal while the next painting's brushstrokes condense in 3D and lock into
  * exact registration at E by tau = 29.7 s — making every Act boundary tau = 30.0 -> 0.0 100% seamless.
  */
-export function evalOdysseyMorph(t: number): OdysseyMorphState {
-  const tw = ((t % ODYSSEY_SECONDS) + ODYSSEY_SECONDS) % ODYSSEY_SECONDS;
-  const actIdx = Math.min(SUITE_COUNT - 1, Math.floor(tw / ACT_SECONDS));
-  const nextIdx = (actIdx + 1) % SUITE_COUNT;
+export function evalOdysseyMorph(
+  t: number,
+  sequence: readonly PaintingId[] = DEFAULT_ODYSSEY_SEQUENCE,
+): OdysseyMorphState {
+  const n = Math.max(1, sequence.length);
+  const totalSec = n * ACT_SECONDS;
+  const tw = ((t % totalSec) + totalSec) % totalSec;
+  const actIdx = Math.min(n - 1, Math.floor(tw / ACT_SECONDS));
+  const nextIdx = (actIdx + 1) % n;
   const tau = tw - actIdx * ACT_SECONDS; // [0, 30)
-  const specA = PAINTING_SUITE[actIdx];
-  const specB = PAINTING_SUITE[nextIdx];
+  const specA = getPaintingSpec(sequence[actIdx]);
+  const specB = getPaintingSpec(sequence[nextIdx]);
 
-  if (tau >= 24.3) {
+  if (tau >= 24.3 && n > 1) {
     const m = clamp01((tau - 24.3) / 5.3); // reaches 1.0 at tau = 29.6 s
     const pFade = 1 - smoothstep(0.08, 0.88, m);
     const sFade = smoothstep(0.06, 0.86, m);
@@ -498,49 +538,59 @@ export function evalOdysseyMorph(t: number): OdysseyMorphState {
   };
 }
 
-class OdysseyMasterTrack implements ChapterTrack {
-  readonly loopSeconds = ODYSSEY_SECONDS;
-  readonly shots = ODYSSEY_SHOTS;
-  readonly shotStarts = ODYSSEY_SHOT_STARTS;
+/** Dynamic Path Compiler: builds a seamless multi-act ChapterTrack for any sequence of PaintingIds. */
+export function compilePathTrack(sequence: readonly PaintingId[] = DEFAULT_ODYSSEY_SEQUENCE): ChapterTrack {
+  const seq = sequence.length > 0 ? sequence : DEFAULT_ODYSSEY_SEQUENCE;
+  const n = seq.length;
+  const loopSeconds = n * ACT_SECONDS;
+  const shots: ShotDef[] = [];
+  seq.forEach((id, actIdx) => {
+    const tr = ODYSSEY_ACT_BY_ID[id];
+    const tBase = actIdx * ACT_SECONDS;
+    tr.shots.forEach((s, j) => {
+      shots.push({
+        index: actIdx * 4 + j,
+        name: s.name,
+        t0: tBase + s.t0,
+        t1: tBase + s.t1,
+        setPiece: s.setPiece,
+      });
+    });
+  });
+  const shotStarts = shots.map((s) => s.t0);
 
-  get aspect(): number {
-    return CANVAS_ASPECT;
-  }
+  const split = (t: number): { tr: CompanionTrack; tau: number } => {
+    const tw = ((t % loopSeconds) + loopSeconds) % loopSeconds;
+    const idx = Math.min(n - 1, Math.floor(tw / ACT_SECONDS));
+    return { tr: ODYSSEY_ACT_BY_ID[seq[idx]], tau: tw - idx * ACT_SECONDS };
+  };
 
-  aspectAt(t: number): number {
-    return evalOdysseyMorph(t).displayAspect;
-  }
-
-  private split(t: number): { tr: CompanionTrack; tau: number } {
-    const tw = ((t % ODYSSEY_SECONDS) + ODYSSEY_SECONDS) % ODYSSEY_SECONDS;
-    const idx = Math.min(SUITE_COUNT - 1, Math.floor(tw / ACT_SECONDS));
-    return { tr: ODYSSEY_ACT_TRACKS[idx], tau: tw - idx * ACT_SECONDS };
-  }
-
-  position(t: number, out: Vector3): Vector3 {
-    const { tr, tau } = this.split(t);
-    return tr.position(tau, out);
-  }
-
-  pose(t: number, out: CamPose): CamPose {
-    const { tr, tau } = this.split(t);
-    return tr.pose(tau, out);
-  }
-
-  velocity(t: number, out: Vector3): Vector3 {
-    const { tr, tau } = this.split(t);
-    return tr.velocity(tau, out);
-  }
-
-  env(t: number, camDistFromE: number, calm: boolean, out: EnvSample): EnvSample {
-    const { tr, tau } = this.split(t);
-    tr.env(tau, camDistFromE, calm, out);
-    out.fade = 0;
-    return out;
-  }
+  return {
+    loopSeconds,
+    aspect: CANVAS_ASPECT,
+    shots,
+    shotStarts,
+    aspectAt: (t: number) => evalOdysseyMorph(t, seq).displayAspect,
+    position: (t: number, out: Vector3) => {
+      const { tr, tau } = split(t);
+      return tr.position(tau, out);
+    },
+    pose: (t: number, out: CamPose) => {
+      const { tr, tau } = split(t);
+      return tr.pose(tau, out);
+    },
+    velocity: (t: number, out: Vector3) => {
+      const { tr, tau } = split(t);
+      return tr.velocity(tau, out);
+    },
+    env: (t: number, camDistFromE: number, calm: boolean, out: EnvSample) => {
+      const { tr, tau } = split(t);
+      tr.env(tau, camDistFromE, calm, out);
+      out.fade = 0;
+      return out;
+    },
+  };
 }
-
-export const ODYSSEY_TRACK: ChapterTrack = new OdysseyMasterTrack();
 
 function generateStarryChapter(
   sink: StrokeSink,
@@ -572,12 +622,49 @@ function generateStarryChapter(
 
 export const PAINTING_SUITE: readonly PaintingSpec[] = [
   {
-    id: 'cafe',
+    id: 'potato',
+    chapterId: 'earth',
     roman: 'I',
+    shortZh: '食薯者',
+    titleZh: '食薯者',
+    titleEn: 'The Potato Eaters',
+    placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)',
+    year: '1885.04',
+    portalZh: '飛入中央懸掛油燈的暖金火芯 → 甦醒為巴黎點描色彩',
+    aspect: POTATO_ASPECT,
+    skyMode: 0.6,
+    fogNearHex: 0x261d14,
+    fogFarHex: 0x120e0a,
+    moonUVD: [uFromPaint(0.50, POTATO_ASPECT), 0.78, 480],
+    track: POTATO_TRACKS.standalone,
+    generate: generatePotatoChapter,
+  },
+  {
+    id: 'paris',
+    chapterId: 'color',
+    roman: 'II',
+    shortZh: '克利希大道',
+    titleZh: '克利希大道',
+    titleEn: 'Boulevard de Clichy',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Paris)',
+    year: '1887.03',
+    portalZh: '沿點描林蔭大道衝向南方驕陽 → 步入亞爾夜間咖啡座',
+    aspect: PARIS_ASPECT,
+    skyMode: 3,
+    fogNearHex: 0x7a9eb8,
+    fogFarHex: 0xa8c6dc,
+    moonUVD: [uFromPaint(0.46, PARIS_ASPECT), 0.56, 13200],
+    track: PARIS_TRACKS.standalone,
+    generate: generateParisChapter,
+  },
+  {
+    id: 'cafe',
+    chapterId: 'sun',
+    roman: 'III',
     shortZh: '夜間咖啡座',
     titleZh: '夜間露天咖啡座',
     titleEn: 'Café Terrace at Night',
-    placeZh: '亞爾 · 論壇廣場',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)',
     year: '1888.09',
     portalZh: '穿過鵝卵石街尾星谷 → 步入隆河河畔',
     aspect: CAFE_ASPECT,
@@ -590,11 +677,12 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
   {
     id: 'rhone',
-    roman: 'II',
+    chapterId: 'sun',
+    roman: 'IV',
     shortZh: '隆河星夜',
     titleZh: '隆河上的星夜',
     titleEn: 'Starry Night Over the Rhône',
-    placeZh: '亞爾 · 隆河河畔',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)',
     year: '1888.09',
     portalZh: '飛入對岸暖黃窗燈 → 走進亞爾黃色小屋臥室',
     aspect: RHONE_ASPECT,
@@ -607,11 +695,12 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
   {
     id: 'bedroom',
-    roman: 'III',
+    chapterId: 'sun',
+    roman: 'V',
     shortZh: '亞爾的臥室',
     titleZh: '在亞爾的臥室',
     titleEn: 'The Bedroom in Arles',
-    placeZh: '亞爾 · 拉馬丁廣場黃色小屋',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)',
     year: '1888.10',
     portalZh: '推開半掩的綠色百葉窗 → 飛入聖雷米星夜',
     aspect: BEDROOM_ASPECT,
@@ -624,11 +713,12 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
   {
     id: 'starry',
-    roman: 'IV',
+    chapterId: 'cosmos',
+    roman: 'VI',
     shortZh: '星夜',
     titleZh: '星夜',
     titleEn: 'The Starry Night',
-    placeZh: '聖雷米 · 聖保羅療養院',
+    placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)',
     year: '1889.06',
     portalZh: '迎向熾熱橘黃新月 → 聖雷米破曉化為金色麥田',
     aspect: CANVAS_ASPECT,
@@ -641,11 +731,12 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
   {
     id: 'wheat',
-    roman: 'V',
+    chapterId: 'cosmos',
+    roman: 'VII',
     shortZh: '絲柏麥田',
     titleZh: '有絲柏的麥田',
     titleEn: 'Wheat Field with Cypresses',
-    placeZh: '聖雷米 · 阿爾皮耶山麓',
+    placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)',
     year: '1889.07',
     portalZh: '衝入松石綠晴空與翻滾白雲 → 凝結為春日盛開杏花',
     aspect: WHEAT_ASPECT,
@@ -658,11 +749,12 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
   {
     id: 'almond',
-    roman: 'VI',
+    chapterId: 'cosmos',
+    roman: 'VIII',
     shortZh: '盛開的杏花',
     titleZh: '盛開的杏花',
     titleEn: 'Almond Blossom',
-    placeZh: '聖雷米 · 新生禮讚',
+    placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)',
     year: '1890.02',
     portalZh: '穿越飄落花雨與蔚藍晴空 → 北上奧維爾哥德教堂',
     aspect: ALMOND_ASPECT,
@@ -675,11 +767,12 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
   {
     id: 'church',
-    roman: 'VII',
+    chapterId: 'road',
+    roman: 'IX',
     shortZh: '奧維爾教堂',
     titleZh: '奧維爾的教堂',
     titleEn: 'The Church at Auvers',
-    placeZh: '奧維爾 · 瓦茲河谷',
+    placeZh: 'Chapter V · 奧維爾的路與風 (Auvers-sur-Oise)',
     year: '1890.06',
     portalZh: '攀升鐘樓尖頂暗藍風暴 → 拉開 2:1 超寬銀幕麥田群鴉',
     aspect: CHURCH_ASPECT,
@@ -692,13 +785,14 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
   {
     id: 'crows',
-    roman: 'VIII',
+    chapterId: 'road',
+    roman: 'X',
     shortZh: '麥田群鴉',
     titleZh: '麥田群鴉',
     titleEn: 'Wheatfield with Crows',
-    placeZh: '奧維爾 · 暴風雨前的麥海',
+    placeZh: 'Chapter V · 奧維爾的路與風 (Auvers-sur-Oise)',
     year: '1890.07',
-    portalZh: '穿過迎面驚飛的黑鴉群 → 化為星塵重返亞爾夜間咖啡座',
+    portalZh: '穿過迎面驚飛的黑鴉群 → 落回最初的黑土與《食薯者》油燈',
     aspect: CROWS_ASPECT,
     skyMode: 0.2,
     fogNearHex: 0x14224a,
@@ -709,17 +803,27 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
   },
 ];
 
+export const ODYSSEY_TRACK: ChapterTrack = compilePathTrack(DEFAULT_ODYSSEY_SEQUENCE);
+
 export function getPaintingSpec(id: PaintingId): PaintingSpec {
-  return PAINTING_SUITE.find((p) => p.id === id) ?? PAINTING_SUITE[3];
+  return PAINTING_SUITE.find((p) => p.id === id) ?? PAINTING_SUITE[5];
 }
 
-export function getPaintingActStart(id: PaintingId): number {
-  const idx = PAINTING_SUITE.findIndex((p) => p.id === id);
+export function getPaintingActStart(
+  id: PaintingId,
+  sequence: readonly PaintingId[] = DEFAULT_ODYSSEY_SEQUENCE,
+): number {
+  const idx = sequence.indexOf(id);
   return Math.max(0, idx) * ACT_SECONDS;
 }
 
-export function nextPaintingId(id: PaintingId, dir: 1 | -1 = 1): PaintingId {
-  const idx = PAINTING_SUITE.findIndex((p) => p.id === id);
-  const next = (idx + dir + PAINTING_SUITE.length) % PAINTING_SUITE.length;
-  return PAINTING_SUITE[next].id;
+export function nextPaintingId(
+  id: PaintingId,
+  dir: 1 | -1 = 1,
+  sequence: readonly PaintingId[] = DEFAULT_ODYSSEY_SEQUENCE,
+): PaintingId {
+  const idx = sequence.indexOf(id);
+  if (idx === -1) return sequence[0];
+  const next = (idx + dir + sequence.length) % sequence.length;
+  return sequence[next];
 }

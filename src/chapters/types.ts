@@ -8,6 +8,8 @@ import { canvasToWorld, EYE, segmentToStroke } from '../shared/canvasSpace';
 import { mixHex, packSrgb, rampHex, shadeHex } from '../shared/palette';
 
 export type PaintingId =
+  | 'potato'
+  | 'paris'
   | 'cafe'
   | 'rhone'
   | 'bedroom'
@@ -16,6 +18,10 @@ export type PaintingId =
   | 'almond'
   | 'church'
   | 'crows';
+
+export type ChapterId = 'earth' | 'color' | 'sun' | 'cosmos' | 'road';
+export type MotifId = 'light' | 'road' | 'sky' | 'flora' | 'dwelling' | 'gaze';
+export type ViewMode = 'odyssey' | 'theme' | 'atlas';
 
 export const K_D = 2 * T_HALF;
 const TAU = Math.PI * 2;
