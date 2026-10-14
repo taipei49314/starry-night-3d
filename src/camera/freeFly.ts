@@ -24,7 +24,7 @@ const MOVE_CODES = new Set([
 ]);
 const PASSIVE_CODES = new Set([
   'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'Tab',
-  'CapsLock', 'ContextMenu', 'Escape',
+  'CapsLock', 'ContextMenu', 'Escape', 'BracketLeft', 'BracketRight', 'PageUp', 'PageDown', 'KeyO', 'KeyV',
 ]);
 
 /** Event collector bound to the input element (pointer/wheel/touch) and its window (keys, filtered by target). */

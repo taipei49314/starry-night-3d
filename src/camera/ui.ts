@@ -156,6 +156,7 @@ export class DirectorUI {
   private readonly suiteBar: HTMLDivElement;
   private readonly chapterBtns = new Map<PaintingId, HTMLButtonElement>();
   private readonly odysseyBtn: HTMLButtonElement;
+  private readonly soundBtn: HTMLButtonElement;
   private readonly card: HTMLDivElement;
   private readonly cardSub: HTMLDivElement;
   private readonly cardTitle: HTMLDivElement;
@@ -174,6 +175,7 @@ export class DirectorUI {
   private last = { hud: false, hint: -1, hudLine: '', ring: '', rect: '', tlPct: -1, tlShot: '', tlTime: '' };
   private onSelectPainting: ((id: PaintingId) => void) | null = null;
   private onToggleOdyssey: (() => void) | null = null;
+  private onToggleSound: (() => void) | null = null;
   private onSeek: ((fraction: number) => void) | null = null;
   private scrubbing = false;
 
@@ -222,7 +224,19 @@ export class DirectorUI {
       this.onToggleOdyssey?.();
       this.input.focus();
     });
-    this.suiteBar.append(sep, this.odysseyBtn);
+
+    this.soundBtn = doc.createElement('button');
+    this.soundBtn.type = 'button';
+    this.soundBtn.className = 'pn-odyssey-btn';
+    this.soundBtn.textContent = '♪ 聲景：開';
+    this.soundBtn.title = '切換八幕程序化空間聲景 / 靜音 (快捷鍵 V)';
+    this.soundBtn.dataset.on = '1';
+    this.soundBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onToggleSound?.();
+      this.input.focus();
+    });
+    this.suiteBar.append(sep, this.odysseyBtn, this.soundBtn);
 
     // Bottom Continuous 8-Act Odyssey Scrubber Timeline Bar
     this.tlRoot = doc.createElement('div');
@@ -325,18 +339,28 @@ export class DirectorUI {
   wireSuite(opts: {
     active: PaintingId;
     odyssey: boolean;
+    soundEnabled?: boolean;
     showBar?: boolean;
     onSelect: (id: PaintingId) => void;
     onToggleOdyssey: () => void;
+    onToggleSound?: () => void;
     onSeek?: (fraction: number) => void;
   }): void {
     this.onSelectPainting = opts.onSelect;
     this.onToggleOdyssey = opts.onToggleOdyssey;
+    this.onToggleSound = opts.onToggleSound ?? null;
     this.onSeek = opts.onSeek ?? null;
     const vis = opts.showBar === false ? 'none' : 'flex';
     this.suiteBar.style.display = vis;
     this.tlRoot.style.display = opts.showBar === false ? 'none' : 'block';
+    this.setSoundState(opts.soundEnabled ?? true);
     this.setSuiteState(opts.active, opts.odyssey, true);
+  }
+
+  /** Update the soundscape pill button label and highlight state. */
+  setSoundState(enabled: boolean): void {
+    this.soundBtn.dataset.on = enabled ? '1' : '0';
+    this.soundBtn.textContent = enabled ? '♪ 聲景：開' : '♪ 聲景：靜音';
   }
 
   /** Update active painting pill, Odyssey toggle state, and optionally flash the museum title card. */

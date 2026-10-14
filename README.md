@@ -42,7 +42,8 @@ Any input hands control to you; after 12 s idle the camera rejoins the loop.
 | Shift + wheel | depth warp: at E the image does not change; step aside and the world refolds |
 | Space | fly back to the painter's eye and re-register the painting |
 | `[` / `]` or `PageUp` / `PageDown` | switch between the 8 paintings via 3D Brushstroke Cross-Dissolve |
-| `O` | toggle 8-Act Continuous Odyssey (`∞ 八幕連映`) vs. single-painting loop (`單畫巡禮`) |
+| `O` | toggle 8-Act Continuous Odyssey (`∞ 八幕連貫史詩`) vs. single-painting loop (`單幅循環模式`) |
+| `V` | toggle 8-Act Procedural Soundscape (`♪ 聲景：開 / 靜音`) |
 | Scrubber Timeline (bottom) | drag or click anywhere along the 240 s 8-Act Odyssey timeline |
 | 1-9, 0 | jump to shot 1-10 |
 | C / R | resume the cinematic / restart |
@@ -62,6 +63,7 @@ URL flags: `?painting=cafe|rhone|bedroom|starry|wheat|almond|church|crows`, `?od
 | `src/strokes/` | instanced stroke buffer, ribbon shader (animation, storm, impasto, layer cross-dissolve), underlay material |
 | `src/sky/`, `src/celestial/`, `src/earth/` | generators: sky, swirls, wind jet, backdrop, dust; stars and moon; cypress, hills, village |
 | `src/chapters/` | 8-Act Van Gogh Odyssey registry, aspect-invariant stroke emitters, procedural 3D generators & Diegetic Spatial Portal camera choreography |
+| `src/audio/` | 100% procedural Web Audio soundscape engine (8-Act harmonic drones, stereo reverb, river waves, wheat surf, bronze church bells, crow wings, flight wind & sky-stirring chimes) |
 | `src/camera/` | shot timeline, Odyssey track, free flight, rejoin, 8-Act Suite Bar, interactive timeline scrubber & museum title card UI |
 | `src/post/` | bloom, painterly lens (isophote halo banding, pigment pull, smear, canvas weave, matte) |
 | `src/app/` | world assembly, frame loop, dual-world 3D brushstroke cross-dissolve, smart lookahead pre-warming + LRU cache, self-tests, debug overlay |

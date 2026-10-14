@@ -22,6 +22,7 @@ import type { PaintingId } from '../chapters/types';
 import { StormController } from './storm';
 import { assertPaintOrder, runInvarianceSelfTest } from './selfTest';
 import { DebugOverlay } from './debugOverlay';
+import { SoundscapeEngine } from '../audio/soundscape';
 
 export interface BuiltWorld extends World {
   buffer: StrokeBuffer;
@@ -277,6 +278,9 @@ export async function boot(container: HTMLElement): Promise<void> {
   });
   const storm = new StormController();
   const overlay = flags.overlay ? new DebugOverlay(container) : null;
+  const soundscape = new SoundscapeEngine({
+    onStateChange: (enabled) => director.ui?.setSoundState(enabled),
+  });
 
   let manualMorph: ManualMorph | null = null;
   let displayAspect = initialSpec.aspect;
@@ -293,6 +297,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       director.setTrack(getPaintingSpec(targetId).track, 0, false);
     }
     director.ui?.setSuiteState(activeId, odyssey, true);
+    soundscape.triggerSnapChord(targetId);
     if (prevId !== targetId) {
       manualMorph = { fromId: prevId, toId: targetId, t: 0 };
     } else {
@@ -311,13 +316,20 @@ export async function boot(container: HTMLElement): Promise<void> {
     director.ui?.setSuiteState(activeId, odyssey, true);
   };
 
+  const toggleSound = () => {
+    const on = soundscape.toggle();
+    director.ui?.setSoundState(on);
+  };
+
   const isHarnessPin = flags.t !== undefined || flags.freeze || flags.overlay;
   director.ui?.wireSuite({
     active: activeId,
     odyssey,
+    soundEnabled: soundscape.enabled,
     showBar: !isHarnessPin,
     onSelect: (id) => triggerTransition(id),
     onToggleOdyssey: toggleOdyssey,
+    onToggleSound: toggleSound,
     onSeek: (fraction) => {
       const targetT = fraction * director.activeTrack.loopSeconds;
       director.seekTo(targetT);
@@ -332,7 +344,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     },
   });
 
-  // Keyboard shortcuts for Multi-Punctum navigation: [ / ] (prev/next painting), O (toggle Odyssey)
+  // Keyboard shortcuts for Multi-Punctum navigation: [ / ] (prev/next painting), O (toggle Odyssey), V (toggle Sound)
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key === '[' || e.key === 'PageUp') {
@@ -344,6 +356,9 @@ export async function boot(container: HTMLElement): Promise<void> {
     } else if (e.key === 'o' || e.key === 'O') {
       e.preventDefault();
       toggleOdyssey();
+    } else if (e.key === 'v' || e.key === 'V') {
+      e.preventDefault();
+      toggleSound();
     }
   });
 
@@ -375,6 +390,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     uniforms: u,
     post,
     storm,
+    soundscape,
     suite: PAINTING_SUITE,
     switchPainting: triggerTransition,
     frames: () => frames,
@@ -400,6 +416,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     let secondaryScatter = 0;
     let atmoMix = 0;
     let morphSmear = 0;
+    let snapTriggered = false;
 
     if (manualMorph) {
       manualMorph.t += dt;
@@ -426,6 +443,7 @@ export async function boot(container: HTMLElement): Promise<void> {
         atmoMix = 0;
         displayAspect = getPaintingSpec(activeId).aspect;
         manualMorph = null;
+        snapTriggered = true;
       }
     } else if (odyssey) {
       const ms = evalOdysseyMorph(f.loopTime);
@@ -443,6 +461,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       if (ms.snapIncoming && ms.secondaryId) {
         snapHoldId = ms.secondaryId;
         snapHoldTimer = 1.6;
+        snapTriggered = true;
       }
       if (ms.activeId !== activeId) {
         activeId = ms.activeId;
@@ -470,6 +489,19 @@ export async function boot(container: HTMLElement): Promise<void> {
     const bufH = bufSize.y;
     derivedUniforms(u, f, engine.camera, bufH, displayAspect);
     storm.update(f, engine.camera.position, dt, u, world.strokes);
+
+    const camSpeed = Math.hypot(f.camVelocity[0], f.camVelocity[1], f.camVelocity[2]);
+    soundscape.update(dt, {
+      primaryId,
+      secondaryId,
+      atmoMix,
+      camSpeed,
+      align: u.uAlign.value,
+      off: u.uOff.value,
+      scatter: Math.max(u.uScatter.value, primaryScatter, secondaryScatter * 0.6),
+      stirStrength: f.stir ? f.stir[2] : 0,
+      snapTriggered,
+    });
 
     // Hide all cached worlds first, then configure the active primary (and optional secondary morph) worlds
     for (const w of worldCache.values()) {
