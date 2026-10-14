@@ -15,6 +15,7 @@ export interface DirectorTrack {
   readonly aspect: number;
   readonly shots: readonly ShotDef[];
   readonly shotStarts: readonly number[];
+  aspectAt?(t: number): number;
   pose(t: number, out: CamPose): CamPose;
   position(t: number, out: Vector3): Vector3;
   velocity(t: number, out: Vector3): Vector3;
@@ -179,8 +180,12 @@ export class Director {
   get mode(): DirectorMode { return this._mode; }
   get calm(): boolean { return this._calm; }
   get hudVisible(): boolean { return this.hud; }
-  get canvasAspect(): number { return this.track.aspect; }
+  get canvasAspect(): number { return this.aspectAt(this.loopTime); }
   get activeTrack(): DirectorTrack { return this.track; }
+
+  private aspectAt(t: number): number {
+    return this.track.aspectAt ? this.track.aspectAt(t) : this.track.aspect;
+  }
 
   setCalm(on: boolean): void { this._calm = on; }
   setHudText(text: string): void {
@@ -206,6 +211,15 @@ export class Director {
     this.cinematicPose(this.loopTime, 0, true);
     this.writeCamera();
     this.prevPos.copy(this.pos);
+  }
+
+  /** Seek directly to `tSeconds` on the active track (used by the interactive Odyssey timeline scrubber). */
+  seekTo(tSeconds: number): void {
+    this.cancelPendingJump();
+    this.fadePhase = 0;
+    this.fadeT = 0;
+    this.setCinematic(tSeconds);
+    this.cutPending = true;
   }
 
   /** Jump to the start of shot `index` through a 0.3 s Prussian fade; the frame at the fade peak has cut = true. */
@@ -252,7 +266,7 @@ export class Director {
     this.stormToggled = false;
     this.wrappedThisFrame = false;
     const loopLen = this.track.loopSeconds;
-    const cAspect = this.track.aspect;
+    let cAspect = this.aspectAt(this.loopTime);
 
     // fade-through-Prussian jump cuts
     if (this.fadePhase === 1) {
@@ -357,6 +371,7 @@ export class Director {
     }
 
     this.writeCamera();
+    cAspect = this.aspectAt(this.loopTime);
 
     // velocity: analytic in cinematic / free, finite difference (lightly smoothed) in flights; zero on cuts
     if (cut) this.vel.set(0, 0, 0);
@@ -424,7 +439,7 @@ export class Director {
   /** Timeline pose at t with comfort caps and the 25 deg/s roll slew (skipped on cuts / dt = 0). */
   private cinematicPose(t: number, dt: number, cut: boolean): void {
     const P = this.track.pose(t, this.pose);
-    applyComfort(P, this.camera.aspect || 16 / 9, this._calm, this.track.aspect);
+    applyComfort(P, this.camera.aspect || 16 / 9, this._calm, this.aspectAt(t));
     let roll = P.roll;
     if (!cut && dt > 0) {
       const m = COMFORT.rollRateMaxDegS * dt;
@@ -585,9 +600,18 @@ export class Director {
     const ring = this._mode === 'free'
       ? projectEyeRing(this.camera, w, h, f.align)
       : { x: 0, y: 0, r: 0, visible: false, opacity: 0 };
-    const hudLine = `${f.mode} · t ${f.loopTime.toFixed(1)} s · shot ${f.shot + 1} · fov ${this.fov.toFixed(1)}°` +
+    const shotName = this.track.shots[f.shot]?.name ?? '';
+    const hudLine = `${f.mode} · t ${f.loopTime.toFixed(1)} s · shot ${f.shot + 1} (${shotName}) · fov ${this.fov.toFixed(1)}°` +
       `${f.calm ? ' · calm' : ''}${f.warpK !== 1 ? ` · warp ${f.warpK.toFixed(1)}` : ''}` +
       `${this._mode === 'free' ? ` · speed 2^${this.input?.speedExp ?? 0}` : ''}`;
-    this.ui.render({ hud: this.hud, hudLine, hintOpacity: hint, ring });
+    this.ui.render({
+      hud: this.hud,
+      hudLine,
+      hintOpacity: hint,
+      ring,
+      loopTime: f.loopTime,
+      loopSeconds: loopLen,
+      shotName,
+    });
   }
 }

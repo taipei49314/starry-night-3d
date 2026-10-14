@@ -1,4 +1,5 @@
-// M10: world assembly, Multi-Punctum Provençal Suite orchestration, and the per-frame loop (§4.10).
+// M10: world assembly, Multi-Punctum Provençal Suite orchestration, dual-world 3D brushstroke cross-dissolve,
+// and the per-frame loop (§4.10).
 import { Scene, Vector2, Vector3, type Material, type PerspectiveCamera } from 'three';
 import {
   CANVAS_ASPECT, LOOP_SECONDS, type DirectorFrame, type Engine, type PostFrame, type QualitySettings, type SharedUniforms,
@@ -14,7 +15,9 @@ import { canvasPoseFovDeg, canvasToWorld, EYE, FORWARD, galleryLightDir } from '
 import { srgbHexToLinear } from '../shared/palette';
 import { forkRng } from '../shared/rng';
 import { createSharedUniforms } from '../shared/uniforms';
-import { getPaintingSpec, nextPaintingId, PAINTING_SUITE } from '../chapters/suite';
+import {
+  evalOdysseyMorph, getPaintingActStart, getPaintingSpec, nextPaintingId, ODYSSEY_TRACK, PAINTING_SUITE,
+} from '../chapters/suite';
 import type { PaintingId } from '../chapters/types';
 import { StormController } from './storm';
 import { assertPaintOrder, runInvarianceSelfTest } from './selfTest';
@@ -24,6 +27,19 @@ export interface BuiltWorld extends World {
   buffer: StrokeBuffer;
   timings: Record<string, number>;
   paintingId: PaintingId;
+  layerUniforms: SharedUniforms;
+}
+
+/** Create a per-painting uniform dictionary that shares camera/atmosphere refs with `u` but has independent layer morph controls. */
+function createLayerUniforms(u: SharedUniforms): SharedUniforms {
+  return {
+    ...u,
+    uScatter: { value: 0 },
+    uSnapTime: { value: -1 },
+    uScatterAtSnap: { value: 0 },
+    uLayIn: { value: -1 },
+    uLayerFade: { value: 1 },
+  };
 }
 
 export function buildWorld(
@@ -33,22 +49,23 @@ export function buildWorld(
   paintingId: PaintingId = 'starry',
 ): BuiltWorld {
   const spec = getPaintingSpec(paintingId);
+  const layerUniforms = createLayerUniforms(u);
   const buffer = new StrokeBuffer(200_000);
   const materials = new Map<string, Material>();
   const mat: UnderlayMaterialFactory = (hex, opts) => {
     const key = `${hex}:${opts?.vertexFade ? 'fade' : ''}`;
     let m = materials.get(key);
-    if (!m) materials.set(key, (m = makeUnderlayMaterial(hex, u, undefined, opts)));
+    if (!m) materials.set(key, (m = makeUnderlayMaterial(hex, layerUniforms, undefined, opts)));
     return m;
   };
 
-  const { underlays, village, timings } = spec.generate(buffer, seed, mat, u, q);
+  const { underlays, village, timings } = spec.generate(buffer, seed, mat, layerUniforms, q);
 
   const violations = assertPaintOrder(buffer);
   if (violations.length) console.warn(`[punctum:${paintingId}] paint order: ${violations.length} violation(s)\n  ${violations.join('\n  ')}`);
 
   const tUp = performance.now();
-  const strokes = buildStrokeLayer(buffer, u, q);
+  const strokes = buildStrokeLayer(buffer, layerUniforms, q);
   timings.upload = Math.round((performance.now() - tUp) * 10) / 10;
 
   const scene = new Scene();
@@ -56,7 +73,7 @@ export function buildWorld(
   const dust = createDust(u, q, forkRng(seed, `dust:${paintingId}`));
   scene.add(backdrop, strokes.group, underlays, dust);
   timings.strokes = buffer.count;
-  return { scene, strokes, backdrop, dust, underlays, village, buffer, timings, paintingId };
+  return { scene, strokes, backdrop, dust, underlays, village, buffer, timings, paintingId, layerUniforms };
 }
 
 const smoothstep = (a: number, b: number, x: number) => {
@@ -90,6 +107,7 @@ function readFlags(): Flags {
   try { calmStored = localStorage.getItem('punctum.calm') === '1'; } catch { /* storage blocked */ }
   const isHarnessPin = num('t') !== undefined || p.has('freeze') || p.has('overlay');
   const odysseyParam = p.get('odyssey');
+  // Default to the continuous 4-Act Odyssey unless a harness pin (?t=, ?freeze, ?overlay) or ?odyssey=0 is set
   const odyssey = odysseyParam === '0' ? false : odysseyParam === '1' ? true : !isHarnessPin;
   return {
     t: num('t'),
@@ -101,7 +119,7 @@ function readFlags(): Flags {
     calm: p.has('calm') || calmStored || matchMedia('(prefers-reduced-motion: reduce)').matches,
     freeze: p.has('freeze'),
     hud: p.has('hud'),
-    painting: validPaint ?? (odysseyParam === '1' ? 'cafe' : 'starry'),
+    painting: validPaint ?? (odyssey ? 'cafe' : 'starry'),
     odyssey,
   };
 }
@@ -115,15 +133,38 @@ function canvasRect(w: number, h: number, aspect = CANVAS_ASPECT): [number, numb
   return [0, (h - ch) / 2, w, ch];
 }
 
-function applyPaintingAtmosphere(u: SharedUniforms, id: PaintingId): void {
-  const spec = getPaintingSpec(id);
-  const fn = srgbHexToLinear(spec.fogNearHex);
-  const ff = srgbHexToLinear(spec.fogFarHex);
-  u.uFogNear.value.set(fn[0], fn[1], fn[2]);
-  u.uFogFar.value.set(ff[0], ff[1], ff[2]);
-  u.uSkyMode.value = spec.skyMode;
-  const [mu, mv, md] = spec.moonUVD;
-  canvasToWorld(mu, mv, md, u.uMoonPos.value);
+const _moonA = new Vector3();
+const _moonB = new Vector3();
+
+/** Apply or smoothly blend atmosphere uniforms (fog near/far, sky mode, moon light pos) between two paintings. */
+function applyBlendedAtmosphere(u: SharedUniforms, idA: PaintingId, idB: PaintingId | null, mix = 0): void {
+  const specA = getPaintingSpec(idA);
+  const fnA = srgbHexToLinear(specA.fogNearHex);
+  const ffA = srgbHexToLinear(specA.fogFarHex);
+  canvasToWorld(specA.moonUVD[0], specA.moonUVD[1], specA.moonUVD[2], _moonA);
+  if (!idB || mix <= 0) {
+    u.uFogNear.value.set(fnA[0], fnA[1], fnA[2]);
+    u.uFogFar.value.set(ffA[0], ffA[1], ffA[2]);
+    u.uSkyMode.value = specA.skyMode;
+    u.uMoonPos.value.copy(_moonA);
+    return;
+  }
+  const specB = getPaintingSpec(idB);
+  const fnB = srgbHexToLinear(specB.fogNearHex);
+  const ffB = srgbHexToLinear(specB.fogFarHex);
+  canvasToWorld(specB.moonUVD[0], specB.moonUVD[1], specB.moonUVD[2], _moonB);
+  u.uFogNear.value.set(
+    fnA[0] + (fnB[0] - fnA[0]) * mix,
+    fnA[1] + (fnB[1] - fnA[1]) * mix,
+    fnA[2] + (fnB[2] - fnA[2]) * mix,
+  );
+  u.uFogFar.value.set(
+    ffA[0] + (ffB[0] - ffA[0]) * mix,
+    ffA[1] + (ffB[1] - ffA[1]) * mix,
+    ffA[2] + (ffB[2] - ffA[2]) * mix,
+  );
+  u.uSkyMode.value = specA.skyMode + (specB.skyMode - specA.skyMode) * mix;
+  u.uMoonPos.value.copy(_moonA).lerp(_moonB, mix);
 }
 
 const camF = new Vector3();
@@ -155,8 +196,13 @@ function derivedUniforms(
   u.uDustAlpha.value = f.env.dust;
 }
 
-const TRANS_UP = 0.65;
-const TRANS_DOWN = 0.95;
+const MANUAL_MORPH_DUR = 1.65;
+
+interface ManualMorph {
+  fromId: PaintingId;
+  toId: PaintingId;
+  t: number;
+}
 
 export async function boot(container: HTMLElement): Promise<void> {
   const flags = readFlags();
@@ -170,7 +216,13 @@ export async function boot(container: HTMLElement): Promise<void> {
   const u = createSharedUniforms();
   let activeId: PaintingId = flags.painting;
   let odyssey = flags.odyssey;
-  applyPaintingAtmosphere(u, activeId);
+  applyBlendedAtmosphere(u, activeId, null, 0);
+
+  // Master scene holds shared backdrop + dust + all cached paintings' stroke & underlay groups for dual-world 3D cross-dissolve
+  const masterScene = new Scene();
+  const masterBackdrop = createBackdrop(u, engine.quality);
+  const masterDust = createDust(u, engine.quality, forkRng(flags.seed, 'dust:master'));
+  masterScene.add(masterBackdrop, masterDust);
 
   const worldCache = new Map<PaintingId, BuiltWorld>();
   const getOrBuildWorld = (id: PaintingId): BuiltWorld => {
@@ -180,7 +232,10 @@ export async function boot(container: HTMLElement): Promise<void> {
       w = buildWorld(u, engine.quality, flags.seed, id);
       const self = runInvarianceSelfTest(w.buffer);
       if (!self.ok) console.error(`[punctum:${id}] invariance self-test failed: max canvas error ${self.maxErr.toExponential(2)}`);
-      engine.renderer.compile(w.scene, engine.camera);
+      w.strokes.group.visible = false;
+      w.underlays.visible = false;
+      masterScene.add(w.strokes.group, w.underlays);
+      engine.renderer.compile(masterScene, engine.camera);
       worldCache.set(id, w);
       console.info(`[punctum:${id}] ${w.buffer.count} strokes, tier ${engine.quality.tier}, build ${Math.round(performance.now() - tb)} ms`, w.timings, `self-test ${self.maxErr.toExponential(1)}`);
     }
@@ -190,44 +245,52 @@ export async function boot(container: HTMLElement): Promise<void> {
   let world = getOrBuildWorld(activeId);
   const post = createPost(engine.renderer, u, engine.quality);
   const initialSpec = getPaintingSpec(activeId);
+  const initialStartTime = flags.t !== undefined
+    ? flags.t
+    : odyssey
+      ? getPaintingActStart(activeId)
+      : 0;
   const director = new Director(engine.camera, engine.canvas, {
     calm: flags.calm,
-    startTime: flags.t,
+    startTime: initialStartTime,
     free: flags.free,
     firstBoot: flags.t === undefined,
-    track: initialSpec.track,
+    track: odyssey ? ODYSSEY_TRACK : initialSpec.track,
   });
   const storm = new StormController();
   const overlay = flags.overlay ? new DebugOverlay(container) : null;
 
-  // Transition state for Storm-Snap Morph between Van Gogh paintings
-  let transPhase: 0 | 1 | 2 = 0;
-  let transT = 0;
-  let transTarget: PaintingId = activeId;
-  let fromAspect = initialSpec.aspect;
+  let manualMorph: ManualMorph | null = null;
   let displayAspect = initialSpec.aspect;
-  let snapHold = 0;
+  let snapHoldId: PaintingId | null = null;
+  let snapHoldTimer = 0;
 
   const triggerTransition = (targetId: PaintingId) => {
-    if (targetId === activeId && transPhase === 0) {
-      director.jumpToShot(0);
-      director.ui?.setSuiteState(activeId, odyssey, true);
-      return;
+    getOrBuildWorld(targetId);
+    const prevId = activeId;
+    activeId = targetId;
+    if (odyssey) {
+      director.seekTo(getPaintingActStart(targetId));
+    } else {
+      director.setTrack(getPaintingSpec(targetId).track, 0, false);
     }
-    transTarget = targetId;
-    fromAspect = displayAspect;
-    if (transPhase === 0) {
-      transPhase = 1;
-      transT = 0;
-    } else if (transPhase === 2) {
-      transPhase = 1;
-      transT = (1 - transT / TRANS_DOWN) * TRANS_UP;
+    director.ui?.setSuiteState(activeId, odyssey, true);
+    if (prevId !== targetId) {
+      manualMorph = { fromId: prevId, toId: targetId, t: 0 };
+    } else {
+      snapHoldId = targetId;
+      snapHoldTimer = 2.0;
     }
   };
 
   const toggleOdyssey = () => {
     odyssey = !odyssey;
-    director.ui?.setSuiteState(activeId, odyssey, false);
+    if (odyssey) {
+      director.setTrack(ODYSSEY_TRACK, getPaintingActStart(activeId), false);
+    } else {
+      director.setTrack(getPaintingSpec(activeId).track, 0, false);
+    }
+    director.ui?.setSuiteState(activeId, odyssey, true);
   };
 
   const isHarnessPin = flags.t !== undefined || flags.freeze || flags.overlay;
@@ -237,6 +300,18 @@ export async function boot(container: HTMLElement): Promise<void> {
     showBar: !isHarnessPin,
     onSelect: (id) => triggerTransition(id),
     onToggleOdyssey: toggleOdyssey,
+    onSeek: (fraction) => {
+      const targetT = fraction * director.activeTrack.loopSeconds;
+      director.seekTo(targetT);
+      manualMorph = null;
+      if (odyssey) {
+        const ms = evalOdysseyMorph(targetT);
+        if (ms.activeId !== activeId) {
+          activeId = ms.activeId;
+          director.ui?.setSuiteState(activeId, odyssey, true);
+        }
+      }
+    },
   });
 
   // Keyboard shortcuts for Multi-Punctum navigation: [ / ] (prev/next painting), O (toggle Odyssey)
@@ -260,6 +335,8 @@ export async function boot(container: HTMLElement): Promise<void> {
   engine.onResize(resize);
   resize(engine.cssWidth, engine.cssHeight, engine.pixelRatio);
   engine.onQualityChange((q) => {
+    setBackdropQuality(masterBackdrop, q);
+    masterDust.geometry.setDrawRange(0, q.dustCount);
     for (const w of worldCache.values()) {
       w.strokes.setQuality(q);
       setBackdropQuality(w.backdrop, q);
@@ -272,6 +349,8 @@ export async function boot(container: HTMLElement): Promise<void> {
   let last = performance.now();
   let frames = 0;
   let shotFrames = 0;
+  const prewarmQueue: PaintingId[] = PAINTING_SUITE.map((s) => s.id).filter((id) => id !== activeId);
+
   const debug = {
     engine,
     director,
@@ -290,53 +369,83 @@ export async function boot(container: HTMLElement): Promise<void> {
     last = now;
     if (frames === 0 && flags.boot) for (let k = 0; k < Math.round(flags.boot / 0.1) - 1; k++) director.update(0.1);
     const dt = flags.freeze ? (frames === 0 && flags.boot ? 0.1 : 0) : dtMs / 1000;
+
+    // Staggered background pre-warming of companion paintings so Odyssey morph transitions are 100% hitch-free
+    if (!isHarnessPin && prewarmQueue.length > 0 && frames >= 24 && frames % 24 === 0) {
+      const nextPrewarm = prewarmQueue.shift();
+      if (nextPrewarm) getOrBuildWorld(nextPrewarm);
+    }
+
     engine.beginFrame();
     const f = director.update(dt);
+    const warped = f.warpK !== 1;
 
-    // Odyssey auto-advance at the end of a painting's cinematic take
-    if (odyssey && f.wrapped && f.mode === 'cinematic' && transPhase === 0 && !flags.freeze) {
-      triggerTransition(nextPaintingId(activeId, 1));
-    }
+    // Determine primary & secondary visible worlds and their 3D brushstroke cross-dissolve parameters
+    let primaryId: PaintingId = activeId;
+    let secondaryId: PaintingId | null = null;
+    let primaryFade = 1;
+    let secondaryFade = 0;
+    let primaryScatter = 0;
+    let secondaryScatter = 0;
+    let atmoMix = 0;
+    let morphSmear = 0;
 
-    // Advance Storm-Snap Morph transition between paintings
-    let transFade = 0;
-    let transScatter = 0;
-    let transSmear = 0;
-    if (transPhase === 1) {
-      transT += dt;
-      const p = Math.min(1, transT / TRANS_UP);
-      const s = smoothstep(0, 1, p);
-      transFade = s * 0.92;
-      transScatter = s * 1.1;
-      transSmear = flags.calm ? 0 : s * 0.65;
-      displayAspect = fromAspect + (getPaintingSpec(transTarget).aspect - fromAspect) * (0.5 * s);
-      if (transT >= TRANS_UP) {
-        activeId = transTarget;
-        const spec = getPaintingSpec(activeId);
-        world = getOrBuildWorld(activeId);
-        applyPaintingAtmosphere(u, activeId);
-        director.setTrack(spec.track, 0, true);
+    if (manualMorph) {
+      manualMorph.t += dt;
+      const p = Math.min(1, manualMorph.t / MANUAL_MORPH_DUR);
+      primaryId = manualMorph.fromId;
+      secondaryId = manualMorph.toId;
+      primaryFade = 1 - smoothstep(0.05, 0.88, p);
+      secondaryFade = smoothstep(0.05, 0.88, p);
+      primaryScatter = 0.85 * smoothstep(0.0, 0.85, p);
+      secondaryScatter = 0.88 * Math.pow(1 - smoothstep(0.10, 0.96, p), 1.65);
+      atmoMix = smoothstep(0.08, 0.92, p);
+      const specA = getPaintingSpec(primaryId);
+      const specB = getPaintingSpec(secondaryId);
+      displayAspect = specA.aspect + (specB.aspect - specA.aspect) * atmoMix;
+      morphSmear = flags.calm ? 0 : 0.35 * Math.sin(Math.PI * p);
+      if (p >= 1) {
+        activeId = manualMorph.toId;
+        primaryId = activeId;
+        secondaryId = null;
+        primaryFade = 1;
+        secondaryFade = 0;
+        primaryScatter = 0;
+        secondaryScatter = 0;
+        atmoMix = 0;
+        displayAspect = getPaintingSpec(activeId).aspect;
+        manualMorph = null;
+      }
+    } else if (odyssey) {
+      const ms = evalOdysseyMorph(f.loopTime);
+      primaryId = ms.primaryId;
+      secondaryId = ms.secondaryId;
+      primaryFade = ms.primaryFade;
+      secondaryFade = ms.secondaryFade;
+      primaryScatter = ms.primaryScatter;
+      secondaryScatter = ms.secondaryScatter;
+      atmoMix = ms.atmoMix;
+      displayAspect = ms.displayAspect;
+      if (ms.secondaryId) {
+        morphSmear = flags.calm ? 0 : 0.28 * Math.sin(Math.PI * ms.atmoMix);
+      }
+      if (ms.snapIncoming && ms.secondaryId) {
+        snapHoldId = ms.secondaryId;
+        snapHoldTimer = 1.6;
+      }
+      if (ms.activeId !== activeId) {
+        activeId = ms.activeId;
         director.ui?.setSuiteState(activeId, odyssey, true);
-        displayAspect = spec.aspect;
-        // Arm the Snap Ripple so the new painting's strokes crystallize into registration at E
-        u.uSnapTime.value = u.uTime.value;
-        u.uScatterAtSnap.value = 0.95;
-        snapHold = 2.6;
-        transPhase = 2;
-        transT = 0;
       }
-    } else if (transPhase === 2) {
-      transT += dt;
-      const p = Math.min(1, transT / TRANS_DOWN);
-      const s = 1 - smoothstep(0, 1, p);
-      transFade = s * 0.92;
-      transSmear = flags.calm ? 0 : s * 0.45;
+    } else {
+      primaryId = activeId;
       displayAspect = getPaintingSpec(activeId).aspect;
-      if (transT >= TRANS_DOWN) {
-        transPhase = 0;
-        transT = 0;
-      }
     }
+
+    world = getOrBuildWorld(primaryId);
+    const secondaryWorld = secondaryId ? getOrBuildWorld(secondaryId) : null;
+
+    applyBlendedAtmosphere(u, primaryId, secondaryId, atmoMix);
 
     engine.renderer.getDrawingBufferSize(bufSize);
     const bufW = bufSize.x;
@@ -344,34 +453,61 @@ export async function boot(container: HTMLElement): Promise<void> {
     derivedUniforms(u, f, engine.camera, bufH, displayAspect);
     storm.update(f, engine.camera.position, dt, u, world.strokes);
 
-    if (transScatter > 0) {
-      u.uScatter.value = Math.max(u.uScatter.value, transScatter);
-      world.strokes.setCullInflation(0.05);
-    }
-    if (snapHold > 0) {
-      snapHold = Math.max(0, snapHold - dt);
-      if (u.uSnapTime.value < 0) {
-        u.uSnapTime.value = Math.max(0, u.uTime.value - (2.6 - snapHold));
-        u.uScatterAtSnap.value = 0.95;
-      }
-      world.strokes.setCullInflation(0.05);
+    // Hide all cached worlds first, then configure the active primary (and optional secondary morph) worlds
+    for (const w of worldCache.values()) {
+      w.strokes.group.visible = false;
+      w.underlays.visible = false;
     }
 
-    const warped = f.warpK !== 1;
-    world.strokes.setCullingEnabled(!warped);
-    world.underlays.visible = !warped;
+    // Configure primary world
+    const pU = world.layerUniforms;
+    pU.uLayIn.value = u.uLayIn.value;
+    pU.uLayerFade.value = primaryFade;
+    pU.uScatter.value = Math.max(u.uScatter.value, primaryScatter);
+    pU.uSnapTime.value = u.uSnapTime.value;
+    pU.uScatterAtSnap.value = u.uScatterAtSnap.value;
+    world.strokes.group.visible = primaryFade > 0.002;
+    world.strokes.setCullingEnabled(!warped && primaryScatter === 0);
+    if (primaryScatter > 0) world.strokes.setCullInflation(0.05);
+    world.underlays.visible = !warped && primaryFade > 0.52;
+
+    // Configure secondary world during 3D brushstroke cross-dissolve
+    if (secondaryWorld && secondaryFade > 0.002) {
+      const sU = secondaryWorld.layerUniforms;
+      sU.uLayIn.value = -1;
+      sU.uLayerFade.value = secondaryFade;
+      sU.uScatter.value = secondaryScatter;
+      sU.uSnapTime.value = -1;
+      sU.uScatterAtSnap.value = 0;
+      secondaryWorld.strokes.group.visible = true;
+      secondaryWorld.strokes.setCullingEnabled(false);
+      secondaryWorld.strokes.setCullInflation(0.05);
+      secondaryWorld.underlays.visible = !warped && secondaryFade > 0.48;
+    }
+
+    // Snap ripple hold when locking into a new painting at E
+    if (snapHoldTimer > 0 && snapHoldId) {
+      snapHoldTimer = Math.max(0, snapHoldTimer - dt);
+      const sw = worldCache.get(snapHoldId);
+      if (sw && sw.strokes.group.visible) {
+        sw.layerUniforms.uSnapTime.value = Math.max(0, u.uTime.value - (1.8 - snapHoldTimer));
+        sw.layerUniforms.uScatterAtSnap.value = 0.65;
+        sw.strokes.setCullInflation(0.05);
+      }
+    }
+
     const matte = f.mode === 'free' ? u.uAlign.value : f.env.matte;
     const pf: PostFrame = {
       bloom: f.env.bloom,
       exposure: f.env.exposure,
       matte,
       align: u.uAlign.value,
-      smear: Math.max(f.env.smear, transSmear),
-      fade: Math.max(f.env.fade, transFade),
+      smear: Math.max(f.env.smear, morphSmear),
+      fade: f.env.fade,
       time: u.uTime.value,
       canvasRectPx: canvasRect(bufW, bufH, displayAspect),
     };
-    post.render(world.scene, engine.camera, pf);
+    post.render(masterScene, engine.camera, pf);
     engine.endFrame();
     shotFrames = f.shot === 0 && f.mode === 'cinematic' ? shotFrames + 1 : 0;
     engine.updateDynamicResolution(dtMs, shotFrames >= 30 && shotFrames <= 120);

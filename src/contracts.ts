@@ -230,6 +230,7 @@ export interface SharedUniforms {
   uFogNear: IUniform<Vector3>;
   uFogFar: IUniform<Vector3>;
   uSkyMode: IUniform<number>;
+  uLayerFade: IUniform<number>;
   [name: string]: IUniform<any>;
 }
 

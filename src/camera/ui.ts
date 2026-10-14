@@ -1,6 +1,6 @@
-// M8 DOM overlay (§4.8) + Multi-Punctum Provençal Suite Bar:
+// M8 DOM overlay (§4.8) + Multi-Punctum Provençal Suite Bar & Continuous Odyssey Scrubber Timeline:
 // end-of-loop hint, the H HUD, the free-mode gold ring at E's projection, the interactive 4-painting Suite Bar,
-// and the museum chapter title card.
+// the bottom Continuous 4-Act Odyssey Scrubber Bar, and the museum chapter title card.
 import { type PerspectiveCamera, Vector3 } from 'three';
 import { EYE, FORWARD } from '../shared/canvasSpace';
 import type { PaintingId } from '../chapters/types';
@@ -11,7 +11,7 @@ const STYLE_ID = 'pn-director-ui-style';
 const CSS = `
 .pn-ui{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20;overflow:hidden;
   font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;color:#e8edf0;-webkit-user-select:none;user-select:none}
-.pn-hint{position:absolute;left:50%;bottom:5.2%;transform:translateX(-50%);max-width:calc(100% - 32px);box-sizing:border-box;
+.pn-hint{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);max-width:calc(100% - 32px);box-sizing:border-box;
   padding:6px 14px;border-radius:999px;background:rgba(5,10,24,.62);box-shadow:0 0 0 1px rgba(232,237,240,.12);
   letter-spacing:.03em;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.8);
   opacity:0;transition:opacity .25s linear}
@@ -36,11 +36,25 @@ const CSS = `
   white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
 .pn-odyssey-btn:hover{color:#fff;background:rgba(232,237,240,.14)}
 .pn-odyssey-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.16);box-shadow:inset 0 0 0 1px rgba(242,194,48,.45)}
-.pn-card{position:absolute;left:50%;bottom:11.5%;transform:translateX(-50%);text-align:center;pointer-events:none;
-  padding:10px 22px;border-radius:14px;background:rgba(5,10,24,.64);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  box-shadow:0 8px 28px rgba(0,0,0,.45),0 0 0 1px rgba(242,194,48,.22);opacity:0;transition:opacity .45s ease}
+.pn-card{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);text-align:center;pointer-events:none;
+  padding:10px 22px;border-radius:14px;background:rgba(5,10,24,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  box-shadow:0 8px 28px rgba(0,0,0,.45),0 0 0 1px rgba(242,194,48,.24);opacity:0;transition:opacity .45s ease}
 .pn-card-sub{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#f2c230;margin-bottom:3px;opacity:.92}
 .pn-card-title{font-size:15px;font-weight:600;letter-spacing:.04em;color:#f4f7f9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+.pn-tl{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(680px,calc(100% - 24px));box-sizing:border-box;
+  padding:7px 14px 8px;border-radius:14px;background:rgba(5,10,24,.68);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 4px 20px rgba(0,0,0,.42),0 0 0 1px rgba(232,237,240,.13);pointer-events:auto;display:none}
+.pn-tl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11.5px;letter-spacing:.02em}
+.pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:75%}
+.pn-tl-time{color:rgba(232,237,240,.72);font:11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;flex-shrink:0}
+.pn-tl-track{position:relative;height:7px;border-radius:999px;background:rgba(232,237,240,.15);cursor:pointer;touch-action:none}
+.pn-tl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#d98a1e,#f2c230,#f5e27a);width:0%}
+.pn-tl-thumb{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#f5e27a;
+  box-shadow:0 0 8px rgba(242,194,48,.85),0 0 0 1.5px #050a18;left:0%}
+.pn-tl-mark{position:absolute;top:-1px;bottom:-1px;width:1.5px;background:rgba(5,10,24,.85);z-index:1}
+.pn-tl-acts{display:grid;grid-template-columns:repeat(4,1fr);margin-top:4px;font-size:10.5px;color:rgba(232,237,240,.58)}
+.pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.pn-tl-act[data-active="1"]{color:#f5e27a;font-weight:600}
 .pn-focusable:focus{outline:none}
 .pn-focusable:focus-visible{outline:2px solid #f2c230;outline-offset:-3px}
 @media (prefers-reduced-motion:reduce){.pn-hint,.pn-card{transition:none}}
@@ -54,6 +68,9 @@ export interface UiState {
   /** 0..1 */
   hintOpacity: number;
   ring: RingState;
+  loopTime?: number;
+  loopSeconds?: number;
+  shotName?: string;
 }
 
 export interface SuiteItem {
@@ -73,6 +90,13 @@ export const SUITE_ITEMS: readonly SuiteItem[] = [
   { id: 'wheat',  roman: 'IV',  shortZh: '絲柏麥田',   titleZh: '有絲柏的麥田',   titleEn: 'Wheat Field with Cypresses',  placeZh: '聖雷米 · 阿爾皮耶山麓', year: '1889.07' },
 ];
 
+function fmtTime(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r < 10 ? '0' : ''}${r}`;
+}
+
 /** Self-contained overlay. Positions follow the input element's client rect (it need not be full-window). */
 export class DirectorUI {
   readonly root: HTMLDivElement;
@@ -87,11 +111,22 @@ export class DirectorUI {
   private readonly card: HTMLDivElement;
   private readonly cardSub: HTMLDivElement;
   private readonly cardTitle: HTMLDivElement;
+  private readonly tlRoot: HTMLDivElement;
+  private readonly tlShot: HTMLSpanElement;
+  private readonly tlTime: HTMLSpanElement;
+  private readonly tlTrack: HTMLDivElement;
+  private readonly tlFill: HTMLDivElement;
+  private readonly tlThumb: HTMLDivElement;
+  private readonly tlMarks: HTMLDivElement[] = [];
+  private readonly tlActsRow: HTMLDivElement;
+  private readonly tlActEls = new Map<PaintingId, HTMLDivElement>();
   private cardTimer: number | null = null;
   private hudText = '';
-  private last = { hud: false, hint: -1, hudLine: '', ring: '', rect: '' };
+  private last = { hud: false, hint: -1, hudLine: '', ring: '', rect: '', tlPct: -1, tlShot: '', tlTime: '' };
   private onSelectPainting: ((id: PaintingId) => void) | null = null;
   private onToggleOdyssey: (() => void) | null = null;
+  private onSeek: ((fraction: number) => void) | null = null;
+  private scrubbing = false;
 
   constructor(private readonly input: HTMLElement) {
     const doc = input.ownerDocument;
@@ -101,7 +136,6 @@ export class DirectorUI {
       st.textContent = CSS;
       doc.head.appendChild(st);
     }
-    // keyboard reachable canvas with a visible focus ring
     if (!input.hasAttribute('tabindex')) input.tabIndex = 0;
     input.classList.add('pn-focusable');
     this.root = doc.createElement('div');
@@ -110,14 +144,14 @@ export class DirectorUI {
     // Top-center Provençal Suite Bar
     this.suiteBar = doc.createElement('div');
     this.suiteBar.className = 'pn-suite';
-    this.suiteBar.style.display = 'none'; // enabled when wireSuite is called by composition
+    this.suiteBar.style.display = 'none';
     for (const item of SUITE_ITEMS) {
       const btn = doc.createElement('button');
       btn.type = 'button';
       btn.className = 'pn-suite-btn';
       btn.textContent = `${item.roman} · ${item.shortZh}`;
       btn.title = `${item.titleZh} (${item.titleEn}, ${item.year})`;
-      btn.dataset.active = item.id === 'starry' ? '1' : '0';
+      btn.dataset.active = item.id === 'cafe' ? '1' : '0';
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onSelectPainting?.(item.id);
@@ -131,8 +165,8 @@ export class DirectorUI {
     this.odysseyBtn = doc.createElement('button');
     this.odysseyBtn.type = 'button';
     this.odysseyBtn.className = 'pn-odyssey-btn';
-    this.odysseyBtn.textContent = '∞ 四畫連映';
-    this.odysseyBtn.title = '自動串聯四幅梵谷畫作漫遊 (快捷鍵 O)';
+    this.odysseyBtn.textContent = '∞ 四畫連貫動畫：開';
+    this.odysseyBtn.title = '切換四幅畫一鏡到底連貫動畫 / 單幅循環 (快捷鍵 O)';
     this.odysseyBtn.dataset.on = '1';
     this.odysseyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -140,6 +174,69 @@ export class DirectorUI {
       this.input.focus();
     });
     this.suiteBar.append(sep, this.odysseyBtn);
+
+    // Bottom Continuous Odyssey Scrubber Timeline Bar
+    this.tlRoot = doc.createElement('div');
+    this.tlRoot.className = 'pn-tl';
+    const tlHead = doc.createElement('div');
+    tlHead.className = 'pn-tl-head';
+    this.tlShot = doc.createElement('span');
+    this.tlShot.className = 'pn-tl-shot';
+    this.tlTime = doc.createElement('span');
+    this.tlTime.className = 'pn-tl-time';
+    tlHead.append(this.tlShot, this.tlTime);
+
+    this.tlTrack = doc.createElement('div');
+    this.tlTrack.className = 'pn-tl-track';
+    this.tlFill = doc.createElement('div');
+    this.tlFill.className = 'pn-tl-fill';
+    this.tlThumb = doc.createElement('div');
+    this.tlThumb.className = 'pn-tl-thumb';
+    for (const pct of [25, 50, 75]) {
+      const m = doc.createElement('div');
+      m.className = 'pn-tl-mark';
+      m.style.left = `${pct}%`;
+      this.tlMarks.push(m);
+      this.tlTrack.appendChild(m);
+    }
+    this.tlTrack.append(this.tlFill, this.tlThumb);
+
+    const seekFromEvent = (clientX: number) => {
+      const rect = this.tlTrack.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const frac = Math.max(0, Math.min(0.9999, (clientX - rect.left) / rect.width));
+      this.onSeek?.(frac);
+    };
+    this.tlTrack.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      this.scrubbing = true;
+      this.tlTrack.setPointerCapture(e.pointerId);
+      seekFromEvent(e.clientX);
+    });
+    this.tlTrack.addEventListener('pointermove', (e) => {
+      if (!this.scrubbing) return;
+      e.stopPropagation();
+      seekFromEvent(e.clientX);
+    });
+    const endScrub = (e: PointerEvent) => {
+      if (!this.scrubbing) return;
+      this.scrubbing = false;
+      try { this.tlTrack.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      this.input.focus();
+    };
+    this.tlTrack.addEventListener('pointerup', endScrub);
+    this.tlTrack.addEventListener('pointercancel', endScrub);
+
+    this.tlActsRow = doc.createElement('div');
+    this.tlActsRow.className = 'pn-tl-acts';
+    for (const item of SUITE_ITEMS) {
+      const a = doc.createElement('div');
+      a.className = 'pn-tl-act';
+      a.textContent = `${item.roman} · ${item.shortZh}`;
+      this.tlActEls.set(item.id, a);
+      this.tlActsRow.appendChild(a);
+    }
+    this.tlRoot.append(tlHead, this.tlTrack, this.tlActsRow);
 
     // Museum Chapter Title Card
     this.card = doc.createElement('div');
@@ -163,21 +260,25 @@ export class DirectorUI {
     this.ring = doc.createElement('div');
     this.ring.className = 'pn-ring';
     this.ring.setAttribute('aria-hidden', 'true');
-    this.root.append(this.ring, this.suiteBar, this.card, this.hint, this.hud);
+    this.root.append(this.ring, this.suiteBar, this.card, this.tlRoot, this.hint, this.hud);
     doc.body.appendChild(this.root);
   }
 
-  /** Wire the Multi-Punctum Suite Bar callbacks and show the bar. */
+  /** Wire the Multi-Punctum Suite Bar and bottom Odyssey timeline callbacks. */
   wireSuite(opts: {
     active: PaintingId;
     odyssey: boolean;
     showBar?: boolean;
     onSelect: (id: PaintingId) => void;
     onToggleOdyssey: () => void;
+    onSeek?: (fraction: number) => void;
   }): void {
     this.onSelectPainting = opts.onSelect;
     this.onToggleOdyssey = opts.onToggleOdyssey;
-    this.suiteBar.style.display = opts.showBar === false ? 'none' : 'flex';
+    this.onSeek = opts.onSeek ?? null;
+    const vis = opts.showBar === false ? 'none' : 'flex';
+    this.suiteBar.style.display = vis;
+    this.tlRoot.style.display = opts.showBar === false ? 'none' : 'block';
     this.setSuiteState(opts.active, opts.odyssey, true);
   }
 
@@ -186,8 +287,15 @@ export class DirectorUI {
     for (const [id, btn] of this.chapterBtns) {
       btn.dataset.active = id === active ? '1' : '0';
     }
+    for (const [id, el] of this.tlActEls) {
+      el.dataset.active = id === active ? '1' : '0';
+    }
+    for (const m of this.tlMarks) {
+      m.style.display = odyssey ? 'block' : 'none';
+    }
+    this.tlActsRow.style.display = odyssey ? 'grid' : 'none';
     this.odysseyBtn.dataset.on = odyssey ? '1' : '0';
-    this.odysseyBtn.textContent = odyssey ? '∞ 四畫連映：開' : '∞ 四畫連映：關';
+    this.odysseyBtn.textContent = odyssey ? '∞ 四畫連貫動畫：開' : '∞ 單幅循環模式';
     if (showCard) {
       const item = SUITE_ITEMS.find((x) => x.id === active);
       if (item) {
@@ -197,7 +305,7 @@ export class DirectorUI {
         if (this.cardTimer !== null) window.clearTimeout(this.cardTimer);
         this.cardTimer = window.setTimeout(() => {
           this.card.style.opacity = '0';
-        }, 4200);
+        }, 3800);
       }
     }
   }
@@ -233,6 +341,24 @@ export class DirectorUI {
       this.last.hint = h;
       this.hint.style.opacity = String(h);
       this.hint.style.visibility = h > 0 ? 'visible' : 'hidden';
+    }
+    if (s.loopTime !== undefined && s.loopSeconds !== undefined && s.loopSeconds > 0) {
+      const pct = Math.max(0, Math.min(100, Math.round((s.loopTime / s.loopSeconds) * 1000) / 10));
+      if (pct !== this.last.tlPct) {
+        this.last.tlPct = pct;
+        this.tlFill.style.width = `${pct}%`;
+        this.tlThumb.style.left = `${pct}%`;
+      }
+      const shotStr = s.shotName ?? '';
+      if (shotStr !== this.last.tlShot) {
+        this.last.tlShot = shotStr;
+        this.tlShot.textContent = shotStr;
+      }
+      const timeStr = `${fmtTime(s.loopTime)} / ${fmtTime(s.loopSeconds)}`;
+      if (timeStr !== this.last.tlTime) {
+        this.last.tlTime = timeStr;
+        this.tlTime.textContent = timeStr;
+      }
     }
     const g = s.ring;
     const ringKey = g.visible ? `${g.x.toFixed(1)}|${g.y.toFixed(1)}|${g.r.toFixed(1)}|${g.opacity.toFixed(2)}` : 'off';

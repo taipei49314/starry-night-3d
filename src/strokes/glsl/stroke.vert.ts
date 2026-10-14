@@ -256,6 +256,9 @@ void main() {
     vec2 m2 = min(a0.xy - SKY_GEN_EXT.xy, SKY_GEN_EXT.zw - a0.xy);
     alphaMul *= smoothstep(0.0, SKY_EDGE_FADE, min(m2.x, SKY_GEN_EXT.w - a0.y));
   }
+  if (uLayerFade < 0.9999) {
+    alphaMul *= smoothstep(0.0, 0.55, uLayerFade - 0.45 * seed);
+  }
   vec4 vA = viewMatrix * vec4(PAw, 1.0);
   vec4 vB = viewMatrix * vec4(PBw, 1.0);
   bool behind = vA.z > 0.0 && vB.z > 0.0;

@@ -33,5 +33,6 @@ export function createSharedUniforms(): SharedUniforms {
     uFogNear: { value: new Vector3(0.5 * ult[0], 0.5 * ult[1], 0.5 * ult[2]) },
     uFogFar: { value: new Vector3(pru[0], pru[1], pru[2]) },
     uSkyMode: { value: 0 },
+    uLayerFade: { value: 1 },
   };
 }

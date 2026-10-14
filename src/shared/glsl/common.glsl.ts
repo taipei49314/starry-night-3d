@@ -29,6 +29,7 @@ uniform float uDustAlpha;
 uniform vec3 uFogNear;
 uniform vec3 uFogFar;
 uniform float uSkyMode;
+uniform float uLayerFade;
 `;
 
 export const GLSL_COMMON = /* glsl */ `

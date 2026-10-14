@@ -112,21 +112,6 @@ vec4 bdFront(vec3 q, float farCam, out vec2 pg) {
 // the deepening above v = 0.88 (high). k, r: per-splat randoms.
 void bdSkyColours(float S, float low, float high, vec4 k, vec4 r, out vec3 ca, out vec3 cb) {
   float band = fract(S + 0.25 * (k.x + k.y - 1.0));
-  if (uSkyMode > 2.5) {
-    // Daytime Provençal sky (Wheat Field with Cypresses): cerulean, turquoise blue-green, and sunlit zinc white
-    if (band < 0.38) {
-      ca = mix(PAL_CERULEAN, PAL_COBALT, 0.35 * high);
-      cb = k.z < 0.5 ? PAL_BLUE_GREEN : PAL_COBALT;
-    } else if (band < 0.72) {
-      ca = mix(PAL_BLUE_GREEN, PAL_CERULEAN, 0.3);
-      cb = k.z < 0.5 ? PAL_ZINC_WHITE : PAL_CERULEAN;
-    } else {
-      ca = PAL_ZINC_WHITE;
-      cb = k.z < 0.5 ? PAL_BLUE_GREEN : mix(PAL_ZINC_WHITE, PAL_LEMON, 0.2);
-    }
-    ca *= 0.92 + 0.14 * k.w;
-    return;
-  }
   float wCob = 0.5 - 0.18 * low + 0.14 * high;
   float wCer = 0.34 + 0.04 * low - 0.06 * high;
   if (band < wCob) {
@@ -141,32 +126,55 @@ void bdSkyColours(float S, float low, float high, vec4 k, vec4 r, out vec3 ca, o
   }
   if (low > 0.5 && r.y < 0.3 * low) cb = PAL_BLUE_GREEN;
   ca *= 0.9 + 0.16 * k.w;
+
+  float dayMix = smoothstep(2.0, 3.0, uSkyMode);
+  if (dayMix > 0.0) {
+    vec3 dCa, dCb;
+    if (band < 0.38) {
+      dCa = mix(PAL_CERULEAN, PAL_COBALT, 0.35 * high);
+      dCb = k.z < 0.5 ? PAL_BLUE_GREEN : PAL_COBALT;
+    } else if (band < 0.72) {
+      dCa = mix(PAL_BLUE_GREEN, PAL_CERULEAN, 0.3);
+      dCb = k.z < 0.5 ? PAL_ZINC_WHITE : PAL_CERULEAN;
+    } else {
+      dCa = PAL_ZINC_WHITE;
+      dCb = k.z < 0.5 ? PAL_BLUE_GREEN : mix(PAL_ZINC_WHITE, PAL_LEMON, 0.2);
+    }
+    dCa *= 0.92 + 0.14 * k.w;
+    ca = mix(ca, dCa, dayMix);
+    cb = mix(cb, dCb, dayMix);
+  }
 }
 
 // Ground between the splats: the band colour of this pixel's stripe, softened, over the underpainting.
 vec3 bdBandGround(float S, float low, float high) {
   float band = fract(S);
-  if (uSkyMode > 2.5) {
-    vec3 c = mix(mix(PAL_CERULEAN, PAL_BLUE_GREEN, 0.45), PAL_ZINC_WHITE, smoothstep(0.55, 0.75, band) * 0.45);
-    return mix(c, PAL_COBALT, 0.2 * high);
-  }
   float wCob = 0.5 - 0.18 * low + 0.14 * high;
   float wCer = 0.34 + 0.04 * low - 0.06 * high;
   vec3 c = mix(mix(PAL_COBALT, PAL_ULTRAMARINE, 0.35 + 0.3 * high), PAL_CERULEAN, smoothstep(wCob - 0.05, wCob + 0.05, band));
-  return mix(c, mix(PAL_CERULEAN, PAL_BLUE_GREEN, 0.4), smoothstep(wCob + wCer - 0.05, wCob + wCer + 0.05, band) * smoothstep(1.0, 0.95, band));
+  vec3 nightG = mix(c, mix(PAL_CERULEAN, PAL_BLUE_GREEN, 0.4), smoothstep(wCob + wCer - 0.05, wCob + wCer + 0.05, band) * smoothstep(1.0, 0.95, band));
+  float dayMix = smoothstep(2.0, 3.0, uSkyMode);
+  if (dayMix > 0.0) {
+    vec3 dc = mix(mix(PAL_CERULEAN, PAL_BLUE_GREEN, 0.45), PAL_ZINC_WHITE, smoothstep(0.55, 0.75, band) * 0.45);
+    vec3 dayG = mix(dc, PAL_COBALT, 0.2 * high);
+    return mix(nightG, dayG, dayMix);
+  }
+  return nightG;
 }
 
-// Night earth: deep ultramarine-Prussian strokes, some cobalt-lifted, two-toned toward Prussian / the outline blue.
+// Night/Day earth: deep ultramarine-Prussian strokes at night, golden ochre & olive in Provençal daylight.
 void bdEarthColours(vec4 k, out vec3 ca, out vec3 cb) {
-  if (uSkyMode > 2.5) {
-    ca = k.x < 0.55 ? mix(PAL_OCHRE, PAL_CHROME, 0.25 + 0.35 * k.y) : mix(PAL_GROVE, PAL_OCHRE, 0.35 + 0.3 * k.y);
-    cb = mix(PAL_OCHRE, PAL_CYPRESS_GREEN, k.z * 0.6);
-    ca *= 0.85 + 0.2 * k.w;
-    return;
-  }
   ca = k.x < 0.22 ? mix(PAL_ULTRAMARINE, PAL_COBALT, 0.3 + 0.25 * k.y) : mix(PAL_ULTRAMARINE, PAL_PRUSSIAN, 0.1 + 0.6 * k.y);
   cb = mix(PAL_PRUSSIAN, PAL_OUTLINE, k.z);
   ca *= 0.85 + 0.25 * k.w;
+  float dayMix = smoothstep(2.0, 3.0, uSkyMode);
+  if (dayMix > 0.0) {
+    vec3 dCa = k.x < 0.55 ? mix(PAL_OCHRE, PAL_CHROME, 0.25 + 0.35 * k.y) : mix(PAL_GROVE, PAL_OCHRE, 0.35 + 0.3 * k.y);
+    vec3 dCb = mix(PAL_OCHRE, PAL_CYPRESS_GREEN, k.z * 0.6);
+    dCa *= 0.85 + 0.2 * k.w;
+    ca = mix(ca, dCa, dayMix);
+    cb = mix(cb, dCb, dayMix);
+  }
 }
 
 void main() {
@@ -213,10 +221,11 @@ void main() {
 
   float earthPx = 1.0 - smoothstep(-0.004 - 2.0 * aaR, -0.004 + 2.0 * aaR, H);
   float highPx = clamp((R - 0.88) / 0.22, 0.0, 1.0);
-  vec3 skyUnder = uSkyMode > 2.5 ? mix(PAL_CERULEAN, PAL_BLUE_GREEN, 0.4) : mix(PAL_ULTRAMARINE, PAL_PRUSSIAN, clamp(0.15 + (R - 0.35), 0.0, 1.0));
+  float dayMix = smoothstep(2.0, 3.0, uSkyMode);
+  vec3 skyUnder = mix(mix(PAL_ULTRAMARINE, PAL_PRUSSIAN, clamp(0.15 + (R - 0.35), 0.0, 1.0)), mix(PAL_CERULEAN, PAL_BLUE_GREEN, 0.4), dayMix);
   vec3 skyBase = mix(skyUnder,
                      bdBandGround(S, 1.0 - clamp(H / 0.16, 0.0, 1.0), highPx), 0.55) * (0.8 * BD_LIGHT);
-  vec3 earthBase = uSkyMode > 2.5 ? mix(PAL_OCHRE, PAL_GROVE, 0.4) * 0.75 : mix(PAL_PRUSSIAN, PAL_ULTRAMARINE, 0.35) * 0.8;
+  vec3 earthBase = mix(mix(PAL_PRUSSIAN, PAL_ULTRAMARINE, 0.35) * 0.8, mix(PAL_OCHRE, PAL_GROVE, 0.4) * 0.75, dayMix);
   vec3 base = mix(skyBase, earthBase, earthPx);
   // splats composited front to back (top layer first, later cells over earlier ones), so a pixel whose upper splats
   // already cover it skips the rest
