@@ -20,6 +20,14 @@ const N_UP = new Vector3(0, 1, 0.14).normalize();
 const N_FRONT = new Vector3(0, 0, 1);
 const T_DIR = new Vector3(1, 0, 0);
 
+function makeVillage(aspect: number, uP: number, v: number, d: number): VillageInfo {
+  return {
+    houses: [],
+    steepleBase: canvasToWorld(uFromPaint(uP, aspect), Math.max(0.05, v - 0.32), d + 10),
+    steepleTip: canvasToWorld(uFromPaint(uP, aspect), v, d),
+  };
+}
+
 // ============================================================================
 // 1. YELLOWHOUSE — The Yellow House (The Street) (Arles, Sept 1888), aspect = 1.26
 // ============================================================================
@@ -123,7 +131,7 @@ export function generateYellowHouseChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.48, YELLOWHOUSE_ASPECT), 0.62, 520), windowCount: 24, houseCount: 5 },
+    village: makeVillage(YELLOWHOUSE_ASPECT, 0.48, 0.62, 520),
     timings,
   };
 }
@@ -242,7 +250,7 @@ export function generateHarvestChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.52, HARVEST_ASPECT), 0.74, 1950), windowCount: 16, houseCount: 6 },
+    village: makeVillage(HARVEST_ASPECT, 0.52, 0.74, 1950),
     timings,
   };
 }
@@ -353,7 +361,7 @@ export function generateSowerChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.58, SOWER_ASPECT), 0.60, 520), windowCount: 20, houseCount: 2 },
+    village: makeVillage(SOWER_ASPECT, 0.58, 0.60, 520),
     timings,
   };
 }
@@ -455,7 +463,7 @@ export function generateNightCafeChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.52, NIGHTCAFE_ASPECT), 0.50, 950), windowCount: 28, houseCount: 4 },
+    village: makeVillage(NIGHTCAFE_ASPECT, 0.52, 0.50, 950),
     timings,
   };
 }

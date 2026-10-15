@@ -16,13 +16,21 @@ import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
   buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
-  mixHex, shadeHex, uFromPaint,
+  mixHex, shadeHex, smoothstep, uFromPaint,
 } from './types';
 
 const P = PALETTE;
 const N_UP = new Vector3(0, 1, 0.14).normalize();
 const N_FRONT = new Vector3(0, 0, 1);
 const T_DIR = new Vector3(1, 0, 0);
+
+function makeVillage(aspect: number, uP: number, v: number, d: number): VillageInfo {
+  return {
+    houses: [],
+    steepleBase: canvasToWorld(uFromPaint(uP, aspect), Math.max(0.05, v - 0.32), d + 10),
+    steepleTip: canvasToWorld(uFromPaint(uP, aspect), v, d),
+  };
+}
 
 // ============================================================================
 // 1. WEAVER — The Weaver (Nuenen, May 1884), aspect = 1.26
@@ -135,7 +143,7 @@ export function generateWeaverChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.76, WEAVER_ASPECT), 0.72, 680), windowCount: 28, houseCount: 4 },
+    village: makeVillage(WEAVER_ASPECT, 0.76, 0.72, 680),
     timings,
   };
 }
@@ -237,7 +245,7 @@ export function generateTowerChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.48, TOWER_ASPECT), 0.88, 650), windowCount: 8, houseCount: 1 },
+    village: makeVillage(TOWER_ASPECT, 0.48, 0.88, 650),
     timings,
   };
 }
@@ -254,7 +262,7 @@ const EMBER_RED = 0xe84824;
 export function generateSkullChapter(
   sink: StrokeSink,
   seed: number,
-  mat: UnderlayMaterialFactory,
+  _mat: UnderlayMaterialFactory,
   _u: SharedUniforms,
   _q: QualitySettings,
 ): { underlays: Group; village: VillageInfo; timings: Record<string, number> } {
@@ -355,7 +363,7 @@ export function generateSkullChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.68, SKULL_ASPECT), 0.42, 480), windowCount: 16, houseCount: 1 },
+    village: makeVillage(SKULL_ASPECT, 0.68, 0.42, 480),
     timings,
   };
 }
@@ -449,7 +457,7 @@ export function generateGaletteChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.44, GALETTE_ASPECT), 0.78, 640), windowCount: 14, houseCount: 3 },
+    village: makeVillage(GALETTE_ASPECT, 0.44, 0.78, 640),
     timings,
   };
 }
@@ -547,7 +555,7 @@ export function generateSeineChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.54, SEINE_ASPECT), 0.64, 680), windowCount: 12, houseCount: 3 },
+    village: makeVillage(SEINE_ASPECT, 0.54, 0.64, 680),
     timings,
   };
 }
@@ -563,7 +571,7 @@ const HIRO_WOOD = 0xc89248;
 export function generatePlumChapter(
   sink: StrokeSink,
   seed: number,
-  mat: UnderlayMaterialFactory,
+  _mat: UnderlayMaterialFactory,
   _u: SharedUniforms,
   _q: QualitySettings,
 ): { underlays: Group; village: VillageInfo; timings: Record<string, number> } {
@@ -662,7 +670,7 @@ export function generatePlumChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.48, PLUM_ASPECT), 0.56, 560), windowCount: 18, houseCount: 2 },
+    village: makeVillage(PLUM_ASPECT, 0.48, 0.56, 560),
     timings,
   };
 }
@@ -678,7 +686,7 @@ const SAKURA_PINK = 0xe8a4b0;
 export function generateTanguyChapter(
   sink: StrokeSink,
   seed: number,
-  mat: UnderlayMaterialFactory,
+  _mat: UnderlayMaterialFactory,
   _u: SharedUniforms,
   _q: QualitySettings,
 ): { underlays: Group; village: VillageInfo; timings: Record<string, number> } {
@@ -713,8 +721,8 @@ export function generateTanguyChapter(
   for (let i = 0; i < 18500; i++) {
     const v = rng.range(0.02, 0.82);
     let halfW = 0.34;
-    let cA = COAT_COBALT;
-    let cB = P.ultramarine;
+    let cA: number = COAT_COBALT;
+    let cB: number = P.ultramarine;
     if (v > 0.68) {
       // Wide-brimmed yellow straw hat
       halfW = 0.22;
@@ -753,7 +761,7 @@ export function generateTanguyChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.50, TANGUY_ASPECT), 0.86, 520), windowCount: 16, houseCount: 1 },
+    village: makeVillage(TANGUY_ASPECT, 0.50, 0.86, 520),
     timings,
   };
 }

@@ -21,6 +21,14 @@ const N_UP = new Vector3(0, 1, 0.14).normalize();
 const N_FRONT = new Vector3(0, 0, 1);
 const T_DIR = new Vector3(1, 0, 0);
 
+function makeVillage(aspect: number, uP: number, v: number, d: number): VillageInfo {
+  return {
+    houses: [],
+    steepleBase: canvasToWorld(uFromPaint(uP, aspect), Math.max(0.05, v - 0.32), d + 10),
+    steepleTip: canvasToWorld(uFromPaint(uP, aspect), v, d),
+  };
+}
+
 // ============================================================================
 // 1. OLIVE — Olive Trees with Yellow Sky and Sun (Saint-Rémy, Nov 1889), aspect = 1.24
 // ============================================================================
@@ -136,7 +144,7 @@ export function generateOliveChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.54, OLIVE_ASPECT), 0.80, 560), windowCount: 14, houseCount: 3 },
+    village: makeVillage(OLIVE_ASPECT, 0.54, 0.80, 560),
     timings,
   };
 }
@@ -236,7 +244,7 @@ export function generateRoadCypressChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.48, ROADCYPRESS_ASPECT), 0.96, 175), windowCount: 16, houseCount: 3 },
+    village: makeVillage(ROADCYPRESS_ASPECT, 0.48, 0.96, 175),
     timings,
   };
 }
@@ -342,7 +350,7 @@ export function generateCottagesChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.34, COTTAGES_ASPECT), 0.68, 560), windowCount: 18, houseCount: 3 },
+    village: makeVillage(COTTAGES_ASPECT, 0.34, 0.68, 560),
     timings,
   };
 }
@@ -439,7 +447,7 @@ export function generateDaubignyChapter(
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: { spireTipWorld: canvasToWorld(uFromPaint(0.52, DAUBIGNY_ASPECT), 0.74, 780), windowCount: 22, houseCount: 4 },
+    village: makeVillage(DAUBIGNY_ASPECT, 0.52, 0.74, 780),
     timings,
   };
 }
