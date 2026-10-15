@@ -9,6 +9,7 @@ import { createEngine } from '../engine/engine';
 import { StrokeBuffer, buildStrokeLayer, makeUnderlayMaterial } from '../strokes/strokeBuffer';
 import { createBackdrop, setBackdropQuality } from '../sky/backdrop';
 import { createDust } from '../sky/dust';
+import { createPortalVortex } from '../sky/portalVortex';
 import { Director, type DirectorFrameEx } from '../camera/director';
 import { projectPortalBeacon } from '../camera/ui';
 import { createPost } from '../post/post';
@@ -257,11 +258,12 @@ export async function boot(container: HTMLElement): Promise<void> {
   let activeSequence: readonly PaintingId[] = resolveSequence(pathId, activeId);
   applyBlendedAtmosphere(u, activeId, null, 0);
 
-  // Master scene holds shared backdrop + dust + all cached paintings' stroke & underlay groups for dual-world 3D cross-dissolve
+  // Master scene holds shared backdrop + dust + 3D portal vortex + all cached paintings' stroke & underlay groups
   const masterScene = new Scene();
   const masterBackdrop = createBackdrop(u, engine.quality);
   const masterDust = createDust(u, engine.quality, forkRng(flags.seed, 'dust:master'));
-  masterScene.add(masterBackdrop, masterDust);
+  const masterPortalVortex = createPortalVortex(u, engine.quality, forkRng(flags.seed, 'portal:master'));
+  masterScene.add(masterBackdrop, masterDust, masterPortalVortex.points);
 
   const MAX_CACHED_WORLDS = 4;
   const worldCache = new Map<PaintingId, BuiltWorld>();
@@ -490,6 +492,7 @@ export async function boot(container: HTMLElement): Promise<void> {
   engine.onQualityChange((q) => {
     setBackdropQuality(masterBackdrop, q);
     masterDust.geometry.setDrawRange(0, q.dustCount);
+    masterPortalVortex.setQuality(q);
     for (const w of worldCache.values()) {
       w.strokes.setQuality(q);
       setBackdropQuality(w.backdrop, q);
@@ -650,15 +653,26 @@ export async function boot(container: HTMLElement): Promise<void> {
 
     storm.update(f, engine.camera.position, dt, u, world.strokes);
 
-    // Project the In-Scene 3D Spatial Portal Beacon onto the active painting's 3D portal (moonUVD)
+    // Compute 3D Portal Vortex state & project In-Scene 3D Spatial Portal Beacon
+    const pSpec = getPaintingSpec(primaryId);
+    const tau = isMultiAct() ? ((f.loopTime % ACT_SECONDS) + ACT_SECONDS) % ACT_SECONDS : f.loopTime;
+    const portalEdge = resolveTransitionEdge(primaryId, secondaryId ?? lookaheadId);
+    const portalProximity =
+      secondaryId !== null
+        ? 1.0
+        : f.mode === 'free'
+          ? 0.55 + 0.45 * u.uOff.value
+          : isMultiAct()
+            ? smoothstep(14.0, 24.5, tau)
+            : smoothstep(pSpec.track.loopSeconds * 0.55, pSpec.track.loopSeconds * 0.85, tau);
+
+    masterPortalVortex.setPortalState(isHarnessPin ? 0 : 0.28 + 0.92 * portalProximity, portalEdge.motif);
+
     if (director.ui && !isHarnessPin) {
-      const pSpec = getPaintingSpec(primaryId);
       canvasToWorld(pSpec.moonUVD[0], pSpec.moonUVD[1], pSpec.moonUVD[2], _portalWorld);
-      const tau = isMultiAct() ? ((f.loopTime % ACT_SECONDS) + ACT_SECONDS) % ACT_SECONDS : f.loopTime;
       const inPortalWindow = isMultiAct() ? tau >= 17.5 && tau <= 25.0 : tau >= pSpec.track.loopSeconds * 0.62;
       const beaconEnabled =
         viewMode !== 'atlas' && !manualMorph && (f.mode === 'free' || inPortalWindow);
-      const portalEdge = resolveTransitionEdge(primaryId, lookaheadId);
       const targetSpec = getPaintingSpec(lookaheadId);
       const mIcon = MOTIF_SPECS[portalEdge.motif].icon;
       const winAlpha =
@@ -693,6 +707,9 @@ export async function boot(container: HTMLElement): Promise<void> {
       scatter: Math.max(u.uScatter.value, primaryScatter, secondaryScatter * 0.6),
       stirStrength: u.uStir.value.z,
       snapTriggered,
+      transitionMotif: portalEdge.motif,
+      portalProximity,
+      nextPaintingId: lookaheadId,
     });
 
     // Hide all cached worlds first, then configure the active primary (and optional secondary morph) worlds

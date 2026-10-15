@@ -1,9 +1,9 @@
-// Procedural Web Audio Soundscape Engine for the 8-Act Van Gogh Odyssey (1888-1890).
+// Procedural Web Audio Soundscape Engine for the 15-Act Van Gogh World System (1885–1890).
 // 100% procedural (zero external MP3/WAV assets): synthesizes warm harmonic drones, stereo cathedral reverb,
 // act-specific environmental textures (Rhône river waves, Mistral wheat surf, Auvers bronze church bells,
-// flapping crow wings, spring blossom harp droplets), camera-velocity wind rush, portal cross-dissolve brush
-// swirl, and interactive sky-stirring starlight chimes.
-import type { PaintingId } from '../chapters/types';
+// flapping crow wings, spring blossom harp droplets), camera-velocity wind rush, 6 Motif Transition Musical
+// Bridges (✦ Light, ⟁ Road, ◎ Sky, ❀ Flora, ⌂ Dwelling, ❖ Gaze), 3D portal proximity resonance, and sky-stirring chimes.
+import type { MotifId, PaintingId } from '../chapters/types';
 
 interface ActSoundProfile {
   /** 4-voice warm harmonic pad frequencies (Hz). */
@@ -222,6 +222,12 @@ export interface SoundscapeFrameState {
   stirStrength: number;
   /** True on the frame a painting snaps into registration at E */
   snapTriggered: boolean;
+  /** Connecting Motif ID during cross-dissolve or portal approach */
+  transitionMotif?: MotifId;
+  /** 3D Portal proximity / approach factor in [0, 1] */
+  portalProximity?: number;
+  /** Next painting ID in sequence (for portal overtone preview) */
+  nextPaintingId?: PaintingId;
 }
 
 export class SoundscapeEngine {
@@ -248,6 +254,8 @@ export class SoundscapeEngine {
   private chimeTimer = 1.2;
   private stirTimer = 0;
   private crowTimer = 1.8;
+  private portalTimer = 0.85;
+  private lastBridgeKey = '';
   private lastSnapTime = -10;
   private clock = 0;
   private onStateChange?: (enabled: boolean, active: boolean) => void;
@@ -550,7 +558,7 @@ export class SoundscapeEngine {
       this.triggerAmbientNote(activeProf);
     }
 
-    // 5. Act VIII (Wheatfield with Crows): procedural wing-flutter & distant crow call in the storm
+    // 5. Act XV (Wheatfield with Crows): procedural wing-flutter & distant crow call in the storm
     if (state.primaryId === 'crows' || state.secondaryId === 'crows') {
       this.crowTimer -= dt;
       if (this.crowTimer <= 0) {
@@ -568,11 +576,224 @@ export class SoundscapeEngine {
       }
     }
 
-    // 7. Snap-to-Eye resonant chord when a painting locks into registration at E
+    // 7. 3D Spatial Portal Proximity Overtone Preview (next world singing softly through the portal)
+    const prox = state.portalProximity ?? 0;
+    if (prox > 0.25 && !state.secondaryId) {
+      this.portalTimer -= dt;
+      if (this.portalTimer <= 0) {
+        this.portalTimer = Math.max(0.38, 1.35 - 0.85 * prox);
+        const nextProf = ACT_PROFILES[state.nextPaintingId ?? state.primaryId];
+        this.triggerPortalPreviewGlint(nextProf.chimePool, prox);
+      }
+    }
+
+    // 8. Motif Transition Musical Bridge when entering a 3D cross-dissolve between two worlds
+    if (state.secondaryId && state.atmoMix > 0.02) {
+      const bridgeKey = `${state.primaryId}->${state.secondaryId}`;
+      if (bridgeKey !== this.lastBridgeKey) {
+        this.lastBridgeKey = bridgeKey;
+        this.triggerMotifBridge(state.transitionMotif ?? 'light', state.primaryId, state.secondaryId);
+      }
+    } else if (!state.secondaryId) {
+      this.lastBridgeKey = '';
+    }
+
+    // 9. Snap-to-Eye resonant chord when a painting locks into registration at E
     if (state.snapTriggered && this.clock - this.lastSnapTime > 1.2) {
       this.lastSnapTime = this.clock;
       const targetId = state.secondaryId ?? state.primaryId;
       this.triggerSnapChord(targetId);
+    }
+  }
+
+  /** Delicate high-register overtone glint from the upcoming painting when approaching the 3D portal. */
+  private triggerPortalPreviewGlint(pool: readonly number[], proximity: number): void {
+    if (!this.ctx || !this.reverbNode || !this.dryBus) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const freq = pool[Math.floor(Math.random() * pool.length)] * 1.5;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+
+    const g = ctx.createGain();
+    const amp = 0.008 + 0.016 * proximity;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(amp, now + 0.09);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.45);
+
+    osc.connect(g);
+    g.connect(this.reverbNode);
+    osc.start(now);
+    osc.stop(now + 1.5);
+  }
+
+  /**
+   * Synthesize one of the 6 Motif Transition Musical Bridges connecting `fromId` -> `toId`:
+   * - `light`:    ✦ Glass harmonica overtone halo with 5.5 Hz shimmer vibrato
+   * - `road`:     ⟁ Propulsive bowed-cello bass fifth cadence & rhythmic walking pulse
+   * - `sky`:      ◎ 6-note ascending logarithmic celesta/harp spiral across 2 octaves
+   * - `flora`:    ❀ Pastoral woodwind duet in thirds & blossom harp cascade
+   * - `dwelling`: ⌂ Warm lowpass harmonium / acoustic sanctuary chord roll
+   * - `gaze`:     ❖ Ocular mirror unison-to-sixth interval & modal glass-bell dyad
+   */
+  triggerMotifBridge(motif: MotifId, fromId: PaintingId, toId: PaintingId): void {
+    if (!this._enabled || !this.ctx || this.ctx.state !== 'running' || !this.reverbNode || !this.dryBus) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const profFrom = ACT_PROFILES[fromId];
+    const profTo = ACT_PROFILES[toId];
+
+    if (motif === 'light') {
+      // ✦ Light: Glass harmonica overtone halo (2x, 3x, 4x harmonics of target pad with shimmer vibrato)
+      const harmonics = [profTo.padFreqs[1] * 2, profTo.padFreqs[2] * 2, profTo.padFreqs[3] * 2, profTo.padFreqs[1] * 3];
+      for (let i = 0; i < harmonics.length; i++) {
+        const t0 = now + i * 0.14;
+        const osc = ctx.createOscillator();
+        const vib = ctx.createOscillator();
+        const vibG = ctx.createGain();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(harmonics[i], t0);
+        vib.type = 'sine';
+        vib.frequency.value = 5.2 + i * 0.4;
+        vibG.gain.value = 2.8;
+        vib.connect(vibG);
+        vibG.connect(osc.frequency);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.026 - i * 0.003, t0 + 0.28);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.9);
+        osc.connect(g);
+        g.connect(this.reverbNode);
+        g.connect(this.dryBus);
+        osc.start(t0);
+        vib.start(t0);
+        osc.stop(t0 + 2.95);
+        vib.stop(t0 + 2.95);
+      }
+      return;
+    }
+
+    if (motif === 'road') {
+      // ⟁ Road: Propulsive bowed-cello bass cadence stepping from outgoing root -> passing fifth -> incoming root
+      const steps = [profFrom.padFreqs[0], profFrom.padFreqs[0] * 1.5, profTo.padFreqs[0] * 1.5, profTo.padFreqs[0]];
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 520;
+      lp.Q.value = 1.4;
+      lp.connect(this.dryBus);
+      lp.connect(this.reverbNode);
+
+      for (let i = 0; i < steps.length; i++) {
+        const t0 = now + i * 0.34;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(steps[i], t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.032, t0 + 0.06);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.65);
+        osc.connect(g);
+        g.connect(lp);
+        osc.start(t0);
+        osc.stop(t0 + 0.68);
+      }
+      return;
+    }
+
+    if (motif === 'sky') {
+      // ◎ Sky: 6-note ascending logarithmic celesta/harp spiral across 2 octaves
+      const pool = profTo.chimePool;
+      for (let i = 0; i < 6; i++) {
+        const t0 = now + i * 0.16;
+        const base = pool[i % pool.length];
+        const freq = base * (i >= 3 ? 1.5 : 1.0);
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, t0);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.01, t0 + 1.8);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.028, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.2);
+        osc.connect(g);
+        g.connect(this.reverbNode);
+        g.connect(this.dryBus);
+        osc.start(t0);
+        osc.stop(t0 + 2.25);
+      }
+      return;
+    }
+
+    if (motif === 'flora') {
+      // ❀ Flora: Pastoral woodwind duet in thirds & blossom harp cascade
+      const pool = profTo.chimePool;
+      for (let i = 0; i < 5; i++) {
+        const t0 = now + i * 0.19;
+        const f1 = pool[i % pool.length];
+        const f2 = f1 * 1.25; // warm major third duet
+        for (const freq of [f1, f2]) {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq * 0.75, t0);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(0.020, t0 + 0.045);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.65);
+          osc.connect(g);
+          g.connect(this.reverbNode);
+          g.connect(this.dryBus);
+          osc.start(t0);
+          osc.stop(t0 + 1.7);
+        }
+      }
+      return;
+    }
+
+    if (motif === 'dwelling') {
+      // ⌂ Dwelling: Intimate low-register harmonium / wooden sanctuary chord roll
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 640;
+      lp.connect(this.dryBus);
+      lp.connect(this.reverbNode);
+
+      const chord = profTo.padFreqs;
+      for (let i = 0; i < chord.length; i++) {
+        const t0 = now + i * 0.11;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(chord[i] * 1.5, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.030, t0 + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.6);
+        osc.connect(g);
+        g.connect(lp);
+        osc.start(t0);
+        osc.stop(t0 + 2.65);
+      }
+      return;
+    }
+
+    // ❖ Gaze: Ocular mirror interval (unison diverging to sixth) + modal bell partial
+    const centerF = profTo.padFreqs[2] * 2;
+    const targets = [centerF * 0.8, centerF * 1.25];
+    for (let i = 0; i < 2; i++) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(centerF, now);
+      osc.frequency.exponentialRampToValueAtTime(targets[i], now + 0.85);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.linearRampToValueAtTime(0.028, now + 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 2.7);
+      osc.connect(g);
+      g.connect(this.reverbNode);
+      g.connect(this.dryBus);
+      osc.start(now);
+      osc.stop(now + 2.75);
     }
   }
 
@@ -627,7 +848,7 @@ export class SoundscapeEngine {
     osc.stop(now + attack + decay + 0.05);
   }
 
-  /** Synthesize soft 3D wing-flaps and distant wind-swept crow resonance for Act VIII. */
+  /** Synthesize soft 3D wing-flaps and distant wind-swept crow resonance for Act XV. */
   private triggerCrowFlutter(): void {
     if (!this.ctx || !this.dryBus || !this.reverbNode) return;
     const ctx = this.ctx;
