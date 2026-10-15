@@ -8,21 +8,55 @@ import { canvasToWorld, EYE, segmentToStroke } from '../shared/canvasSpace';
 import { mixHex, packSrgb, rampHex, shadeHex } from '../shared/palette';
 
 export type PaintingId =
+  // Chapter I — Earth (Nuenen & Antwerp, 1884–1886)
   | 'potato'
+  | 'weaver'
+  | 'tower'
   | 'shoes'
+  | 'skull'
+  // Chapter II — Color (Paris & Montmartre, 1886–1887)
+  | 'galette'
   | 'paris'
+  | 'seine'
+  | 'plum'
+  | 'tanguy'
   | 'selfportrait'
+  // Chapter III — Sun (Arles, 1888–1889)
+  | 'yellowhouse'
   | 'sunflowers'
+  | 'harvest'
+  | 'sower'
   | 'cafe'
+  | 'nightcafe'
   | 'rhone'
   | 'bedroom'
+  // Chapter IV — Cosmos (Saint-Rémy, 1889–1890)
   | 'starry'
   | 'irises'
+  | 'olive'
   | 'wheat'
+  | 'roadcypress'
   | 'almond'
+  // Chapter V — Road (Auvers-sur-Oise, 1890)
+  | 'cottages'
   | 'church'
   | 'gachet'
+  | 'daubigny'
   | 'crows';
+
+export const ALL_PAINTING_IDS: readonly PaintingId[] = [
+  'potato', 'weaver', 'tower', 'shoes', 'skull',
+  'galette', 'paris', 'seine', 'plum', 'tanguy', 'selfportrait',
+  'yellowhouse', 'sunflowers', 'harvest', 'sower', 'cafe', 'nightcafe', 'rhone', 'bedroom',
+  'starry', 'irises', 'olive', 'wheat', 'roadcypress', 'almond',
+  'cottages', 'church', 'gachet', 'daubigny', 'crows',
+];
+
+const PAINTING_ID_SET: ReadonlySet<string> = new Set<string>(ALL_PAINTING_IDS);
+
+export function isPaintingId(s: string | undefined | null): s is PaintingId {
+  return !!s && PAINTING_ID_SET.has(s);
+}
 
 export type ChapterId = 'earth' | 'color' | 'sun' | 'cosmos' | 'road';
 export type MotifId = 'light' | 'road' | 'sky' | 'flora' | 'dwelling' | 'gaze';
@@ -47,6 +81,14 @@ export function uFromPaint(uP: number, aspect: number): number {
 export function uToPaint(u: number, aspect: number): number {
   return 0.5 + (u - 0.5) * (CANVAS_ASPECT / aspect);
 }
+
+/** Reusable module-scoped StrokeRecord to avoid 60k+ temporary heap allocations per painting build. */
+const _rec: StrokeRecord = {
+  u: 0, v: 0, d: 1000, cls: StrokeClass.UNDERPAINT, flags: 0,
+  du: 0, dv: 0, dlnd: 0, w: 0.01,
+  colA: 0, colB: 0, emissive: 0, seed: 0,
+  kappa: 0, q1: 0, q2: 0, q3: 0,
+};
 
 /** Push a stroke after clamping its depth safely inside CLASS_INFO[r.cls].dRange. */
 export function pushChapterStroke(sink: StrokeSink, r: StrokeRecord): void {
@@ -80,26 +122,24 @@ export function emitCanvasStroke(
   },
 ): void {
   const [d0, d1] = CLASS_INFO[cls].dRange;
-  const dc = clamp(d, d0 + 2, d1 - 2);
-  sink.push({
-    u: uFromPaint(uP, aspect),
-    v,
-    d: dc,
-    cls,
-    flags: opts?.flags ?? StrokeFlag.NONE,
-    du: L * Math.cos(ang),
-    dv: L * Math.sin(ang),
-    dlnd: opts?.dlnd ?? 0,
-    w,
-    colA: packSrgb(colA),
-    colB: packSrgb(colB),
-    emissive: opts?.emissive ?? 0,
-    seed: rng.next(),
-    kappa: opts?.kappa ?? rng.range(-0.22, 0.22),
-    q1: opts?.q1 ?? 0,
-    q2: opts?.q2 ?? 0,
-    q3: opts?.q3 ?? 0,
-  });
+  _rec.u = uFromPaint(uP, aspect);
+  _rec.v = v;
+  _rec.d = clamp(d, d0 + 2, d1 - 2);
+  _rec.cls = cls;
+  _rec.flags = opts?.flags ?? StrokeFlag.NONE;
+  _rec.du = L * Math.cos(ang);
+  _rec.dv = L * Math.sin(ang);
+  _rec.dlnd = opts?.dlnd ?? 0;
+  _rec.w = w;
+  _rec.colA = packSrgb(colA);
+  _rec.colB = packSrgb(colB);
+  _rec.emissive = opts?.emissive ?? 0;
+  _rec.seed = rng.next();
+  _rec.kappa = opts?.kappa ?? rng.range(-0.22, 0.22);
+  _rec.q1 = opts?.q1 ?? 0;
+  _rec.q2 = opts?.q2 ?? 0;
+  _rec.q3 = opts?.q3 ?? 0;
+  sink.push(_rec);
 }
 
 const _a = new Vector3();
@@ -137,22 +177,34 @@ export function emitSurfaceStroke(
   const s = segmentToStroke(_a, _b);
   const dA = s.d * Math.exp(-0.5 * s.dlnd);
   const dB = s.d * Math.exp(0.5 * s.dlnd);
+  _rec.cls = cls;
+  _rec.flags = opts?.flags ?? StrokeFlag.NONE;
+  _rec.w = wh;
+  _rec.colA = packSrgb(colA);
+  _rec.colB = packSrgb(colB);
+  _rec.emissive = opts?.emissive ?? 0;
+  _rec.seed = rng.next();
+  _rec.kappa = opts?.kappa ?? rng.range(-0.18, 0.18);
+  _rec.q1 = _n.x;
+  _rec.q2 = _n.y;
+  _rec.q3 = _n.z;
   if (dA < d0 + 1 || dB < d0 + 1 || dA > d1 - 1 || dB > d1 - 1 || !Number.isFinite(s.u + s.v + s.du + s.dv)) {
-    // Fallback to safe in-plane canvas stroke with surface normal
-    sink.push({
-      u, v, d: dc, cls, flags: opts?.flags ?? StrokeFlag.NONE,
-      du: Lh * _t.x, dv: Lh * _t.y, dlnd: 0, w: wh,
-      colA: packSrgb(colA), colB: packSrgb(colB), emissive: opts?.emissive ?? 0, seed: rng.next(),
-      kappa: opts?.kappa ?? rng.range(-0.18, 0.18), q1: _n.x, q2: _n.y, q3: _n.z,
-    });
+    _rec.u = u;
+    _rec.v = v;
+    _rec.d = dc;
+    _rec.du = Lh * _t.x;
+    _rec.dv = Lh * _t.y;
+    _rec.dlnd = 0;
+    sink.push(_rec);
     return;
   }
-  sink.push({
-    u: s.u, v: s.v, d: s.d, cls, flags: opts?.flags ?? StrokeFlag.NONE,
-    du: s.du, dv: s.dv, dlnd: s.dlnd, w: wh,
-    colA: packSrgb(colA), colB: packSrgb(colB), emissive: opts?.emissive ?? 0, seed: rng.next(),
-    kappa: opts?.kappa ?? rng.range(-0.18, 0.18), q1: _n.x, q2: _n.y, q3: _n.z,
-  });
+  _rec.u = s.u;
+  _rec.v = s.v;
+  _rec.d = s.d;
+  _rec.du = s.du;
+  _rec.dv = s.dv;
+  _rec.dlnd = s.dlnd;
+  sink.push(_rec);
 }
 
 /** Emit a multi-ring star horn at custom painting coordinate (uP, v) using STAR_CORE (12-16 km) + SKY_BAND outer rings. */

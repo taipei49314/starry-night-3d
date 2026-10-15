@@ -24,185 +24,164 @@ interface ActSoundProfile {
 }
 
 const ACT_PROFILES: Record<PaintingId, ActSoundProfile> = {
-  // Chapter I (Earth): The Potato Eaters — Deep earthen C Dorian / Minor 7 cello warmth & hearth glow
+  // ---------------- CHAPTER I: EARTH (Nuenen & Antwerp, 1884–1886) ----------------
   potato: {
-    padFreqs: [98.00, 130.81, 196.00, 233.08], // G2, C3, G3, Bb3
+    padFreqs: [98.00, 130.81, 196.00, 233.08], // G2, C3, G3, Bb3 (C Dorian cello warmth)
     chimePool: [261.63, 311.13, 392.00, 466.16],
-    envFreq: 185,
-    envQ: 2.0,
-    envGain: 0.024,
-    lfoRate: 0.09,
-    lfoDepth: 45,
-    chimeInterval: 4.4,
-    chimeStyle: 'lullaby',
+    envFreq: 185, envQ: 2.0, envGain: 0.024, lfoRate: 0.09, lfoDepth: 45, chimeInterval: 4.4, chimeStyle: 'lullaby',
   },
-  // Chapter I (Earth): A Pair of Shoes — Warm F Minor / Ab Major earthen studio & wooden footsteps resonance
+  weaver: {
+    padFreqs: [110.00, 146.83, 220.00, 261.63], // A2, D3, A3, C4 (Rhythmic D Dorian handloom shuttle pulse)
+    chimePool: [293.66, 349.23, 440.00, 523.25],
+    envFreq: 240, envQ: 2.2, envGain: 0.028, lfoRate: 0.32, lfoDepth: 75, chimeInterval: 3.2, chimeStyle: 'lullaby',
+  },
+  tower: {
+    padFreqs: [92.50, 138.59, 185.00, 220.00], // F#2, C#3, F#3, A3 (Nuenen belfry twilight minor drone)
+    chimePool: [277.18, 329.63, 369.99, 440.00],
+    envFreq: 260, envQ: 2.3, envGain: 0.032, lfoRate: 0.13, lfoDepth: 80, chimeInterval: 4.5, chimeStyle: 'bell',
+  },
   shoes: {
     padFreqs: [103.83, 155.56, 207.65, 261.63], // Ab2, Eb3, Ab3, C4
     chimePool: [311.13, 392.00, 466.16, 523.25],
-    envFreq: 210,
-    envQ: 1.9,
-    envGain: 0.025,
-    lfoRate: 0.11,
-    lfoDepth: 55,
-    chimeInterval: 3.9,
-    chimeStyle: 'lullaby',
+    envFreq: 210, envQ: 1.9, envGain: 0.025, lfoRate: 0.11, lfoDepth: 55, chimeInterval: 3.9, chimeStyle: 'lullaby',
   },
-  // Chapter II (Color): Boulevard de Clichy — Sparkling Impressionist A Major 9 pointillist awakening
+  skull: {
+    padFreqs: [98.00, 146.83, 196.00, 233.08], // G2, D3, G3, Bb3 (Antwerp memento mori & glowing ember glass)
+    chimePool: [392.00, 466.16, 587.33, 698.46],
+    envFreq: 225, envQ: 2.4, envGain: 0.022, lfoRate: 0.10, lfoDepth: 50, chimeInterval: 3.6, chimeStyle: 'glass',
+  },
+
+  // ---------------- CHAPTER II: COLOR (Paris & Montmartre, 1886–1887) ----------------
+  galette: {
+    padFreqs: [146.83, 220.00, 277.18, 329.63], // D3, A3, C#4, E4 (Breezy Montmartre windmill waltz)
+    chimePool: [440.00, 554.37, 659.25, 739.99, 880.00],
+    envFreq: 510, envQ: 1.6, envGain: 0.035, lfoRate: 0.25, lfoDepth: 185, chimeInterval: 2.4, chimeStyle: 'pastoral',
+  },
   paris: {
     padFreqs: [164.81, 220.00, 277.18, 329.63], // E3, A3, C#4, E4
     chimePool: [554.37, 659.25, 880.00, 987.77, 1108.73, 1318.51],
-    envFreq: 490,
-    envQ: 1.6,
-    envGain: 0.032,
-    lfoRate: 0.22,
-    lfoDepth: 165,
-    chimeInterval: 2.1,
-    chimeStyle: 'blossom',
+    envFreq: 490, envQ: 1.6, envGain: 0.032, lfoRate: 0.22, lfoDepth: 165, chimeInterval: 2.1, chimeStyle: 'blossom',
   },
-  // Chapter II (Color): Self-Portrait with Straw Hat — Luminous B Minor / D Major 9 introspective gaze & aura
+  seine: {
+    padFreqs: [130.81, 196.00, 246.94, 293.66], // C3, G3, B3, D4 (Shimmering Seine water & steam train overtone)
+    chimePool: [523.25, 659.25, 783.99, 987.77, 1046.50],
+    envFreq: 440, envQ: 1.9, envGain: 0.038, lfoRate: 0.23, lfoDepth: 170, chimeInterval: 2.3, chimeStyle: 'celesta',
+  },
+  plum: {
+    padFreqs: [146.83, 220.00, 261.63, 329.63], // D3, A3, C4, E4 (Japonisme pentatonic rain koto droplets)
+    chimePool: [440.00, 523.25, 587.33, 659.25, 880.00, 1046.50],
+    envFreq: 640, envQ: 1.5, envGain: 0.044, lfoRate: 0.26, lfoDepth: 210, chimeInterval: 1.85, chimeStyle: 'blossom',
+  },
+  tanguy: {
+    padFreqs: [138.59, 207.65, 277.18, 349.23], // Db3, Ab3, Db4, F4 (Warm ukiyo-e sanctuary & sage chord)
+    chimePool: [466.16, 554.37, 698.46, 830.61, 1108.73],
+    envFreq: 340, envQ: 1.8, envGain: 0.025, lfoRate: 0.14, lfoDepth: 85, chimeInterval: 2.7, chimeStyle: 'warm',
+  },
   selfportrait: {
     padFreqs: [146.83, 220.00, 277.18, 369.99], // D3, A3, C#4, F#4
     chimePool: [440.00, 554.37, 659.25, 739.99, 880.00],
-    envFreq: 390,
-    envQ: 1.8,
-    envGain: 0.028,
-    lfoRate: 0.16,
-    lfoDepth: 110,
-    chimeInterval: 2.9,
-    chimeStyle: 'glass',
+    envFreq: 390, envQ: 1.8, envGain: 0.028, lfoRate: 0.16, lfoDepth: 110, chimeInterval: 2.9, chimeStyle: 'glass',
   },
-  // Chapter III (Sun): Sunflowers — Radiant D Lydian / Major 9 golden solar warmth
+
+  // ---------------- CHAPTER III: SUN (Arles, 1888–1889) ----------------
+  yellowhouse: {
+    padFreqs: [130.81, 196.00, 261.63, 329.63], // C3, G3, C4, E4 (Place Lamartine bright brassy sunlight)
+    chimePool: [523.25, 659.25, 783.99, 987.77, 1046.50],
+    envFreq: 380, envQ: 1.6, envGain: 0.029, lfoRate: 0.16, lfoDepth: 115, chimeInterval: 2.6, chimeStyle: 'warm',
+  },
   sunflowers: {
     padFreqs: [146.83, 220.00, 293.66, 369.99], // D3, A3, D4, F#4
     chimePool: [587.33, 739.99, 880.00, 1108.73, 1174.66],
-    envFreq: 420,
-    envQ: 1.5,
-    envGain: 0.030,
-    lfoRate: 0.17,
-    lfoDepth: 130,
-    chimeInterval: 2.5,
-    chimeStyle: 'warm',
+    envFreq: 420, envQ: 1.5, envGain: 0.030, lfoRate: 0.17, lfoDepth: 130, chimeInterval: 2.5, chimeStyle: 'warm',
   },
-  // Chapter III (Sun): Café Terrace at Night — Warm F Major 9 gaslit nocturnal square
+  harvest: {
+    padFreqs: [164.81, 246.94, 329.63, 415.30], // E3, B3, E4, G#4 (Wide panoramic La Crau summer breeze)
+    chimePool: [493.88, 659.25, 739.99, 830.61, 987.77],
+    envFreq: 540, envQ: 1.5, envGain: 0.042, lfoRate: 0.19, lfoDepth: 220, chimeInterval: 2.8, chimeStyle: 'pastoral',
+  },
+  sower: {
+    padFreqs: [146.83, 220.00, 293.66, 392.00], // D3, A3, D4, G4 (Sacred blazing sunset disc & earth cadence)
+    chimePool: [440.00, 587.33, 659.25, 783.99, 880.00],
+    envFreq: 360, envQ: 1.7, envGain: 0.034, lfoRate: 0.15, lfoDepth: 135, chimeInterval: 2.7, chimeStyle: 'warm',
+  },
   cafe: {
     padFreqs: [174.61, 220.00, 261.63, 329.63], // F3, A3, C4, E4
     chimePool: [523.25, 659.25, 783.99, 880.00, 1046.50],
-    envFreq: 310,
-    envQ: 1.4,
-    envGain: 0.028,
-    lfoRate: 0.14,
-    lfoDepth: 85,
-    chimeInterval: 3.4,
-    chimeStyle: 'warm',
+    envFreq: 310, envQ: 1.4, envGain: 0.028, lfoRate: 0.14, lfoDepth: 85, chimeInterval: 3.4, chimeStyle: 'warm',
   },
-  // Chapter III (Sun): Starry Night Over the Rhône — Serene Db Major 9 + lapping river water
+  nightcafe: {
+    padFreqs: [123.47, 185.00, 233.08, 293.66], // B2, F#3, Bb3, D4 (Hypnotic gasolier halo & midnight tension)
+    chimePool: [369.99, 466.16, 587.33, 739.99, 932.33],
+    envFreq: 275, envQ: 2.3, envGain: 0.030, lfoRate: 0.13, lfoDepth: 95, chimeInterval: 3.1, chimeStyle: 'glass',
+  },
   rhone: {
     padFreqs: [138.59, 207.65, 261.63, 311.13], // Db3, Ab3, C4, Eb4
     chimePool: [523.25, 622.25, 698.46, 830.61, 1046.50, 1244.51],
-    envFreq: 380,
-    envQ: 2.2,
-    envGain: 0.042,
-    lfoRate: 0.24,
-    lfoDepth: 190,
-    chimeInterval: 2.8,
-    chimeStyle: 'celesta',
+    envFreq: 380, envQ: 2.2, envGain: 0.042, lfoRate: 0.24, lfoDepth: 190, chimeInterval: 2.8, chimeStyle: 'celesta',
   },
-  // Chapter III (Sun): The Bedroom in Arles — Intimate Bb Major 7 wooden sanctuary
   bedroom: {
     padFreqs: [116.54, 174.61, 220.00, 293.66], // Bb2, F3, A3, D4
     chimePool: [440.00, 587.33, 698.46, 880.00],
-    envFreq: 220,
-    envQ: 1.8,
-    envGain: 0.020,
-    lfoRate: 0.11,
-    lfoDepth: 55,
-    chimeInterval: 4.0,
-    chimeStyle: 'lullaby',
+    envFreq: 220, envQ: 1.8, envGain: 0.020, lfoRate: 0.11, lfoDepth: 55, chimeInterval: 4.0, chimeStyle: 'lullaby',
   },
-  // Chapter IV (Cosmos): The Starry Night — Cosmic C# Minor 9 / Dorian 250 km vortex
+
+  // ---------------- CHAPTER IV: COSMOS (Saint-Rémy, 1889–1890) ----------------
   starry: {
     padFreqs: [138.59, 207.65, 246.94, 329.63], // C#3, G#3, B3, E4
     chimePool: [493.88, 659.25, 739.99, 987.77, 1108.73, 1318.51],
-    envFreq: 520,
-    envQ: 1.9,
-    envGain: 0.045,
-    lfoRate: 0.19,
-    lfoDepth: 260,
-    chimeInterval: 2.6,
-    chimeStyle: 'glass',
+    envFreq: 520, envQ: 1.9, envGain: 0.045, lfoRate: 0.19, lfoDepth: 260, chimeInterval: 2.6, chimeStyle: 'glass',
   },
-  // Chapter IV (Cosmos): Irises — Lush Eb Major 9 garden breeze & solitary white iris celesta
   irises: {
     padFreqs: [155.56, 233.08, 293.66, 349.23], // Eb3, Bb3, D4, F4
     chimePool: [587.33, 698.46, 783.99, 932.33, 1174.66],
-    envFreq: 480,
-    envQ: 1.7,
-    envGain: 0.036,
-    lfoRate: 0.18,
-    lfoDepth: 175,
-    chimeInterval: 2.3,
-    chimeStyle: 'celesta',
+    envFreq: 480, envQ: 1.7, envGain: 0.036, lfoRate: 0.18, lfoDepth: 175, chimeInterval: 2.3, chimeStyle: 'celesta',
   },
-  // Chapter IV (Cosmos): Wheat Field with Cypresses — Sunlit G Major 9 + Mistral wind in golden grain
+  olive: {
+    padFreqs: [174.61, 261.63, 329.63, 392.00], // F3, C4, E4, G4 (Rustling silver-green olive canopy & sun rays)
+    chimePool: [523.25, 659.25, 783.99, 987.77, 1046.50],
+    envFreq: 560, envQ: 1.6, envGain: 0.044, lfoRate: 0.20, lfoDepth: 240, chimeInterval: 2.5, chimeStyle: 'pastoral',
+  },
   wheat: {
     padFreqs: [196.00, 293.66, 369.99, 440.00], // G3, D4, F#4, A4
     chimePool: [587.33, 739.99, 880.00, 987.77, 1174.66],
-    envFreq: 680,
-    envQ: 1.5,
-    envGain: 0.052,
-    lfoRate: 0.21,
-    lfoDepth: 320,
-    chimeInterval: 3.1,
-    chimeStyle: 'pastoral',
+    envFreq: 680, envQ: 1.5, envGain: 0.052, lfoRate: 0.21, lfoDepth: 320, chimeInterval: 3.1, chimeStyle: 'pastoral',
   },
-  // Chapter IV (Cosmos): Almond Blossom — Radiant E Major Pentatonic spring awakening
+  roadcypress: {
+    padFreqs: [130.81, 196.00, 233.08, 311.13], // C3, G3, Bb3, Eb4 (Nocturnal Saint-Rémy farewell & starlight)
+    chimePool: [466.16, 587.33, 622.25, 783.99, 932.33, 1174.66],
+    envFreq: 470, envQ: 1.9, envGain: 0.040, lfoRate: 0.18, lfoDepth: 210, chimeInterval: 2.5, chimeStyle: 'celesta',
+  },
   almond: {
     padFreqs: [164.81, 246.94, 329.63, 369.99], // E3, B3, E4, F#4
     chimePool: [659.25, 739.99, 830.61, 987.77, 1108.73, 1318.51],
-    envFreq: 560,
-    envQ: 2.0,
-    envGain: 0.030,
-    lfoRate: 0.16,
-    lfoDepth: 180,
-    chimeInterval: 1.95,
-    chimeStyle: 'blossom',
+    envFreq: 560, envQ: 2.0, envGain: 0.030, lfoRate: 0.16, lfoDepth: 180, chimeInterval: 1.95, chimeStyle: 'blossom',
   },
-  // Chapter V (Road): The Church at Auvers — Solemn D Minor Add9 Gothic organ & bronze bell
+
+  // ---------------- CHAPTER V: ROAD (Auvers-sur-Oise, May–July 1890) ----------------
+  cottages: {
+    padFreqs: [146.83, 220.00, 261.63, 349.23], // D3, A3, C4, F4 (Undulating thatched roofs & spring wind)
+    chimePool: [440.00, 523.25, 587.33, 698.46, 880.00],
+    envFreq: 490, envQ: 1.7, envGain: 0.038, lfoRate: 0.20, lfoDepth: 195, chimeInterval: 2.9, chimeStyle: 'pastoral',
+  },
   church: {
     padFreqs: [146.83, 220.00, 261.63, 329.63], // D3, A3, C4, E4
     chimePool: [293.66, 440.00, 523.25, 587.33],
-    envFreq: 290,
-    envQ: 2.4,
-    envGain: 0.036,
-    lfoRate: 0.15,
-    lfoDepth: 120,
-    chimeInterval: 4.6,
-    chimeStyle: 'bell',
+    envFreq: 290, envQ: 2.4, envGain: 0.036, lfoRate: 0.15, lfoDepth: 120, chimeInterval: 4.6, chimeStyle: 'bell',
   },
-  // Chapter V (Road): Portrait of Dr. Gachet — Melancholic E Minor 9 / G Major 7 chamber elegy
   gachet: {
     padFreqs: [130.81, 196.00, 246.94, 329.63], // C3, G3, B3, E4
     chimePool: [392.00, 493.88, 587.33, 659.25, 783.99],
-    envFreq: 310,
-    envQ: 2.1,
-    envGain: 0.032,
-    lfoRate: 0.14,
-    lfoDepth: 95,
-    chimeInterval: 3.5,
-    chimeStyle: 'lullaby',
+    envFreq: 310, envQ: 2.1, envGain: 0.032, lfoRate: 0.14, lfoDepth: 95, chimeInterval: 3.5, chimeStyle: 'lullaby',
   },
-  // Chapter V (Road): Wheatfield with Crows — Tempestuous A Minor storm & murder of crows
+  daubigny: {
+    padFreqs: [155.56, 233.08, 311.13, 392.00], // Eb3, Bb3, Eb4, G4 (Luminous 2:1 Auvers garden serenity)
+    chimePool: [466.16, 587.33, 698.46, 783.99, 932.33, 1174.66],
+    envFreq: 460, envQ: 1.8, envGain: 0.032, lfoRate: 0.17, lfoDepth: 155, chimeInterval: 2.2, chimeStyle: 'blossom',
+  },
   crows: {
     padFreqs: [110.00, 164.81, 220.00, 246.94], // A2, E3, A3, B3
     chimePool: [440.00, 493.88, 523.25, 659.25, 880.00],
-    envFreq: 460,
-    envQ: 1.6,
-    envGain: 0.058,
-    lfoRate: 0.28,
-    lfoDepth: 290,
-    chimeInterval: 2.4,
-    chimeStyle: 'storm',
+    envFreq: 460, envQ: 1.6, envGain: 0.058, lfoRate: 0.28, lfoDepth: 290, chimeInterval: 2.4, chimeStyle: 'storm',
   },
 };
 

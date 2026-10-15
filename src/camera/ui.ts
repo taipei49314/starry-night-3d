@@ -28,11 +28,13 @@ const CSS = `
   box-shadow:0 0 6px rgba(242,194,48,.55),inset 0 0 4px rgba(242,194,48,.35);display:none;will-change:transform}
 .pn-ring::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px 0 0 -1.5px;border-radius:50%;background:#f2c230}
 .pn-suite{position:absolute;left:50%;top:10px;transform:translateX(-50%);pointer-events:auto;display:flex;align-items:center;gap:2px;
-  padding:4px 6px;border-radius:999px;background:rgba(5,10,24,.76);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.14);max-width:calc(100% - 14px);overflow-x:auto}
+  padding:4px 6px;border-radius:999px;background:rgba(5,10,24,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.14);max-width:calc(100% - 14px)}
+.pn-suite-scroll{display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;max-width:min(66vw,920px);scroll-behavior:smooth}
+.pn-suite-scroll::-webkit-scrollbar{display:none}
 .pn-suite-btn{appearance:none;border:0;background:transparent;color:rgba(232,237,240,.78);padding:4px 8px;border-radius:999px;
   font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.01em;cursor:pointer;
-  white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease,opacity .18s ease;display:flex;align-items:center;gap:4px}
+  white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease,opacity .18s ease;display:flex;align-items:center;gap:4px;flex-shrink:0}
 .pn-suite-btn:hover{color:#fff;background:rgba(232,237,240,.10)}
 .pn-suite-btn[data-inseq="0"]{opacity:.48}
 .pn-suite-btn[data-active="1"]{opacity:1;color:#f5e27a;background:rgba(242,194,48,.18);box-shadow:inset 0 0 0 1px rgba(242,194,48,.52)}
@@ -40,7 +42,7 @@ const CSS = `
 .pn-suite-sep{width:1px;height:14px;background:rgba(232,237,240,.16);margin:0 2px;flex-shrink:0}
 .pn-odyssey-btn{appearance:none;border:0;background:rgba(232,237,240,.07);color:rgba(232,237,240,.74);padding:4px 8px;border-radius:999px;
   font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.02em;cursor:pointer;
-  white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease}
+  white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease;flex-shrink:0}
 .pn-odyssey-btn:hover{color:#fff;background:rgba(232,237,240,.14)}
 .pn-odyssey-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.16);box-shadow:inset 0 0 0 1px rgba(242,194,48,.45)}
 .pn-pathbar{position:absolute;left:50%;top:46px;transform:translateX(-50%);pointer-events:auto;display:none;align-items:center;gap:4px;
@@ -66,7 +68,7 @@ const CSS = `
 .pn-card-sub{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#f2c230;margin-bottom:3px;opacity:.92}
 .pn-card-title{font-size:15px;font-weight:600;letter-spacing:.04em;color:#f4f7f9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
 .pn-card-portal{font-size:11.5px;color:rgba(245,226,122,.86);margin-top:4px;letter-spacing:.02em}
-.pn-tl{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(820px,calc(100% - 20px));box-sizing:border-box;
+.pn-tl{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(860px,calc(100% - 20px));box-sizing:border-box;
   padding:7px 14px 8px;border-radius:14px;background:rgba(5,10,24,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.13);pointer-events:auto;display:none}
 .pn-tl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11.5px;letter-spacing:.02em}
@@ -76,34 +78,34 @@ const CSS = `
 .pn-tl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#c8964e,#7eb8da,#f2c230,#5eb2bc,#d85e24);width:0%}
 .pn-tl-thumb{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#f5e27a;
   box-shadow:0 0 8px rgba(242,194,48,.85),0 0 0 1.5px #050a18;left:0%}
-.pn-tl-mark{position:absolute;top:-1px;bottom:-1px;width:1.5px;background:rgba(5,10,24,.88);z-index:1}
-.pn-tl-acts{display:grid;margin-top:4px;font-size:10px;color:rgba(232,237,240,.58)}
+.pn-tl-mark{position:absolute;top:-1px;bottom:-1px;width:1px;background:rgba(5,10,24,.88);z-index:1}
+.pn-tl-acts{display:grid;margin-top:4px;font-size:9.5px;color:rgba(232,237,240,.58)}
 .pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 1px;cursor:pointer;transition:color .15s ease}
 .pn-tl-act:hover{color:#fff}
 .pn-tl-act[data-active="1"]{color:#f5e27a;font-weight:600}
-.pn-atlas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(860px,calc(100% - 24px));max-height:calc(100% - 108px);
-  box-sizing:border-box;padding:16px 18px;border-radius:18px;background:rgba(5,10,24,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+.pn-atlas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,calc(100% - 24px));max-height:calc(100% - 104px);
+  box-sizing:border-box;padding:15px 18px;border-radius:18px;background:rgba(5,10,24,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   box-shadow:0 16px 48px rgba(0,0,0,.68),0 0 0 1px rgba(242,194,48,.32);pointer-events:auto;display:none;overflow-y:auto;z-index:30}
 .pn-atlas-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid rgba(232,237,240,.12);padding-bottom:8px}
 .pn-atlas-title{font-size:14.5px;font-weight:600;color:#f5e27a;letter-spacing:.04em}
 .pn-atlas-close{appearance:none;border:0;background:rgba(232,237,240,.1);color:#e8edf0;padding:4px 10px;border-radius:999px;font-size:11px;cursor:pointer}
 .pn-atlas-close:hover{background:rgba(242,194,48,.22);color:#f5e27a}
-.pn-atlas-motifs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;align-items:center}
+.pn-atlas-motifs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;align-items:center}
 .pn-motif-pill{appearance:none;border:0;background:rgba(232,237,240,.08);color:rgba(232,237,240,.82);padding:4px 10px;border-radius:999px;
   font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;transition:all .16s ease}
 .pn-motif-pill:hover{background:rgba(232,237,240,.16);color:#fff}
 .pn-motif-pill[data-active="1"]{background:rgba(242,194,48,.22);color:#f5e27a;box-shadow:inset 0 0 0 1px rgba(242,194,48,.52)}
-.pn-atlas-chapters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
-.pn-ch-col{padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px rgba(232,237,240,.09)}
-.pn-ch-head{font-size:10.5px;font-weight:600;letter-spacing:.06em;margin-bottom:3px}
-.pn-ch-sub{font-size:10px;color:rgba(232,237,240,.6);margin-bottom:7px;line-height:1.3}
-.pn-ch-node{display:block;width:100%;text-align:left;appearance:none;border:0;margin-bottom:5px;padding:6px 8px;border-radius:8px;
-  background:rgba(232,237,240,.06);color:#e8edf0;font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;
+.pn-atlas-chapters{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px;margin-bottom:10px}
+.pn-ch-col{padding:8px 9px;border-radius:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px rgba(232,237,240,.09);max-height:42vh;overflow-y:auto;scrollbar-width:thin}
+.pn-ch-head{font-size:10.5px;font-weight:600;letter-spacing:.06em;margin-bottom:2px}
+.pn-ch-sub{font-size:9.5px;color:rgba(232,237,240,.6);margin-bottom:6px;line-height:1.3}
+.pn-ch-node{display:block;width:100%;text-align:left;appearance:none;border:0;margin-bottom:4px;padding:5px 7px;border-radius:8px;
+  background:rgba(232,237,240,.06);color:#e8edf0;font:500 10.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;
   cursor:pointer;transition:all .16s ease}
 .pn-ch-node:hover{background:rgba(242,194,48,.16);color:#f5e27a}
 .pn-ch-node[data-active="1"]{background:rgba(242,194,48,.22);color:#f5e27a;box-shadow:inset 0 0 0 1px rgba(242,194,48,.58)}
 .pn-ch-node[data-dim="1"]{opacity:.32}
-.pn-ch-node-motifs{font-size:9.5px;color:rgba(232,237,240,.62);margin-top:2px}
+.pn-ch-node-motifs{font-size:9px;color:rgba(232,237,240,.62);margin-top:2px}
 .pn-atlas-detail{padding:10px 12px;border-radius:12px;background:rgba(242,194,48,.07);box-shadow:inset 0 0 0 1px rgba(242,194,48,.24);font-size:11.5px}
 .pn-detail-row{margin-bottom:5px;color:rgba(232,237,240,.88)}
 .pn-detail-row b{color:#f5e27a}
@@ -156,97 +158,196 @@ export interface SuiteItem {
 }
 
 export const SUITE_ITEMS: readonly SuiteItem[] = [
+  // Chapter I — Earth (Nuenen & Antwerp)
   {
     id: 'potato', chapterId: 'earth', roman: 'I', shortZh: '食薯者', tinyZh: 'I 食薯者',
     titleZh: '食薯者', titleEn: 'The Potato Eaters',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)', year: '1885.04',
-    portalZh: '飛入中央懸掛油燈的暖金火芯 → 照亮地面踏上旅途的《一雙舊鞋》',
+    portalZh: '飛入中央懸掛油燈的暖金火芯 → 走入隔壁農舍《織布工》木機框',
   },
   {
-    id: 'shoes', chapterId: 'earth', roman: 'II', shortZh: '一雙舊鞋', tinyZh: 'II 舊鞋',
+    id: 'weaver', chapterId: 'earth', roman: 'II', shortZh: '織布工', tinyZh: 'II 織布工',
+    titleZh: '織布工', titleEn: 'The Weaver',
+    placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)', year: '1884.05',
+    portalZh: '穿過右側農舍明窗光束 → 望見暮色中的《紐넨的舊教堂塔樓》',
+  },
+  {
+    id: 'tower', chapterId: 'earth', roman: 'III', shortZh: '舊教堂塔樓', tinyZh: 'III 舊塔樓',
+    titleZh: '紐넨的舊教堂塔樓', titleEn: 'The Old Church Tower at Nuenen',
+    placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)', year: '1885.05',
+    portalZh: '由教堂墓園泥土小徑低頭凝視 → 聚焦遠行起點《一雙舊鞋》',
+  },
+  {
+    id: 'shoes', chapterId: 'earth', roman: 'IV', shortZh: '一雙舊鞋', tinyZh: 'IV 舊鞋',
     titleZh: '一雙舊鞋', titleEn: 'A Pair of Shoes',
     placeZh: 'Chapter I · 黑土與人 (Nuenen / Paris)', year: '1886.09',
-    portalZh: '順著蜿蜒鬆開的鞋帶迎向金色門檻光束 → 踏上巴黎克利希大道',
+    portalZh: '順著蜿蜒鞋帶衝向暗室微光 → 凝視安特衛普《叼菸骷髏》',
   },
   {
-    id: 'paris', chapterId: 'color', roman: 'III', shortZh: '克利希大道', tinyZh: 'III 巴黎',
+    id: 'skull', chapterId: 'earth', roman: 'V', shortZh: '叼菸骷髏', tinyZh: 'V 骷髏',
+    titleZh: '叼著點燃香菸的骷髏', titleEn: 'Skull of a Skeleton with Burning Cigarette',
+    placeZh: 'Chapter I · 黑土與人 (安特衛普 Antwerp)', year: '1886.02',
+    portalZh: '飛入香菸赤紅火燼與青煙漩渦 → 破曉進入巴黎《蒙馬特的煎餅磨坊》',
+  },
+  // Chapter II — Color (Paris & Montmartre)
+  {
+    id: 'galette', chapterId: 'color', roman: 'VI', shortZh: '煎餅磨坊', tinyZh: 'VI 磨坊',
+    titleZh: '蒙馬特的煎餅磨坊', titleEn: 'Le Moulin de la Galette',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Montmartre)', year: '1886.10',
+    portalZh: '順著蒙馬特山坡木欄杆走下山丘 → 步入點描光譜《克利希大道》',
+  },
+  {
+    id: 'paris', chapterId: 'color', roman: 'VII', shortZh: '克利希大道', tinyZh: 'VII 巴黎',
     titleZh: '克利希大道', titleEn: 'Boulevard de Clichy',
     placeZh: 'Chapter II · 巴黎與覺醒 (Paris)', year: '1887.03',
-    portalZh: '穿過點描林蔭大道晨光 → 轉身對視畫家《戴草帽的自畫像》雙眸',
+    portalZh: '穿過林蔭大道晨光向西漫步 → 抵達波光粼粼的《阿尼耶爾的塞納河與橋》',
   },
   {
-    id: 'selfportrait', chapterId: 'color', roman: 'IV', shortZh: '自畫像', tinyZh: 'IV 自畫像',
+    id: 'seine', chapterId: 'color', roman: 'VIII', shortZh: '塞納河與橋', tinyZh: 'VIII 塞納河',
+    titleZh: '阿尼耶爾的塞納河與橋', titleEn: 'Bridges across the Seine at Asnières',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Asnières)', year: '1887.06',
+    portalZh: '穿過蒸汽火車白煙與朱紅鐵橋拱 → 化為浮世繪《雨中大橋（仿廣重）》',
+  },
+  {
+    id: 'plum', chapterId: 'color', roman: 'IX', shortZh: '雨中大橋', tinyZh: 'IX 雨中橋',
+    titleZh: '雨中大橋（仿廣重）', titleEn: 'Bridge in the Rain (after Hiroshige)',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Japonisme)', year: '1887.10',
+    portalZh: '穿過雨中紙傘與漢字邊框 → 成為《唐吉老爹肖像》背後的浮世繪牆',
+  },
+  {
+    id: 'tanguy', chapterId: 'color', roman: 'X', shortZh: '唐吉老爹', tinyZh: 'X 唐吉',
+    titleZh: '唐吉老爹肖像', titleEn: 'Portrait of Père Tanguy',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Paris)', year: '1887.11',
+    portalZh: '由唐吉老爹慈祥雙眼轉向畫架前 → 對視《戴草帽的自畫像》',
+  },
+  {
+    id: 'selfportrait', chapterId: 'color', roman: 'XI', shortZh: '自畫像', tinyZh: 'XI 自畫像',
     titleZh: '戴草帽的自畫像', titleEn: 'Self-Portrait with Straw Hat',
     placeZh: 'Chapter II · 巴黎與覺醒 (Paris)', year: '1887.08',
-    portalZh: '飛入畫家翠綠瞳孔與金黃草帽光環 → 綻放為亞爾盛開的《向日葵》',
+    portalZh: '飛入畫家翠綠瞳孔與金黃草帽光環 → 沐浴亞爾《黃色小屋》的南方烈日',
+  },
+  // Chapter III — Sun (Arles)
+  {
+    id: 'yellowhouse', chapterId: 'sun', roman: 'XII', shortZh: '黃色小屋', tinyZh: 'XII 黃屋',
+    titleZh: '黃色小屋（街景）', titleEn: 'The Yellow House (The Street)',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.09',
+    portalZh: '推開二樓翠綠百葉窗走進室內 → 看見桌上迎賓的十五朵《向日葵》',
   },
   {
-    id: 'sunflowers', chapterId: 'sun', roman: 'V', shortZh: '向日葵', tinyZh: 'V 向日葵',
+    id: 'sunflowers', chapterId: 'sun', roman: 'XIII', shortZh: '向日葵', tinyZh: 'XIII 向日葵',
     titleZh: '向日葵', titleEn: 'Sunflowers',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.08',
-    portalZh: '穿過中央向日葵燃燒的金色花盤核心 → 化為亞爾夜間咖啡座瓦斯燈棚',
+    portalZh: '穿過中央向日葵燃燒的金色花盤核心 → 飛向陽光普照的《克勞平原的豐收》',
   },
   {
-    id: 'cafe', chapterId: 'sun', roman: 'VI', shortZh: '夜間咖啡座', tinyZh: 'VI 咖啡座',
+    id: 'harvest', chapterId: 'sun', roman: 'XIV', shortZh: '克勞豐收', tinyZh: 'XIV 豐收',
+    titleZh: '克勞平原的豐收', titleEn: 'The Harvest at La Crau',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.06',
+    portalZh: '迎向阿爾皮耶山巔傾瀉的午後金光 → 步入《夕陽下的播種者》',
+  },
+  {
+    id: 'sower', chapterId: 'sun', roman: 'XV', shortZh: '夕陽播種者', tinyZh: 'XV 播種者',
+    titleZh: '夕陽下的播種者', titleEn: 'The Sower at Sunset',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.11',
+    portalZh: '穿過碩大檸檬黃落日光輪 → 入夜點亮《夜間咖啡座》的瓦斯燈',
+  },
+  {
+    id: 'cafe', chapterId: 'sun', roman: 'XVI', shortZh: '夜間咖啡座', tinyZh: 'XVI 咖啡座',
     titleZh: '夜間露天咖啡座', titleEn: 'Café Terrace at Night',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.09',
-    portalZh: '穿過鵝卵石街尾星谷 → 步入隆河河畔',
+    portalZh: '走入街角咖啡館深處門廊 → 踏進血紅與翠綠對撞的《夜間咖啡館》室內',
   },
   {
-    id: 'rhone', chapterId: 'sun', roman: 'VII', shortZh: '隆河星夜', tinyZh: 'VII 隆河',
+    id: 'nightcafe', chapterId: 'sun', roman: 'XVII', shortZh: '夜間咖啡館', tinyZh: 'XVII 咖啡館',
+    titleZh: '夜間咖啡館', titleEn: 'The Night Café',
+    placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.09',
+    portalZh: '穿過天花板眩目的瓦斯燈光環走出夜街 → 迎見《隆河上的星夜》',
+  },
+  {
+    id: 'rhone', chapterId: 'sun', roman: 'XVIII', shortZh: '隆河星夜', tinyZh: 'XVIII 隆河',
     titleZh: '隆河上的星夜', titleEn: 'Starry Night Over the Rhône',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.09',
     portalZh: '飛入對岸暖黃窗燈 → 走進亞爾黃色小屋臥室',
   },
   {
-    id: 'bedroom', chapterId: 'sun', roman: 'VIII', shortZh: '亞爾臥室', tinyZh: 'VIII 臥室',
+    id: 'bedroom', chapterId: 'sun', roman: 'XIX', shortZh: '亞爾臥室', tinyZh: 'XIX 臥室',
     titleZh: '在亞爾的臥室', titleEn: 'The Bedroom in Arles',
     placeZh: 'Chapter III · 亞爾的黃金時代 (Arles)', year: '1888.10',
     portalZh: '推開半掩的綠色百葉窗 → 飛入聖雷米星夜',
   },
+  // Chapter IV — Cosmos (Saint-Rémy)
   {
-    id: 'starry', chapterId: 'cosmos', roman: 'IX', shortZh: '星夜', tinyZh: 'IX 星夜',
+    id: 'starry', chapterId: 'cosmos', roman: 'XX', shortZh: '星夜', tinyZh: 'XX 星夜',
     titleZh: '星夜', titleEn: 'The Starry Night',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1889.06',
     portalZh: '迎向熾熱橘黃新月 → 晨光降落聖保羅療養院花園的《鳶尾花》',
   },
   {
-    id: 'irises', chapterId: 'cosmos', roman: 'X', shortZh: '鳶尾花', tinyZh: 'X 鳶尾花',
+    id: 'irises', chapterId: 'cosmos', roman: 'XXI', shortZh: '鳶尾花', tinyZh: 'XXI 鳶尾花',
     titleZh: '鳶尾花', titleEn: 'Irises',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1889.05',
-    portalZh: '穿過萬紫叢中孤傲盛開的純白鳶尾花 → 迎風展開《有絲柏的麥田》',
+    portalZh: '穿過孤傲盛開的純白鳶尾花 → 走入金色斜陽下的《橄欖樹與太陽》',
   },
   {
-    id: 'wheat', chapterId: 'cosmos', roman: 'XI', shortZh: '絲柏麥田', tinyZh: 'XI 麥田',
+    id: 'olive', chapterId: 'cosmos', roman: 'XXII', shortZh: '橄欖樹與日', tinyZh: 'XXII 橄欖樹',
+    titleZh: '橄欖樹與黃色天空及太陽', titleEn: 'Olive Trees with Yellow Sky and Sun',
+    placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1889.11',
+    portalZh: '穿過檸檬黃太陽的同心圓光波 → 迎風展開《有絲柏的麥田》',
+  },
+  {
+    id: 'wheat', chapterId: 'cosmos', roman: 'XXIII', shortZh: '絲柏麥田', tinyZh: 'XXIII 麥田',
     titleZh: '有絲柏的麥田', titleEn: 'Wheat Field with Cypresses',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1889.07',
-    portalZh: '衝入松石綠晴空與翻滾白雲 → 凝結為春日盛開杏花',
+    portalZh: '順著麥田邊緣小徑步入暮色 → 仰望《有絲柏與星辰的道路》',
   },
   {
-    id: 'almond', chapterId: 'cosmos', roman: 'XII', shortZh: '盛開杏花', tinyZh: 'XII 杏花',
+    id: 'roadcypress', chapterId: 'cosmos', roman: 'XXIV', shortZh: '絲柏星辰路', tinyZh: 'XXIV 絲柏路',
+    titleZh: '有絲柏與星辰的道路', titleEn: 'Road with Cypress and Star',
+    placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1890.05',
+    portalZh: '穿過絲柏尖端與新月光環 → 迎來象徵新生的春日《盛開的杏花》',
+  },
+  {
+    id: 'almond', chapterId: 'cosmos', roman: 'XXV', shortZh: '盛開杏花', tinyZh: 'XXV 杏花',
     titleZh: '盛開的杏花', titleEn: 'Almond Blossom',
     placeZh: 'Chapter IV · 聖雷米的內在宇宙 (Saint-Rémy)', year: '1890.02',
-    portalZh: '穿越飄落花雨與蔚藍晴空 → 北上奧維爾哥德教堂',
+    portalZh: '穿越飄落花雨與蔚藍晴空 → 北上抵達瓦茲河谷《奧維的茅草屋》',
+  },
+  // Chapter V — Road (Auvers-sur-Oise)
+  {
+    id: 'cottages', chapterId: 'road', roman: 'XXVI', shortZh: '奧維茅草屋', tinyZh: 'XXVI 茅草屋',
+    titleZh: '奧維的茅草屋', titleEn: 'Thatched Cottages at Cordeville',
+    placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.05',
+    portalZh: '順著茅草屋前的綠茵小徑前行 → 仰望《奧維的教堂》',
   },
   {
-    id: 'church', chapterId: 'road', roman: 'XIII', shortZh: '奧維爾教堂', tinyZh: 'XIII 教堂',
+    id: 'church', chapterId: 'road', roman: 'XXVII', shortZh: '奧維爾教堂', tinyZh: 'XXVII 教堂',
     titleZh: '奧維爾的教堂', titleEn: 'The Church at Auvers',
     placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.06',
     portalZh: '穿過鐘樓群青風暴 → 對視奧維爾知己《嘉舍醫師畫像》',
   },
   {
-    id: 'gachet', chapterId: 'road', roman: 'XIV', shortZh: '嘉舍醫師', tinyZh: 'XIV 嘉舍',
+    id: 'gachet', chapterId: 'road', roman: 'XXVIII', shortZh: '嘉舍醫師', tinyZh: 'XXVIII 嘉舍',
     titleZh: '嘉舍醫師畫像', titleEn: 'Portrait of Dr. Gachet',
     placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.06',
-    portalZh: '穿過醫師憂鬱雙眸與背後翻湧的深藍漩渦 → 拉開 2:1 超寬銀幕《麥田群鴉》',
+    portalZh: '順著紅桌上的毛地黃花枝走出診間 → 漫步 2:1 超寬全景《多比尼的花園》',
   },
   {
-    id: 'crows', chapterId: 'road', roman: 'XV', shortZh: '麥田群鴉', tinyZh: 'XV 群鴉',
+    id: 'daubigny', chapterId: 'road', roman: 'XXIX', shortZh: '多比尼花園', tinyZh: 'XXIX 花園',
+    titleZh: '多比尼的花園', titleEn: "Daubigny's Garden",
+    placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.07',
+    portalZh: '飛越別墅屋頂與尖塔 → 衝入同為 2:1 超寬銀幕的終章《麥田群鴉》',
+  },
+  {
+    id: 'crows', chapterId: 'road', roman: 'XXX', shortZh: '麥田群鴉', tinyZh: 'XXX 群鴉',
     titleZh: '麥田群鴉', titleEn: 'Wheatfield with Crows',
     placeZh: 'Chapter V · 奧維爾的路與風 (Auvers)', year: '1890.07',
     portalZh: '穿過迎面驚飛的黑鴉群 → 落回最初的黑土與《食薯者》油燈',
   },
 ];
+
+const SUITE_ITEM_MAP: ReadonlyMap<PaintingId, SuiteItem> = new Map(
+  SUITE_ITEMS.map((it) => [it.id, it]),
+);
 
 function fmtTime(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
@@ -264,6 +365,7 @@ export class DirectorUI {
   private readonly hudLine: HTMLSpanElement;
   private readonly ring: HTMLDivElement;
   private readonly suiteBar: HTMLDivElement;
+  private readonly suiteScroll: HTMLDivElement;
   private readonly chapterBtns = new Map<PaintingId, HTMLButtonElement>();
   private readonly odysseyBtn: HTMLButtonElement;
   private readonly themeBtn: HTMLButtonElement;
@@ -293,7 +395,7 @@ export class DirectorUI {
   private readonly tlActEls = new Map<PaintingId, HTMLDivElement>();
   private readonly beaconBtn: HTMLButtonElement;
   private readonly beaconLbl: HTMLSpanElement;
-  private beaconTargetId: PaintingId = 'shoes';
+  private beaconTargetId: PaintingId = 'weaver';
   private cardTimer: number | null = null;
   private hudText = '';
   private last = { hud: false, hint: -1, hudLine: '', ring: '', beacon: '', rect: '', tlPct: -1, tlShot: '', tlTime: '' };
@@ -321,10 +423,12 @@ export class DirectorUI {
     this.root = doc.createElement('div');
     this.root.className = 'pn-ui';
 
-    // Top-center 15-World / 5-Chapter Suite Bar
+    // Top-center 30-World / 5-Chapter Suite Bar with smooth horizontal scroll strip + pinned mode controls
     this.suiteBar = doc.createElement('div');
     this.suiteBar.className = 'pn-suite';
     this.suiteBar.style.display = 'none';
+    this.suiteScroll = doc.createElement('div');
+    this.suiteScroll.className = 'pn-suite-scroll';
     for (const item of SUITE_ITEMS) {
       const ch = getChapterSpec(item.chapterId);
       const btn = doc.createElement('button');
@@ -344,7 +448,7 @@ export class DirectorUI {
         this.input.focus();
       });
       this.chapterBtns.set(item.id, btn);
-      this.suiteBar.appendChild(btn);
+      this.suiteScroll.appendChild(btn);
     }
     const sep = doc.createElement('div');
     sep.className = 'pn-suite-sep';
@@ -352,8 +456,8 @@ export class DirectorUI {
     this.odysseyBtn = doc.createElement('button');
     this.odysseyBtn.type = 'button';
     this.odysseyBtn.className = 'pn-odyssey-btn';
-    this.odysseyBtn.textContent = '∞ 五章十五幕';
-    this.odysseyBtn.title = '模式 A：五大章 15 幕完整長篇 Odyssey (快捷鍵 O)';
+    this.odysseyBtn.textContent = '∞ 五章三十幕';
+    this.odysseyBtn.title = '模式 A：五大章 30 幕完整長篇 Odyssey (快捷鍵 O)';
     this.odysseyBtn.dataset.on = '1';
     this.odysseyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -378,7 +482,7 @@ export class DirectorUI {
     this.atlasBtn.type = 'button';
     this.atlasBtn.className = 'pn-odyssey-btn';
     this.atlasBtn.textContent = '🌌 宇宙星圖';
-    this.atlasBtn.title = '模式 B：開啟梵谷世界系統星圖（五大章 · 六大母題 · 任意門鄰居探索，快捷鍵 U）';
+    this.atlasBtn.title = '模式 B：開啟梵谷世界系統星圖（五大章 · 30幅巨作 · 六大母題 · 任意門鄰居探索，快捷鍵 U）';
     this.atlasBtn.dataset.on = '0';
     this.atlasBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -401,17 +505,17 @@ export class DirectorUI {
       this.onToggleSound?.();
       this.input.focus();
     });
-    this.suiteBar.append(sep, this.odysseyBtn, this.themeBtn, this.atlasBtn, this.soundBtn);
+    this.suiteBar.append(this.suiteScroll, sep, this.odysseyBtn, this.themeBtn, this.atlasBtn, this.soundBtn);
 
     // Secondary Theme Path selector bar (Mode C)
     this.pathBar = doc.createElement('div');
     this.pathBar.className = 'pn-pathbar';
     const pathOptions: Array<{ id: string; label: string; title: string }> = [
-      { id: 'nights', label: '✦ 光與夜之路 (6幕)', title: '食薯者油燈 → 向日葵花盤 → 夜間咖啡座 → 隆河星夜 → 聖雷米星夜 → 麥田群鴉' },
-      { id: 'roads', label: '⟁ 道路與遠方 (6幕)', title: '一雙舊鞋 → 巴黎克利希大道 → 夜間咖啡座 → 隆河堤岸 → 奧維爾教堂 → 麥田三岔路' },
-      { id: 'dwellings', label: '⌂ 居所與聖殿 (5幕)', title: '荷蘭農舍木桌 → 向日葵陶罐 → 街角咖啡座 → 亞爾黃色小屋臥室 → 奧維爾哥德教堂' },
-      { id: 'flora', label: '❀ 黑土繁花與風 (6幕)', title: '食薯者馬鈴薯 → 亞爾向日葵 → 聖雷米鳶尾花 → 絲柏麥浪 → 盛開杏花 → 狂風麥田' },
-      { id: 'gaze', label: '❖ 凝視與靈魂 (5幕)', title: '食薯者農民臉龐 → 戴草帽的自畫像 → 亞爾臥室百葉窗 → 嘉舍醫師憂鬱凝視 → 星夜渦流' },
+      { id: 'nights', label: '✦ 光與夜之路 (10幕)', title: '荷蘭油燈 → 香菸火燼 → 夕陽播種者 → 夜間咖啡座 → 午夜咖啡館 → 隆河星波 → 聖雷米星夜 → 橄欖樹烈日 → 絲柏夜路 → 麥田風暴' },
+      { id: 'roads', label: '⟁ 道路與橋樑 (10幕)', title: '一雙舊鞋 → 蒙馬特磨坊 → 克利希大道 → 塞納河鐵橋 → 廣重雨中大橋 → 亞爾街角 → 隆河堤岸 → 絲柏夜路 → 奧維爾教堂 → 麥田三岔路' },
+      { id: 'dwellings', label: '⌂ 居所與聖殿 (10幕)', title: '食薯者餐桌 → 紐넨織布機 → 舊教堂塔樓 → 亞爾黃色小屋 → 向日葵 → 露天咖啡座 → 午夜咖啡館 → 亞爾臥室 → 奧維爾茅草屋 → 奧維爾教堂' },
+      { id: 'flora', label: '❀ 黑土繁花與麥浪 (10幕)', title: '食薯者馬鈴薯 → 向日葵 → 克勞豐收平原 → 播種者 → 鳶尾花 → 橄欖樹林 → 絲柏麥浪 → 盛開杏花 → 多比尼花園 → 麥田群鴉' },
+      { id: 'gaze', label: '❖ 凝視與靈魂 (8幕)', title: '食薯者農民 → 安特衛普叼菸骷髏 → 唐吉老爹與浮世繪 → 戴草帽的自畫像 → 午夜咖啡館 → 亞爾臥室百葉窗 → 嘉舍醫師 → 星夜渦流' },
       { id: 'woven', label: '✨ 智能編織 (6幕)', title: '從當前畫作與母題出發，沿世界圖譜任意門自動編織 6 幕連貫旅程' },
       { id: 'single', label: '◎ 單幅沉浸循環 (1幕)', title: '鎖定當前畫作進行單幅 3D 空間深度巡禮' },
     ];
@@ -455,7 +559,7 @@ export class DirectorUI {
     atlasTop.className = 'pn-atlas-top';
     const atlasTitle = doc.createElement('div');
     atlasTitle.className = 'pn-atlas-title';
-    atlasTitle.textContent = '🌌 梵谷世界系統 · 五大章與六大母題星圖 (Van Gogh World Graph)';
+    atlasTitle.textContent = '🌌 梵谷世界系統 · 五大章三十幅巨作與六大母題星圖 (Van Gogh 30-World Atlas)';
     const atlasClose = doc.createElement('button');
     atlasClose.type = 'button';
     atlasClose.className = 'pn-atlas-close';
@@ -473,7 +577,7 @@ export class DirectorUI {
     const allBtn = doc.createElement('button');
     allBtn.type = 'button';
     allBtn.className = 'pn-motif-pill';
-    allBtn.textContent = '全部母題 (15幅)';
+    allBtn.textContent = '全部母題 (30幅)';
     allBtn.dataset.active = '1';
     allBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -676,12 +780,13 @@ export class DirectorUI {
       this.tlTrack.appendChild(m);
     }
     for (const id of seq) {
-      const item = SUITE_ITEMS.find((x) => x.id === id);
+      const item = SUITE_ITEM_MAP.get(id);
       if (!item) continue;
       const a = doc.createElement('div');
       a.className = 'pn-tl-act';
-      a.textContent = item.tinyZh;
-      a.title = `${item.placeZh} · ${item.titleZh} (${item.year})`;
+      a.textContent = seq.length > 16 ? item.roman : item.tinyZh;
+      if (seq.length > 16) a.style.fontSize = '7.5px';
+      a.title = `${item.roman} · ${item.placeZh} · 《${item.titleZh}》 (${item.year})`;
       a.dataset.active = id === this.currentActive ? '1' : '0';
       a.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -698,7 +803,7 @@ export class DirectorUI {
     const node = WORLD_GRAPH[active];
     this.neighborsList.innerHTML = '';
     for (const edge of node.neighbors) {
-      const targetItem = SUITE_ITEMS.find((x) => x.id === edge.to);
+      const targetItem = SUITE_ITEM_MAP.get(edge.to);
       if (!targetItem) continue;
       const ms = MOTIF_SPECS[edge.motif];
       const b = doc.createElement('button');
@@ -715,7 +820,7 @@ export class DirectorUI {
     }
 
     // Also update the Atlas detail panel for the currently selected painting
-    const item = SUITE_ITEMS.find((x) => x.id === active);
+    const item = SUITE_ITEM_MAP.get(active);
     if (!item) return;
     const ch = getChapterSpec(item.chapterId);
     this.atlasDetail.innerHTML = '';
@@ -742,7 +847,7 @@ export class DirectorUI {
     lbl.textContent = '推薦跨畫任意門躍遷：';
     r4.appendChild(lbl);
     for (const edge of node.neighbors) {
-      const tItem = SUITE_ITEMS.find((x) => x.id === edge.to);
+      const tItem = SUITE_ITEM_MAP.get(edge.to);
       if (!tItem) continue;
       const ms = MOTIF_SPECS[edge.motif];
       const eb = doc.createElement('button');
@@ -837,6 +942,11 @@ export class DirectorUI {
       btn.dataset.active = id === opts.active ? '1' : '0';
       btn.dataset.inseq = this.currentSequence.includes(id) ? '1' : '0';
     }
+    const activeBtn = this.chapterBtns.get(opts.active);
+    if (activeBtn && this.suiteScroll.clientWidth > 0 && typeof this.suiteScroll.scrollTo === 'function') {
+      const targetLeft = activeBtn.offsetLeft - this.suiteScroll.clientWidth * 0.5 + activeBtn.offsetWidth * 0.5;
+      this.suiteScroll.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+    }
     for (const [id, el] of this.tlActEls) {
       el.dataset.active = id === opts.active ? '1' : '0';
     }
@@ -859,13 +969,13 @@ export class DirectorUI {
     this.updateNeighborPortals(opts.active);
 
     if (opts.showCard) {
-      const item = SUITE_ITEMS.find((x) => x.id === opts.active);
+      const item = SUITE_ITEM_MAP.get(opts.active);
       if (item) {
         const pathSpec = THEME_PATHS.find((p) => p.id === opts.pathId);
         const modeTag = opts.pathTitleZh
           ? opts.pathTitleZh
           : opts.mode === 'odyssey'
-            ? '五章十五幕史詩'
+            ? '五章三十幕史詩'
             : opts.mode === 'theme' && pathSpec
               ? pathSpec.nameZh
               : '單幅世界巡禮';

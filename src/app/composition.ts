@@ -1,4 +1,4 @@
-// M10: world assembly, Van Gogh World System orchestration (5 Chapters, 15 Worlds, Dynamic Path Compiler,
+// M10: world assembly, Van Gogh World System orchestration (5 Chapters, 30 Iconic Worlds, Dynamic Path Compiler,
 // 6 Motif Transition Grammars, In-Scene 3D Spatial Portal Beacon, Dynamic World Graph Weaver), and per-frame loop (§4.10).
 import { Scene, Vector2, Vector3, type Material, type PerspectiveCamera } from 'three';
 import {
@@ -24,7 +24,7 @@ import {
 import {
   getThemePathSpec, MOTIF_SPECS, resolveTransitionEdge, weaveGraphPath, WORLD_GRAPH,
 } from '../chapters/worldGraph';
-import type { MotifId, PaintingId, ViewMode } from '../chapters/types';
+import { isPaintingId, type MotifId, type PaintingId, type ViewMode } from '../chapters/types';
 import { StormController } from './storm';
 import { assertPaintOrder, runInvarianceSelfTest } from './selfTest';
 import { DebugOverlay } from './debugOverlay';
@@ -57,7 +57,9 @@ export function buildWorld(
 ): BuiltWorld {
   const spec = getPaintingSpec(paintingId);
   const layerUniforms = createLayerUniforms(u);
-  const buffer = new StrokeBuffer(200_000);
+  // Right-size initial StrokeBuffer capacity: Starry Night uses ~98k strokes, companion worlds use ~52k–68k strokes
+  const initialCapacity = paintingId === 'starry' ? 150_000 : 72_000;
+  const buffer = new StrokeBuffer(initialCapacity);
   const materials = new Map<string, Material>();
   const mat: UnderlayMaterialFactory = (hex, opts) => {
     const key = `${hex}:${opts?.vertexFade ? 'fade' : ''}`;
@@ -108,13 +110,7 @@ function readFlags(): Flags {
   const num = (k: string) => (p.has(k) && p.get(k) !== '' && Number.isFinite(Number(p.get(k))) ? Number(p.get(k)) : undefined);
   const tierRaw = p.get('tier');
   const paintRaw = p.get('painting')?.toLowerCase();
-  const validPaint: PaintingId | undefined =
-    paintRaw === 'potato' || paintRaw === 'shoes' || paintRaw === 'paris' || paintRaw === 'selfportrait'
-    || paintRaw === 'sunflowers' || paintRaw === 'cafe' || paintRaw === 'rhone' || paintRaw === 'bedroom'
-    || paintRaw === 'starry' || paintRaw === 'irises' || paintRaw === 'wheat' || paintRaw === 'almond'
-    || paintRaw === 'church' || paintRaw === 'gachet' || paintRaw === 'crows'
-      ? paintRaw
-      : undefined;
+  const validPaint: PaintingId | undefined = isPaintingId(paintRaw) ? paintRaw : undefined;
   let calmStored = false;
   try { calmStored = localStorage.getItem('punctum.calm') === '1'; } catch { /* storage blocked */ }
   const isHarnessPin = num('t') !== undefined || p.has('freeze') || p.has('overlay');
@@ -166,38 +162,54 @@ function canvasRect(w: number, h: number, aspect = CANVAS_ASPECT): [number, numb
   return [0, (h - ch) / 2, w, ch];
 }
 
-const _moonA = new Vector3();
-const _moonB = new Vector3();
+interface CachedAtmo {
+  fn: [number, number, number];
+  ff: [number, number, number];
+  skyMode: number;
+  moonWorld: Vector3;
+}
 
-/** Apply or smoothly blend atmosphere uniforms (fog near/far, sky mode, moon light pos) between two paintings. */
+const _atmoCache = new Map<PaintingId, CachedAtmo>();
+function getCachedAtmo(id: PaintingId): CachedAtmo {
+  let c = _atmoCache.get(id);
+  if (!c) {
+    const spec = getPaintingSpec(id);
+    const moonWorld = new Vector3();
+    canvasToWorld(spec.moonUVD[0], spec.moonUVD[1], spec.moonUVD[2], moonWorld);
+    c = {
+      fn: srgbHexToLinear(spec.fogNearHex),
+      ff: srgbHexToLinear(spec.fogFarHex),
+      skyMode: spec.skyMode,
+      moonWorld,
+    };
+    _atmoCache.set(id, c);
+  }
+  return c;
+}
+
+/** Apply or smoothly blend atmosphere uniforms (fog near/far, sky mode, moon light pos) between two paintings with zero per-frame allocations. */
 function applyBlendedAtmosphere(u: SharedUniforms, idA: PaintingId, idB: PaintingId | null, mix = 0): void {
-  const specA = getPaintingSpec(idA);
-  const fnA = srgbHexToLinear(specA.fogNearHex);
-  const ffA = srgbHexToLinear(specA.fogFarHex);
-  canvasToWorld(specA.moonUVD[0], specA.moonUVD[1], specA.moonUVD[2], _moonA);
+  const a = getCachedAtmo(idA);
   if (!idB || mix <= 0) {
-    u.uFogNear.value.set(fnA[0], fnA[1], fnA[2]);
-    u.uFogFar.value.set(ffA[0], ffA[1], ffA[2]);
-    u.uSkyMode.value = specA.skyMode;
-    u.uMoonPos.value.copy(_moonA);
+    u.uFogNear.value.set(a.fn[0], a.fn[1], a.fn[2]);
+    u.uFogFar.value.set(a.ff[0], a.ff[1], a.ff[2]);
+    u.uSkyMode.value = a.skyMode;
+    u.uMoonPos.value.copy(a.moonWorld);
     return;
   }
-  const specB = getPaintingSpec(idB);
-  const fnB = srgbHexToLinear(specB.fogNearHex);
-  const ffB = srgbHexToLinear(specB.fogFarHex);
-  canvasToWorld(specB.moonUVD[0], specB.moonUVD[1], specB.moonUVD[2], _moonB);
+  const b = getCachedAtmo(idB);
   u.uFogNear.value.set(
-    fnA[0] + (fnB[0] - fnA[0]) * mix,
-    fnA[1] + (fnB[1] - fnA[1]) * mix,
-    fnA[2] + (fnB[2] - fnA[2]) * mix,
+    a.fn[0] + (b.fn[0] - a.fn[0]) * mix,
+    a.fn[1] + (b.fn[1] - a.fn[1]) * mix,
+    a.fn[2] + (b.fn[2] - a.fn[2]) * mix,
   );
   u.uFogFar.value.set(
-    ffA[0] + (ffB[0] - ffA[0]) * mix,
-    ffA[1] + (ffB[1] - ffA[1]) * mix,
-    ffA[2] + (ffB[2] - ffA[2]) * mix,
+    a.ff[0] + (b.ff[0] - a.ff[0]) * mix,
+    a.ff[1] + (b.ff[1] - a.ff[1]) * mix,
+    a.ff[2] + (b.ff[2] - a.ff[2]) * mix,
   );
-  u.uSkyMode.value = specA.skyMode + (specB.skyMode - specA.skyMode) * mix;
-  u.uMoonPos.value.copy(_moonA).lerp(_moonB, mix);
+  u.uSkyMode.value = a.skyMode + (b.skyMode - a.skyMode) * mix;
+  u.uMoonPos.value.copy(a.moonWorld).lerp(b.moonWorld, mix);
 }
 
 const camF = new Vector3();
@@ -295,6 +307,15 @@ export async function boot(container: HTMLElement): Promise<void> {
       if (id === keepA || id === keepB || id === keepC) continue;
       masterScene.remove(w.strokes.group, w.underlays);
       w.strokes.dispose?.();
+      w.underlays.traverse((obj) => {
+        const m = obj as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } };
+        m.geometry?.dispose?.();
+        m.material?.dispose?.();
+      });
+      w.backdrop.geometry?.dispose?.();
+      (w.backdrop.material as Material | undefined)?.dispose?.();
+      w.dust.geometry?.dispose?.();
+      (w.dust.material as Material | undefined)?.dispose?.();
       worldCache.delete(id);
     }
   };
