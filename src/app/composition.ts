@@ -1,5 +1,5 @@
-// M10: world assembly, Van Gogh World System orchestration (5 Chapters, 10 Worlds, Dynamic Path Compiler,
-// 3 Viewing Modes: Odyssey / Theme Path / Atlas), dual-world 3D brushstroke cross-dissolve, and per-frame loop (§4.10).
+// M10: world assembly, Van Gogh World System orchestration (5 Chapters, 15 Worlds, Dynamic Path Compiler,
+// 6 Motif Transition Grammars, In-Scene 3D Spatial Portal Beacon, Dynamic World Graph Weaver), and per-frame loop (§4.10).
 import { Scene, Vector2, Vector3, type Material, type PerspectiveCamera } from 'three';
 import {
   CANVAS_ASPECT, LOOP_SECONDS, type DirectorFrame, type Engine, type PostFrame, type QualitySettings, type SharedUniforms,
@@ -10,17 +10,20 @@ import { StrokeBuffer, buildStrokeLayer, makeUnderlayMaterial } from '../strokes
 import { createBackdrop, setBackdropQuality } from '../sky/backdrop';
 import { createDust } from '../sky/dust';
 import { Director, type DirectorFrameEx } from '../camera/director';
+import { projectPortalBeacon } from '../camera/ui';
 import { createPost } from '../post/post';
 import { canvasPoseFovDeg, canvasToWorld, EYE, FORWARD, galleryLightDir } from '../shared/canvasSpace';
 import { srgbHexToLinear } from '../shared/palette';
 import { forkRng } from '../shared/rng';
 import { createSharedUniforms } from '../shared/uniforms';
 import {
-  compilePathTrack, DEFAULT_ODYSSEY_SEQUENCE, evalOdysseyMorph, getPaintingActStart, getPaintingSpec,
+  ACT_SECONDS, compilePathTrack, DEFAULT_ODYSSEY_SEQUENCE, evalOdysseyMorph, getPaintingActStart, getPaintingSpec,
   nextPaintingId, PAINTING_SUITE,
 } from '../chapters/suite';
-import { getThemePathSpec, WORLD_GRAPH } from '../chapters/worldGraph';
-import type { PaintingId, ViewMode } from '../chapters/types';
+import {
+  getThemePathSpec, MOTIF_SPECS, resolveTransitionEdge, weaveGraphPath, WORLD_GRAPH,
+} from '../chapters/worldGraph';
+import type { MotifId, PaintingId, ViewMode } from '../chapters/types';
 import { StormController } from './storm';
 import { assertPaintOrder, runInvarianceSelfTest } from './selfTest';
 import { DebugOverlay } from './debugOverlay';
@@ -320,6 +323,11 @@ export async function boot(container: HTMLElement): Promise<void> {
   let displayAspect = initialSpec.aspect;
   let snapHoldId: PaintingId | null = null;
   let snapHoldTimer = 0;
+  let wovenSequence: readonly PaintingId[] | null = null;
+  let wovenTitleZh: string | undefined;
+  let lastBeaconVisible = false;
+  let lastBeaconTarget: PaintingId = 'shoes';
+  const _portalWorld = new Vector3();
 
   const syncUi = (showCard = true) => {
     director.ui?.setWorldState({
@@ -327,6 +335,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       mode: viewMode,
       pathId,
       sequence: activeSequence,
+      pathTitleZh: pathId === 'woven' ? wovenTitleZh : undefined,
       showCard,
     });
   };
@@ -340,7 +349,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       activeSequence = [activeId];
       director.setTrack(getPaintingSpec(targetId).track, 0, false);
     } else if (!activeSequence.includes(targetId)) {
-      // Jumping to a painting outside the current theme sequence switches to the full 10-Act Odyssey sequence
+      // Jumping to a painting outside the current theme sequence switches to the full 15-Act Odyssey sequence
       pathId = 'odyssey';
       if (viewMode === 'theme') viewMode = 'odyssey';
       activeSequence = DEFAULT_ODYSSEY_SEQUENCE;
@@ -359,8 +368,30 @@ export async function boot(container: HTMLElement): Promise<void> {
     }
   };
 
+  const weaveAndPlay = (startId: PaintingId, preferredMotif?: MotifId) => {
+    const woven = weaveGraphPath(startId, preferredMotif, 6);
+    wovenSequence = woven.sequence;
+    wovenTitleZh = woven.nameZh;
+    viewMode = 'theme';
+    pathId = 'woven';
+    activeSequence = wovenSequence;
+    const prevId = activeId;
+    activeId = wovenSequence[0];
+    getOrBuildWorld(activeId);
+    if (prevId !== activeId) {
+      manualMorph = { fromId: prevId, toId: activeId, t: 0 };
+    }
+    director.setTrack(compilePathTrack(activeSequence), 0, false);
+    soundscape.triggerSnapChord(activeId);
+    syncUi(true);
+  };
+
   const selectModeAndPath = (nextMode: ViewMode, nextPathId?: string) => {
     const resolvedPath = nextPathId ?? (nextMode === 'odyssey' ? 'odyssey' : pathId);
+    if (resolvedPath === 'woven') {
+      weaveAndPlay(activeId);
+      return;
+    }
     const prevPath = pathId;
     viewMode = nextMode;
     pathId = resolvedPath;
@@ -402,6 +433,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     showBar: !isHarnessPin,
     onSelect: (id) => triggerTransition(id),
     onSelectMode: (m, p) => selectModeAndPath(m, p),
+    onWeavePath: (startId, motif) => weaveAndPlay(startId, motif),
     onToggleSound: toggleSound,
     onSeek: (fraction) => {
       const targetT = fraction * director.activeTrack.loopSeconds;
@@ -417,7 +449,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     },
   });
 
-  // Keyboard shortcuts: [ / ] (prev/next painting), O (toggle Odyssey/Single), U (toggle World Graph Atlas), V (toggle Sound)
+  // Keyboard shortcuts: [ / ] (prev/next painting), Enter (enter active 3D portal when visible), O (toggle Odyssey/Single), U (toggle Atlas), V (toggle Sound)
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     const navSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
@@ -427,6 +459,9 @@ export async function boot(container: HTMLElement): Promise<void> {
     } else if (e.key === ']' || e.key === 'PageDown') {
       e.preventDefault();
       triggerTransition(nextPaintingId(activeId, 1, navSeq));
+    } else if (e.key === 'Enter' && lastBeaconVisible && viewMode !== 'atlas') {
+      e.preventDefault();
+      triggerTransition(lastBeaconTarget);
     } else if (e.key === 'o' || e.key === 'O') {
       e.preventDefault();
       if (pathId === 'single') selectModeAndPath('odyssey', 'odyssey');
@@ -480,6 +515,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     worldGraph: WORLD_GRAPH,
     switchPainting: triggerTransition,
     selectModeAndPath,
+    weaveAndPlay,
     frames: () => frames,
   };
   (window as unknown as { __punctum: typeof debug }).__punctum = debug;
@@ -492,9 +528,8 @@ export async function boot(container: HTMLElement): Promise<void> {
 
     engine.beginFrame();
     const f = director.update(dt);
-    const warped = f.warpK !== 1;
 
-    // Determine primary & secondary visible worlds and their 3D brushstroke cross-dissolve parameters
+    // Determine primary & secondary visible worlds and their 6-Motif 3D brushstroke cross-dissolve parameters
     let primaryId: PaintingId = activeId;
     let secondaryId: PaintingId | null = null;
     let primaryFade = 1;
@@ -503,22 +538,40 @@ export async function boot(container: HTMLElement): Promise<void> {
     let secondaryScatter = 0;
     let atmoMix = 0;
     let morphSmear = 0;
+    let morphBloom = 0;
+    let morphDust = 0;
+    let morphWarpOffset = 0;
+    let morphStirPulse = 0;
+    let morphStirRadiusH = 0.18;
+    let portalUV: [number, number] = [0.5, 0.5];
     let snapTriggered = false;
 
     if (manualMorph) {
       manualMorph.t += dt;
       const p = Math.min(1, manualMorph.t / MANUAL_MORPH_DUR);
+      const bell = Math.sin(Math.PI * p);
       primaryId = manualMorph.fromId;
       secondaryId = manualMorph.toId;
+      const edge = resolveTransitionEdge(primaryId, secondaryId);
+      const g = edge.grammar;
       primaryFade = 1 - smoothstep(0.05, 0.88, p);
       secondaryFade = smoothstep(0.05, 0.88, p);
-      primaryScatter = 0.85 * smoothstep(0.0, 0.85, p);
-      secondaryScatter = 0.88 * Math.pow(1 - smoothstep(0.10, 0.96, p), 1.65);
+      primaryScatter = g.scatterPeakPrimary * smoothstep(0.0, 0.85, p);
+      secondaryScatter = g.scatterPeakSecondary * Math.pow(1 - smoothstep(0.10, 0.96, p), 1.65);
       atmoMix = smoothstep(0.08, 0.92, p);
       const specA = getPaintingSpec(primaryId);
       const specB = getPaintingSpec(secondaryId);
       displayAspect = specA.aspect + (specB.aspect - specA.aspect) * atmoMix;
-      morphSmear = flags.calm ? 0 : 0.35 * Math.sin(Math.PI * p);
+      const activeSpec = p >= 0.55 ? specB : specA;
+      portalUV = [activeSpec.moonUVD[0], activeSpec.moonUVD[1]];
+      if (!flags.calm) {
+        morphSmear = g.smearBoost * bell;
+        morphBloom = g.bloomBoost * bell;
+        morphDust = g.dustBoost * bell;
+        morphWarpOffset = g.warpCurve * bell;
+        morphStirPulse = g.stirAmp * bell;
+        morphStirRadiusH = g.stirRadiusH;
+      }
       if (p >= 1) {
         activeId = manualMorph.toId;
         primaryId = activeId;
@@ -542,8 +595,14 @@ export async function boot(container: HTMLElement): Promise<void> {
       secondaryScatter = ms.secondaryScatter;
       atmoMix = ms.atmoMix;
       displayAspect = ms.displayAspect;
-      if (ms.secondaryId) {
-        morphSmear = flags.calm ? 0 : 0.28 * Math.sin(Math.PI * ms.atmoMix);
+      portalUV = ms.portalUV;
+      if (ms.secondaryId && !flags.calm) {
+        morphSmear = ms.smearBoost;
+        morphBloom = ms.bloomBoost;
+        morphDust = ms.dustBoost;
+        morphWarpOffset = ms.warpOffset;
+        morphStirPulse = ms.stirPulse;
+        morphStirRadiusH = resolveTransitionEdge(ms.primaryId, ms.secondaryId).grammar.stirRadiusH;
       }
       if (ms.snapIncoming && ms.secondaryId) {
         snapHoldId = ms.secondaryId;
@@ -556,13 +615,15 @@ export async function boot(container: HTMLElement): Promise<void> {
       }
     } else {
       primaryId = activeId;
-      displayAspect = getPaintingSpec(activeId).aspect;
+      const spec = getPaintingSpec(activeId);
+      displayAspect = spec.aspect;
+      portalUV = [spec.moonUVD[0], spec.moonUVD[1]];
     }
 
     world = getOrBuildWorld(primaryId);
     const secondaryWorld = secondaryId ? getOrBuildWorld(secondaryId) : null;
 
-    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 10 worlds
+    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 15 worlds
     const lookaheadSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
     const lookaheadId = nextPaintingId(primaryId, 1, lookaheadSeq);
     if (!isHarnessPin && !secondaryId && frames >= 36 && frames % 36 === 0 && !worldCache.has(lookaheadId)) {
@@ -576,7 +637,50 @@ export async function boot(container: HTMLElement): Promise<void> {
     const bufW = bufSize.x;
     const bufH = bufSize.y;
     derivedUniforms(u, f, engine.camera, bufH, displayAspect);
+
+    // Apply Motif Transition Grammar modulations (depth warp fold, pigment dust drift, and portal vortex stir)
+    if (!isHarnessPin && (morphWarpOffset !== 0 || morphDust !== 0 || morphStirPulse > 0)) {
+      u.uWarpK.value = Math.max(0.25, f.warpK + morphWarpOffset);
+      u.uDustAlpha.value = Math.min(1.0, f.env.dust + morphDust);
+      if (!f.stir && morphStirPulse > 1e-3) {
+        u.uStir.value.set(portalUV[0] * displayAspect, portalUV[1], morphStirPulse, morphStirRadiusH);
+      }
+    }
+    const warped = u.uWarpK.value !== 1;
+
     storm.update(f, engine.camera.position, dt, u, world.strokes);
+
+    // Project the In-Scene 3D Spatial Portal Beacon onto the active painting's 3D portal (moonUVD)
+    if (director.ui && !isHarnessPin) {
+      const pSpec = getPaintingSpec(primaryId);
+      canvasToWorld(pSpec.moonUVD[0], pSpec.moonUVD[1], pSpec.moonUVD[2], _portalWorld);
+      const tau = isMultiAct() ? ((f.loopTime % ACT_SECONDS) + ACT_SECONDS) % ACT_SECONDS : f.loopTime;
+      const inPortalWindow = isMultiAct() ? tau >= 17.5 && tau <= 25.0 : tau >= pSpec.track.loopSeconds * 0.62;
+      const beaconEnabled =
+        viewMode !== 'atlas' && !manualMorph && (f.mode === 'free' || inPortalWindow);
+      const portalEdge = resolveTransitionEdge(primaryId, lookaheadId);
+      const targetSpec = getPaintingSpec(lookaheadId);
+      const mIcon = MOTIF_SPECS[portalEdge.motif].icon;
+      const winAlpha =
+        f.mode === 'free'
+          ? 0.92
+          : isMultiAct()
+            ? smoothstep(17.5, 19.2, tau) * (1 - smoothstep(23.8, 25.0, tau))
+            : smoothstep(pSpec.track.loopSeconds * 0.62, pSpec.track.loopSeconds * 0.72, tau);
+      const beaconState = projectPortalBeacon(
+        engine.camera,
+        engine.cssWidth,
+        engine.cssHeight,
+        _portalWorld,
+        beaconEnabled,
+        `${mIcon} 任意門 → 《${targetSpec.shortZh}》`,
+        lookaheadId,
+        winAlpha,
+      );
+      lastBeaconVisible = beaconState.visible;
+      lastBeaconTarget = lookaheadId;
+      director.ui.updateBeacon(beaconState);
+    }
 
     const camSpeed = Math.hypot(f.camVelocity[0], f.camVelocity[1], f.camVelocity[2]);
     soundscape.update(dt, {
@@ -587,7 +691,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       align: u.uAlign.value,
       off: u.uOff.value,
       scatter: Math.max(u.uScatter.value, primaryScatter, secondaryScatter * 0.6),
-      stirStrength: f.stir ? f.stir[2] : 0,
+      stirStrength: u.uStir.value.z,
       snapTriggered,
     });
 
@@ -636,7 +740,7 @@ export async function boot(container: HTMLElement): Promise<void> {
 
     const matte = f.mode === 'free' ? u.uAlign.value : f.env.matte;
     const pf: PostFrame = {
-      bloom: f.env.bloom,
+      bloom: f.env.bloom + morphBloom,
       exposure: f.env.exposure,
       matte,
       align: u.uAlign.value,

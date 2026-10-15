@@ -107,6 +107,14 @@ const CSS = `
 .pn-atlas-detail{padding:10px 12px;border-radius:12px;background:rgba(242,194,48,.07);box-shadow:inset 0 0 0 1px rgba(242,194,48,.24);font-size:11.5px}
 .pn-detail-row{margin-bottom:5px;color:rgba(232,237,240,.88)}
 .pn-detail-row b{color:#f5e27a}
+.pn-beacon{position:absolute;left:0;top:0;transform:translate(-50%,-50%);pointer-events:auto;display:none;
+  align-items:center;gap:6px;padding:4px 11px 4px 7px;border-radius:999px;background:rgba(5,10,24,.74);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 0 18px rgba(242,194,48,.48),0 0 0 1.2px rgba(242,194,48,.68);
+  color:#f5e27a;font:500 11px/1.2 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;
+  white-space:nowrap;will-change:transform,opacity;transition:background .18s ease,box-shadow .18s ease,color .18s ease}
+.pn-beacon:hover{background:rgba(242,194,48,.24);color:#fff;box-shadow:0 0 24px rgba(242,194,48,.85),0 0 0 1.5px #f5e27a}
+.pn-beacon-dot{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle,#fff 15%,#f2c230 65%,rgba(242,194,48,0) 100%);
+  box-shadow:0 0 8px #f2c230;flex-shrink:0}
 .pn-focusable:focus{outline:none}
 .pn-focusable:focus-visible{outline:2px solid #f2c230;outline-offset:-3px}
 @media (max-width:720px){.pn-neighbors{display:none}}
@@ -114,6 +122,14 @@ const CSS = `
 `;
 
 export interface RingState { x: number; y: number; r: number; visible: boolean; opacity: number }
+export interface PortalBeaconState {
+  x: number;
+  y: number;
+  visible: boolean;
+  opacity: number;
+  label: string;
+  targetId: PaintingId;
+}
 export interface UiState {
   hud: boolean;
   /** director line shown under the integrator's HUD text */
@@ -275,11 +291,15 @@ export class DirectorUI {
   private tlMarks: HTMLDivElement[] = [];
   private readonly tlActsRow: HTMLDivElement;
   private readonly tlActEls = new Map<PaintingId, HTMLDivElement>();
+  private readonly beaconBtn: HTMLButtonElement;
+  private readonly beaconLbl: HTMLSpanElement;
+  private beaconTargetId: PaintingId = 'shoes';
   private cardTimer: number | null = null;
   private hudText = '';
-  private last = { hud: false, hint: -1, hudLine: '', ring: '', rect: '', tlPct: -1, tlShot: '', tlTime: '' };
+  private last = { hud: false, hint: -1, hudLine: '', ring: '', beacon: '', rect: '', tlPct: -1, tlShot: '', tlTime: '' };
   private onSelectPainting: ((id: PaintingId) => void) | null = null;
   private onSelectMode: ((mode: ViewMode, pathId?: string) => void) | null = null;
+  private onWeavePath: ((startId: PaintingId, motif?: MotifId) => void) | null = null;
   private onToggleSound: (() => void) | null = null;
   private onSeek: ((fraction: number) => void) | null = null;
   private scrubbing = false;
@@ -345,7 +365,7 @@ export class DirectorUI {
     this.themeBtn.type = 'button';
     this.themeBtn.className = 'pn-odyssey-btn';
     this.themeBtn.textContent = '⟁ 主題路徑';
-    this.themeBtn.title = '模式 C：依六大母題編排主題路徑（光與夜 / 道路 / 居所 / 繁花 / 凝視 / 單幅循環）';
+    this.themeBtn.title = '模式 C：依六大母題編排主題路徑（光與夜 / 道路 / 居所 / 繁花 / 凝視 / 智能編織 / 單幅循環）';
     this.themeBtn.dataset.on = '0';
     this.themeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -392,6 +412,7 @@ export class DirectorUI {
       { id: 'dwellings', label: '⌂ 居所與聖殿 (5幕)', title: '荷蘭農舍木桌 → 向日葵陶罐 → 街角咖啡座 → 亞爾黃色小屋臥室 → 奧維爾哥德教堂' },
       { id: 'flora', label: '❀ 黑土繁花與風 (6幕)', title: '食薯者馬鈴薯 → 亞爾向日葵 → 聖雷米鳶尾花 → 絲柏麥浪 → 盛開杏花 → 狂風麥田' },
       { id: 'gaze', label: '❖ 凝視與靈魂 (5幕)', title: '食薯者農民臉龐 → 戴草帽的自畫像 → 亞爾臥室百葉窗 → 嘉舍醫師憂鬱凝視 → 星夜渦流' },
+      { id: 'woven', label: '✨ 智能編織 (6幕)', title: '從當前畫作與母題出發，沿世界圖譜任意門自動編織 6 幕連貫旅程' },
       { id: 'single', label: '◎ 單幅沉浸循環 (1幕)', title: '鎖定當前畫作進行單幅 3D 空間深度巡禮' },
     ];
     for (const po of pathOptions) {
@@ -402,7 +423,14 @@ export class DirectorUI {
       b.title = po.title;
       b.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.onSelectMode?.('theme', po.id);
+        if (po.id === 'woven' && this.onWeavePath) {
+          this.onWeavePath(
+            this.currentActive,
+            this.activeMotifFilter === 'all' ? undefined : this.activeMotifFilter,
+          );
+        } else {
+          this.onSelectMode?.('theme', po.id);
+        }
         this.input.focus();
       });
       this.pathBtns.set(po.id, b);
@@ -585,8 +613,24 @@ export class DirectorUI {
     this.ring = doc.createElement('div');
     this.ring.className = 'pn-ring';
     this.ring.setAttribute('aria-hidden', 'true');
+
+    // In-Scene 3D Spatial Portal Beacon (projected onto the active painting's 3D portal)
+    this.beaconBtn = doc.createElement('button');
+    this.beaconBtn.type = 'button';
+    this.beaconBtn.className = 'pn-beacon';
+    const bDot = doc.createElement('span');
+    bDot.className = 'pn-beacon-dot';
+    this.beaconLbl = doc.createElement('span');
+    this.beaconBtn.append(bDot, this.beaconLbl);
+    this.beaconBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onSelectPainting?.(this.beaconTargetId);
+      this.input.focus();
+    });
+
     this.root.append(
       this.ring,
+      this.beaconBtn,
       this.suiteBar,
       this.pathBar,
       this.neighborsBox,
@@ -711,6 +755,20 @@ export class DirectorUI {
       });
       r4.appendChild(eb);
     }
+    const weaveBtn = doc.createElement('button');
+    weaveBtn.type = 'button';
+    weaveBtn.className = 'pn-nb-btn';
+    weaveBtn.textContent = '✨ 從此畫智能編織 6 幕旅程';
+    weaveBtn.title = '依當前畫作與選中母題，沿世界圖譜任意門自動編織 6 幕連貫旅程';
+    weaveBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onWeavePath?.(
+        active,
+        this.activeMotifFilter === 'all' ? undefined : this.activeMotifFilter,
+      );
+      this.input.focus();
+    });
+    r4.appendChild(weaveBtn);
 
     this.atlasDetail.append(r1, r2, r3, r4);
   }
@@ -725,11 +783,13 @@ export class DirectorUI {
     showBar?: boolean;
     onSelect: (id: PaintingId) => void;
     onSelectMode: (mode: ViewMode, pathId?: string) => void;
+    onWeavePath?: (startId: PaintingId, motif?: MotifId) => void;
     onToggleSound?: () => void;
     onSeek?: (fraction: number) => void;
   }): void {
     this.onSelectPainting = opts.onSelect;
     this.onSelectMode = opts.onSelectMode;
+    this.onWeavePath = opts.onWeavePath ?? null;
     this.onToggleSound = opts.onToggleSound ?? null;
     this.onSeek = opts.onSeek ?? null;
     const show = opts.showBar !== false;
@@ -758,6 +818,7 @@ export class DirectorUI {
     mode: ViewMode;
     pathId: string;
     sequence: readonly PaintingId[];
+    pathTitleZh?: string;
     showCard?: boolean;
   }): void {
     this.currentActive = opts.active;
@@ -801,11 +862,13 @@ export class DirectorUI {
       const item = SUITE_ITEMS.find((x) => x.id === opts.active);
       if (item) {
         const pathSpec = THEME_PATHS.find((p) => p.id === opts.pathId);
-        const modeTag = opts.mode === 'odyssey'
-          ? '五章十五幕史詩'
-          : opts.mode === 'theme' && pathSpec
-            ? pathSpec.nameZh
-            : '單幅世界巡禮';
+        const modeTag = opts.pathTitleZh
+          ? opts.pathTitleZh
+          : opts.mode === 'odyssey'
+            ? '五章十五幕史詩'
+            : opts.mode === 'theme' && pathSpec
+              ? pathSpec.nameZh
+              : '單幅世界巡禮';
         this.cardSub.textContent = `${item.placeZh} · ${item.year} · [${modeTag}]`;
         this.cardTitle.textContent = `Act ${item.roman} · ${item.titleZh}  (${item.titleEn})`;
         this.cardPortal.textContent = `✦ ${item.portalZh}`;
@@ -816,6 +879,26 @@ export class DirectorUI {
         }, 3800);
       }
     }
+  }
+
+  /** Update the floating 3D Spatial Portal Beacon projected onto the active painting's 3D portal. */
+  updateBeacon(b: PortalBeaconState): void {
+    const key = b.visible
+      ? `${b.x.toFixed(1)}|${b.y.toFixed(1)}|${b.opacity.toFixed(2)}|${b.targetId}|${b.label}`
+      : 'off';
+    if (key === this.last.beacon) return;
+    this.last.beacon = key;
+    const st = this.beaconBtn.style;
+    if (!b.visible || b.opacity <= 0.02) {
+      st.display = 'none';
+      return;
+    }
+    this.beaconTargetId = b.targetId;
+    this.beaconLbl.textContent = b.label;
+    st.display = 'flex';
+    st.opacity = String(b.opacity);
+    st.left = `${b.x.toFixed(1)}px`;
+    st.top = `${b.y.toFixed(1)}px`;
   }
 
   /** Text from the integrator (fps, tier, render scale ...). Shown while the HUD is on. */
@@ -929,4 +1012,37 @@ export function projectEyeRing(camera: PerspectiveCamera, widthPx: number, heigh
     opacity *= 0.55;
   }
   return { x, y, r, visible: true, opacity };
+}
+
+/**
+ * Project a 3D world-space portal anchor onto screen CSS pixels for the interactive In-Scene 3D Spatial Portal Beacon.
+ */
+export function projectPortalBeacon(
+  camera: PerspectiveCamera,
+  widthPx: number,
+  heightPx: number,
+  portalWorld: Vector3,
+  enabled: boolean,
+  label: string,
+  targetId: PaintingId,
+  alphaMul = 1,
+): PortalBeaconState {
+  const hidden: PortalBeaconState = { x: 0, y: 0, visible: false, opacity: 0, label, targetId };
+  if (!enabled || widthPx <= 0 || heightPx <= 0 || alphaMul <= 0.02) return hidden;
+  tmpP.copy(portalWorld).applyMatrix4(camera.matrixWorldInverse);
+  if (tmpP.z > -1e-3) return hidden; // behind camera
+  tmpP.applyMatrix4(camera.projectionMatrix);
+  const x = (tmpP.x * 0.5 + 0.5) * widthPx;
+  const y = (-tmpP.y * 0.5 + 0.5) * heightPx;
+  if (x < 64 || x > widthPx - 64 || y < 68 || y > heightPx - 96) return hidden;
+  const radial = Math.hypot(tmpP.x, tmpP.y);
+  const focusGain = Math.max(0.35, Math.min(1, 1.18 - 0.35 * radial));
+  return {
+    x,
+    y,
+    visible: true,
+    opacity: Math.min(0.95, focusGain * alphaMul),
+    label,
+    targetId,
+  };
 }

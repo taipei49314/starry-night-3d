@@ -48,7 +48,8 @@ import { ALMOND_ASPECT, generateAlmondChapter } from './almondGen';
 import { CHURCH_ASPECT, generateChurchChapter } from './churchGen';
 import { GACHET_ASPECT, generateGachetChapter } from './gachetGen';
 import { CROWS_ASPECT, generateCrowsChapter } from './crowsGen';
-import { clamp, clamp01, smoothstep, uFromPaint, type ChapterId, type PaintingId } from './types';
+import { clamp, clamp01, smoothstep, uFromPaint, type ChapterId, type MotifId, type PaintingId } from './types';
+import { resolveTransitionEdge } from './worldGraph';
 
 export interface ChapterTrack {
   readonly loopSeconds: number;
@@ -554,13 +555,21 @@ export interface OdysseyMorphState {
   atmoMix: number;
   displayAspect: number;
   snapIncoming: boolean;
+  transitionMotif: MotifId;
+  transitionNameZh: string;
+  smearBoost: number;
+  bloomBoost: number;
+  dustBoost: number;
+  warpOffset: number;
+  stirPulse: number;
+  portalUV: [number, number];
 }
 
 /**
  * Evaluate the Continuous Path Morph state at master clock `t` for ANY sequence of paintings (`sequence`).
  * During the last 5.4 s of each 30 s Act (tau in [24.3, 29.7]), the outgoing painting's brushstrokes
- * unbind through its Spatial Portal while the next painting's brushstrokes condense in 3D and lock into
- * exact registration at E by tau = 29.7 s — making every Act boundary tau = 30.0 -> 0.0 100% seamless.
+ * unbind through its Spatial Portal according to the connecting edge's Motif Transition Grammar while
+ * the next painting's brushstrokes condense in 3D and lock into exact registration at E by tau = 29.7 s.
  */
 export function evalOdysseyMorph(
   t: number,
@@ -574,16 +583,20 @@ export function evalOdysseyMorph(
   const tau = tw - actIdx * ACT_SECONDS; // [0, 30)
   const specA = getPaintingSpec(sequence[actIdx]);
   const specB = getPaintingSpec(sequence[nextIdx]);
+  const edge = resolveTransitionEdge(specA.id, specB.id);
+  const g = edge.grammar;
 
   if (tau >= 24.3 && n > 1) {
     const m = clamp01((tau - 24.3) / 5.3); // reaches 1.0 at tau = 29.6 s
+    const bell = Math.sin(Math.PI * m);
     const pFade = 1 - smoothstep(0.08, 0.88, m);
     const sFade = smoothstep(0.06, 0.86, m);
-    const pScat = 0.88 * smoothstep(0.0, 0.82, m);
-    const sScat = 0.92 * Math.pow(1 - smoothstep(0.10, 0.96, m), 1.65);
+    const pScat = g.scatterPeakPrimary * smoothstep(0.0, 0.82, m);
+    const sScat = g.scatterPeakSecondary * Math.pow(1 - smoothstep(0.10, 0.96, m), 1.65);
     const atmoMix = smoothstep(0.10, 0.90, m);
     const displayAspect = specA.aspect + (specB.aspect - specA.aspect) * atmoMix;
     const activeId = m >= 0.55 ? specB.id : specA.id;
+    const activeSpec = m >= 0.55 ? specB : specA;
     return {
       activeId,
       primaryId: specA.id,
@@ -595,6 +608,14 @@ export function evalOdysseyMorph(
       atmoMix,
       displayAspect,
       snapIncoming: tau >= 28.4 && tau <= 29.8,
+      transitionMotif: edge.motif,
+      transitionNameZh: g.nameZh,
+      smearBoost: g.smearBoost * bell,
+      bloomBoost: g.bloomBoost * bell,
+      dustBoost: g.dustBoost * bell,
+      warpOffset: g.warpCurve * bell,
+      stirPulse: g.stirAmp * bell,
+      portalUV: [activeSpec.moonUVD[0], activeSpec.moonUVD[1]],
     };
   }
 
@@ -609,6 +630,14 @@ export function evalOdysseyMorph(
     atmoMix: 0,
     displayAspect: specA.aspect,
     snapIncoming: false,
+    transitionMotif: edge.motif,
+    transitionNameZh: g.nameZh,
+    smearBoost: 0,
+    bloomBoost: 0,
+    dustBoost: 0,
+    warpOffset: 0,
+    stirPulse: 0,
+    portalUV: [specA.moonUVD[0], specA.moonUVD[1]],
   };
 }
 
@@ -621,10 +650,17 @@ export function compilePathTrack(sequence: readonly PaintingId[] = DEFAULT_ODYSS
   seq.forEach((id, actIdx) => {
     const tr = ODYSSEY_ACT_BY_ID[id];
     const tBase = actIdx * ACT_SECONDS;
+    const nextId = seq[(actIdx + 1) % n];
+    const edge = resolveTransitionEdge(id, nextId);
+    const nextSpec = getPaintingSpec(nextId);
     tr.shots.forEach((s, j) => {
+      const shotName =
+        j === 3 && n > 1
+          ? `${s.name.split('→')[0].trim()} → ${nextSpec.titleZh} [${edge.grammar.nameZh.split('·')[0].trim()}]`
+          : s.name;
       shots.push({
         index: actIdx * 4 + j,
-        name: s.name,
+        name: shotName,
         t0: tBase + s.t0,
         t1: tBase + s.t1,
         setPiece: s.setPiece,

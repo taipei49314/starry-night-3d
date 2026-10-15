@@ -158,8 +158,9 @@ void main() {
 
   // ---- 5. storm (uniform branch)
   if (uScatter != 0.0 || (uSnapTime >= 0.0 && uScatterAtSnap != 0.0)) {
+    vec2 snapOrigin = uSkyMode < 0.05 ? STAR[0].xy : uvToH(worldToCanvas(uMoonPos).xy);
     float amp = uSnapTime < 0.0 ? uScatter
-      : uScatterAtSnap * spring(uTime - uSnapTime - 0.9 * length(uvToH(uv) - STAR[0].xy), seed);
+      : uScatterAtSnap * spring(uTime - uSnapTime - 0.9 * length(uvToH(uv) - snapOrigin), seed);
     vec3 Pc = stkC2W(uv, d);
     vec3 D = amp * 0.05 * d * stormField(Pc / (0.15 * d) + 7.0 * seed, uTime);
     float dl = length(D);

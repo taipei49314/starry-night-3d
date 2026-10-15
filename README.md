@@ -29,23 +29,30 @@ Instead of a single rigid sequence, paintings are connected in a directed **Van 
 | **Chapter IV · Cosmos (`cosmos`)** | **聖雷米的內在宇宙** · Saint-Rémy (1889–1890)<br>250 km twin-swirl flow fields, asylum garden irises, flame cypresses, blossoming boughs | **IX. *The Starry Night* (`?painting=starry`)** — The canonical 250 km nocturnal vortex, black-flame cypress, and village (`aspect 1.25`).<br>**X. *Irises* (`?painting=irises`)** — Terracotta garden soil, arching sage-emerald sword leaves, 32 violet bearded irises, and the solitary Pearl-White Iris portal (`aspect 1.27`).<br>**XI. *Wheat Field with Cypresses* (`?painting=wheat`)** — Turquoise sky, white cumulus vortex, Alpilles hills, and golden wheat (`aspect 1.27`).<br>**XII. *Almond Blossom* (`?painting=almond`)** — 3D gnarled branches, 175 five-petal pearl blossom clusters, and drifting petals (`aspect 1.26`). |
 | **Chapter V · Road (`road`)** | **奧維爾的路與風** · Auvers-sur-Oise (1890)<br>Forking paths, melancholic portraits, 2:1 widescreen storm tension | **XIII. *The Church at Auvers* (`?painting=church`)** — Ultramarine sky, forking sandy roads, writhing Gothic apse, and bell tower (`aspect 0.78`).<br>**XIV. *Portrait of Dr. Gachet* (`?painting=gachet`)** — Undulating two-toned blue backdrop, tilted vermilion table, two yellow novels, purple Foxglove sprig, and Dr. Gachet's melancholic gaze (`aspect 0.81`).<br>**XV. *Wheatfield with Crows* (`?painting=crows`)** — Storm sky, three diverging paths through 26,000 wheat stalks, and 52 flapping crows returning to the dark earth of Nuenen (`aspect 1.98`). |
 
-### Six Motif Backbones (`MOTIF_SPECS`)
-1. **✦ Light (`light`)** — Oil lamp, golden sunflowers, gas lamp, star halos, crescent moon, Provençal sun, stained glass.
-2. **⟁ Road (`road`)** — Worn peasant boots, Parisian boulevard, cobblestone alley, Rhône embankment, church fork, three wheat paths.
-3. **◎ Sky (`sky`)** — Pointillist morning sky, twin nocturnal maelstroms, cumulus vortices, turquoise spring sky, storm clouds.
-4. **❀ Flora (`flora`)** — Potatoes of the earth, sunflowers, violet & white irises, flame cypresses, golden wheat, almond blossoms, foxglove.
-5. **⌂ Dwelling (`dwelling`)** — Peasant cottage table, street-corner café, Arles bedroom, Gothic church at Auvers.
-6. **❖ Gaze (`gaze`)** — Self-portrait emerald eyes, Dr. Gachet's melancholic gaze, half-open window shutters, street vanishing points.
+### Six Motif Backbones & Transition Grammars (`MOTIF_SPECS` & `MOTIF_TRANSITION_GRAMMARS`)
+Every edge in `WORLD_GRAPH` carries one of six motifs, each driving its own **3D Brushstroke Transition Grammar** (modulating scatter amplitude, radial speed smear, bloom surge, pigment dust drift, depth-warp folding `uWarpK`, portal sky-stirring `uStir`, and portal-centered snap condensation waves):
+1. **✦ Light (`light` · 光暈綻放轉場 *Radiant Halo Dissolve*)** — Oil lamp, golden sunflowers, gas lamp, star halos, crescent moon, Provençal sun, stained glass.
+2. **⟁ Road (`road` · 長路推進轉場 *Perspective Glide*)** — Worn peasant boots, Parisian boulevard, cobblestone alley, Rhône embankment, church fork, three wheat paths.
+3. **◎ Sky (`sky` · 天空渦流轉場 *Celestial Vortex Unbind*)** — Pointillist morning sky, twin nocturnal maelstroms, cumulus vortices, turquoise spring sky, storm clouds.
+4. **❀ Flora (`flora` · 繁花隨風轉場 *Botanical Wind Drift*)** — Potatoes of the earth, sunflowers, violet & white irises, flame cypresses, golden wheat, almond blossoms, foxglove.
+5. **⌂ Dwelling (`dwelling` · 門廊框景轉場 *Threshold Frame Fold*)** — Peasant cottage table, street-corner café, Arles bedroom, Gothic church at Auvers.
+6. **❖ Gaze (`gaze` · 瞳孔凝視轉場 *Ocular Iris Tunnel*)** — Self-portrait emerald eyes, Dr. Gachet's melancholic gaze, half-open window shutters, street vanishing points.
+
+### Universe Coherence Systems
+- **Multi-Era 360° Sphere Backdrop (`src/sky/backdrop.ts`)**: The full-sphere directional splat pass at infinity dynamically harmonizes its sky bands, underpainting, and earth strokes with each painting's era palette (`uFogNear` / `uFogFar`), while keeping *The Starry Night* (`uSkyMode == 0`) 100% identical to its calibrated reference.
+- **In-Scene 3D Spatial Portal Beacon (`projectPortalBeacon`)**: Projects the active painting's 3D portal coordinate (`spec.moonUVD`) onto screen space during Free mode or the Portal Approach window, allowing viewers to click the glowing 3D portal (or press `Enter`) to leap directly into the connected painting.
+- **Dynamic World Graph Path Weaver (`weaveGraphPath`)**: Starting from any painting and optional motif filter, weaves a custom 6-Act continuous journey along valid `WORLD_GRAPH` neighbor edges (`✨ 智能編織 (6幕)`).
 
 ### Three Viewing Modes (`ViewMode`)
 - **Mode A — Odyssey Mode (`?mode=odyssey`)**: Complete 5-Chapter, 15-Act continuous feature film (`450 s`).
-- **Mode B — Atlas Mode (`?mode=atlas` or shortcut `U`)**: Interactive **Van Gogh World Graph Atlas** displaying the 5 Grand Chapters, 6 Motif filters, portal inspectors, and clickable **Connected Neighbor Portals**.
-- **Mode C — Theme Path Mode (`?mode=theme&path=nights|roads|dwellings|flora|gaze|single`)**: Curated thematic journeys across the World Graph:
+- **Mode B — Atlas Mode (`?mode=atlas` or shortcut `U`)**: Interactive **Van Gogh World Graph Atlas** displaying the 5 Grand Chapters, 6 Motif filters, portal inspectors, clickable **Connected Neighbor Portals**, and one-click **Dynamic 6-Act Graph Weaving**.
+- **Mode C — Theme Path Mode (`?mode=theme&path=nights|roads|dwellings|flora|gaze|woven|single`)**: Curated and dynamically woven journeys across the World Graph:
   - `✦ 光與夜之路 (Nights, Lamps & Suns)`: `potato → sunflowers → cafe → rhone → starry → crows`
   - `⟁ 道路與遠方 (Shoes, Roads & Horizons)`: `shoes → paris → cafe → rhone → church → crows`
   - `⌂ 居所與聖殿 (Rooms & Sanctuaries)`: `potato → sunflowers → cafe → bedroom → church`
   - `❀ 黑土、繁花與風 (Earth, Blossoms & Wind)`: `potato → sunflowers → irises → wheat → almond → crows`
   - `❖ 凝視與靈魂 (Gaze, Portraits & Mirrors)`: `potato → selfportrait → bedroom → gachet → starry`
+  - `✨ 智能編織 (Dynamic Woven 6-Act Path)`: Dynamically woven 6-Act journey along `WORLD_GRAPH` edges from the current painting.
   - `◎ 單幅沉浸循環 (Single World Loop)`: Continuous standalone loop of the active painting.
 
 ---
@@ -69,7 +76,8 @@ Any input hands control to you; after 12 s idle the camera rejoins the loop.
 | Alt-drag or right-drag | stir the sky |
 | Shift + wheel | depth warp: at E the image does not change; step aside and the world refolds |
 | Space | fly back to the painter's eye and re-register the painting |
-| `[` / `]` or `PageUp` / `PageDown` | switch to previous / next painting in the active sequence via 3D Brushstroke Cross-Dissolve |
+| `Enter` or click 3D Portal Beacon | leap through the active painting's 3D Spatial Portal when the beacon is visible |
+| `[` / `]` or `PageUp` / `PageDown` | switch to previous / next painting in the active sequence via 6-Motif 3D Brushstroke Cross-Dissolve |
 | `O` | toggle 5-Chapter 15-Act Odyssey (`∞ 五章十五幕`) vs. single-painting loop (`◎ 單幅沉浸循環`) |
 | `U` | toggle the interactive **Van Gogh World Graph Atlas (`🌌 宇宙星圖`)** |
 | `V` | toggle 15-World Procedural Soundscape (`♪ 聲景：開 / 靜音`) |
@@ -80,4 +88,4 @@ Any input hands control to you; after 12 s idle the camera rejoins the loop.
 | M | calm mode (less roll and FOV; the default with reduced motion) |
 | H | HUD |
 
-URL flags: `?painting=potato|shoes|paris|selfportrait|sunflowers|cafe|rhone|bedroom|starry|irises|wheat|almond|church|gachet|crows`, `?mode=odyssey|theme|atlas`, `?path=odyssey|nights|roads|dwellings|flora|gaze|single`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay`, `?seed=`, `?freeze`, `?boot=<sec>&freeze`.
+URL flags: `?painting=potato|shoes|paris|selfportrait|sunflowers|cafe|rhone|bedroom|starry|irises|wheat|almond|church|gachet|crows`, `?mode=odyssey|theme|atlas`, `?path=odyssey|nights|roads|dwellings|flora|gaze|woven|single`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay`, `?seed=`, `?freeze`, `?boot=<sec>&freeze`.

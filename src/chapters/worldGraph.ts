@@ -420,6 +420,156 @@ export const THEME_PATHS: readonly ThemePathSpec[] = [
   },
 ];
 
+export interface MotifTransitionGrammar {
+  motif: MotifId;
+  nameZh: string;
+  scatterPeakPrimary: number;
+  scatterPeakSecondary: number;
+  smearBoost: number;
+  bloomBoost: number;
+  dustBoost: number;
+  warpCurve: number;
+  stirRadiusH: number;
+  stirAmp: number;
+}
+
+export const MOTIF_TRANSITION_GRAMMARS: Record<MotifId, MotifTransitionGrammar> = {
+  light: {
+    motif: 'light',
+    nameZh: '✦ 光暈綻放轉場 · Radiant Halo Dissolve',
+    scatterPeakPrimary: 0.82,
+    scatterPeakSecondary: 0.86,
+    smearBoost: 0.25,
+    bloomBoost: 0.38,
+    dustBoost: 0.45,
+    warpCurve: 0.12,
+    stirRadiusH: 0.19,
+    stirAmp: 0.95,
+  },
+  road: {
+    motif: 'road',
+    nameZh: '⟁ 長路推進轉場 · Perspective Glide',
+    scatterPeakPrimary: 0.72,
+    scatterPeakSecondary: 0.78,
+    smearBoost: 0.52,
+    bloomBoost: 0.12,
+    dustBoost: 0.22,
+    warpCurve: 0.22,
+    stirRadiusH: 0.14,
+    stirAmp: 0.55,
+  },
+  sky: {
+    motif: 'sky',
+    nameZh: '◎ 天空渦流轉場 · Celestial Vortex Unbind',
+    scatterPeakPrimary: 1.04,
+    scatterPeakSecondary: 1.08,
+    smearBoost: 0.38,
+    bloomBoost: 0.24,
+    dustBoost: 0.55,
+    warpCurve: 0.18,
+    stirRadiusH: 0.28,
+    stirAmp: 1.45,
+  },
+  flora: {
+    motif: 'flora',
+    nameZh: '❀ 繁花隨風轉場 · Botanical Wind Drift',
+    scatterPeakPrimary: 0.90,
+    scatterPeakSecondary: 0.94,
+    smearBoost: 0.28,
+    bloomBoost: 0.18,
+    dustBoost: 0.68,
+    warpCurve: 0.08,
+    stirRadiusH: 0.22,
+    stirAmp: 0.85,
+  },
+  dwelling: {
+    motif: 'dwelling',
+    nameZh: '⌂ 門廊框景轉場 · Threshold Frame Fold',
+    scatterPeakPrimary: 0.64,
+    scatterPeakSecondary: 0.68,
+    smearBoost: 0.16,
+    bloomBoost: 0.15,
+    dustBoost: 0.20,
+    warpCurve: -0.24,
+    stirRadiusH: 0.12,
+    stirAmp: 0.40,
+  },
+  gaze: {
+    motif: 'gaze',
+    nameZh: '❖ 瞳孔凝視轉場 · Ocular Iris Tunnel',
+    scatterPeakPrimary: 0.78,
+    scatterPeakSecondary: 0.82,
+    smearBoost: 0.34,
+    bloomBoost: 0.28,
+    dustBoost: 0.35,
+    warpCurve: -0.18,
+    stirRadiusH: 0.16,
+    stirAmp: 1.15,
+  },
+};
+
+export function resolveTransitionEdge(fromId: PaintingId, toId: PaintingId): {
+  motif: MotifId;
+  reasonZh: string;
+  grammar: MotifTransitionGrammar;
+} {
+  const nodeA = WORLD_GRAPH[fromId];
+  const nodeB = WORLD_GRAPH[toId];
+  const direct = nodeA.neighbors.find((n) => n.to === toId);
+  if (direct) {
+    return {
+      motif: direct.motif,
+      reasonZh: direct.reasonZh,
+      grammar: MOTIF_TRANSITION_GRAMMARS[direct.motif],
+    };
+  }
+  const shared = nodeA.motifs.find((m) => nodeB.motifs.includes(m)) ?? nodeA.portalOut.motif;
+  return {
+    motif: shared,
+    reasonZh: nodeA.portalOut.descZh,
+    grammar: MOTIF_TRANSITION_GRAMMARS[shared],
+  };
+}
+
+/**
+ * Dynamically weaves a multi-act journey through `WORLD_GRAPH` starting at `startId`,
+ * prioritizing edges that match `preferredMotif` (if given) and avoiding immediate revisits.
+ */
+export function weaveGraphPath(
+  startId: PaintingId,
+  preferredMotif?: MotifId,
+  length = 6,
+): ThemePathSpec {
+  const seq: PaintingId[] = [startId];
+  const visited = new Set<PaintingId>([startId]);
+  const mainMotif: MotifId = preferredMotif ?? WORLD_GRAPH[startId].portalOut.motif;
+
+  while (seq.length < length) {
+    const curr = seq[seq.length - 1];
+    const node = WORLD_GRAPH[curr];
+    const unvisited = node.neighbors.filter((e) => !visited.has(e.to));
+    const pool = unvisited.length > 0 ? unvisited : node.neighbors;
+    // Prefer edges matching mainMotif, or whose target moves into a new chapter
+    const best =
+      pool.find((e) => e.motif === mainMotif) ??
+      pool.find((e) => WORLD_GRAPH[e.to].chapterId !== node.chapterId) ??
+      pool[0];
+    if (!best) break;
+    seq.push(best.to);
+    visited.add(best.to);
+  }
+
+  const mSpec = MOTIF_SPECS[mainMotif];
+  return {
+    id: 'woven',
+    nameZh: `智能圖譜編織 · ${mSpec.icon} ${mSpec.nameZh} (${seq.length}幕)`,
+    nameEn: `Woven Graph Path · ${mSpec.nameEn} (${seq.length} Acts)`,
+    motif: mainMotif,
+    descZh: `由當前畫作《${startId}》出發，沿世界圖譜「${mSpec.icon} ${mSpec.nameZh}」與相鄰任意門即時編織的 ${seq.length} 幕連貫旅程`,
+    sequence: seq,
+  };
+}
+
 export function getChapterSpec(chapterId: ChapterId): ChapterSpec {
   return CHAPTER_SPECS.find((c) => c.id === chapterId) ?? CHAPTER_SPECS[0];
 }
