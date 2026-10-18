@@ -102,4 +102,6 @@ Any input hands control to you; after 12 s idle the camera rejoins the current a
 
 URL flags: `?painting=potato|weaver|tower|skull|shoes|galette|paris|seine|plum|tanguy|selfportrait|yellowhouse|sunflowers|harvest|sower|cafe|nightcafe|rhone|bedroom|starry|irises|olive|wheat|roadcypress|almond|cottages|church|gachet|daubigny|crows`, `?mode=odyssey|theme|atlas`, `?path=odyssey|nights|roads|dwellings|flora|gaze|woven|single`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay`, `?seed=`, `?freeze`, `?boot=<sec>&freeze`.
 
+## License
 
+MIT, see [LICENSE](LICENSE). The page bundles [three.js](https://github.com/mrdoob/three.js) r186 (MIT); its notice ships as `THIRD_PARTY_NOTICES.md` next to the built page and in a comment at the top of `index.html` and `single.html`.
