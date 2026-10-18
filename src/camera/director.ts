@@ -223,7 +223,7 @@ export class Director {
   }
   cycleWarp(): number {
     const cur = this.warpK;
-    let next = WARP_PRESETS[0];
+    let next: number = WARP_PRESETS[0];
     for (let i = 0; i < WARP_PRESETS.length; i++) {
       if (Math.abs(cur - WARP_PRESETS[i]) < 0.06) {
         next = WARP_PRESETS[(i + 1) % WARP_PRESETS.length];
