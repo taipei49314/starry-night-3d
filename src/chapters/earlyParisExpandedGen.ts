@@ -22,8 +22,10 @@ import {
 const P = PALETTE;
 const N_UP = new Vector3(0, 1, 0.14).normalize();
 const N_FRONT = new Vector3(0, 0, 1);
-const N_LEFT = new Vector3(0.78, 0, 0.62).normalize();
-const N_RIGHT = new Vector3(-0.78, 0, 0.62).normalize();
+// Flank normals of a body that recedes toward both sides (world x grows with canvas u, E looks down -z): the left
+// flank faces left-front (-x), the right flank right-front (+x).
+const N_LEFT = new Vector3(-0.78, 0, 0.62).normalize();
+const N_RIGHT = new Vector3(0.78, 0, 0.62).normalize();
 const T_DIR = new Vector3(1, 0, 0);
 
 function makeVillage(aspect: number, uP: number, v: number, d: number): VillageInfo {

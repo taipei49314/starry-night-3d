@@ -1,8 +1,8 @@
 // M8 DOM overlay (§4.8) + Van Gogh World System UI:
 // - Level 1: Single Painting World & Diegetic Portal Title Card
 // - Level 2: Theme Paths Bar (Nights, Roads, Dwellings, Flora, Single Loop)
-// - Level 3: 5 Grand Chapters (Earth -> Color -> Sun -> Cosmos -> Road, 10 Worlds)
-// - 3 Viewing Modes: Odyssey (10-Act Film) / Theme Path (Motif Chains) / Atlas (Interactive World Graph & Neighbor Portals)
+// - Level 3: 5 Grand Chapters (Earth -> Color -> Sun -> Cosmos -> Road, 30 Worlds)
+// - 3 Viewing Modes: Odyssey (30-Act Film) / Theme Path (Motif Chains) / Atlas (Interactive World Graph & Neighbor Portals)
 import { type PerspectiveCamera, Vector3 } from 'three';
 import { EYE, FORWARD } from '../shared/canvasSpace';
 import type { ChapterId, MotifId, PaintingId, ViewMode } from '../chapters/types';
