@@ -189,7 +189,7 @@ export function generateRoadCypressChapter(
   emitCustomStar(sink, ROADCYPRESS_ASPECT, 0.76, 0.78, 12200, 0.026, 7, 1.3, rng, P.chrome);
   emitCustomStar(sink, ROADCYPRESS_ASPECT, 0.22, 0.74, 12800, 0.022, 6, 1.15, rng, P.lemon);
 
-  // 2. Distant Undulating Blue-Violet Alpilles Hills across Horizon (HILL [1850..3600 m])
+  // 2. Distant Undulating Blue-Violet Alpilles Hills across Horizon (HILL [1850..3550 m])
   for (let i = 0; i < 2400; i++) {
     const uP = rng.range(-0.04, 1.04);
     const ridgeTop = 0.41 + 0.035 * Math.sin(uP * 8.5 + 0.6);
