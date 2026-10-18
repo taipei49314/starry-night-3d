@@ -310,7 +310,7 @@ export function generateRoadCypressChapter(
   underlays.name = 'underlays:roadcypress';
   underlays.add(buildCanvasQuadMesh(
     ROADCYPRESS_ASPECT,
-    [[-0.04, 0.0, 210], [1.04, 0.0, 210], [1.04, 0.335, 1360], [-0.04, 0.335, 1360]], // stops below the Alpilles (v >= 0.32)
+    [[-0.04, 0.0, 210], [1.04, 0.0, 210], [1.04, 0.32, 1300], [-0.04, 0.32, 1300]], // stops where the Alpilles start (v >= 0.32)
     mat, 0x3b3422, 'roadcypress-road',
   ));
   underlays.add(buildCanvasQuadMesh(

@@ -300,6 +300,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       if (standIn) return standIn;
     }
     const tb = performance.now();
+    let builtId: PaintingId = id;
     try {
       w = buildWorld(u, engine.quality, flags.seed, id);
     } catch (err) {
@@ -307,16 +308,20 @@ export async function boot(container: HTMLElement): Promise<void> {
       console.error(`[punctum:${id}] scene generator failed; falling back so render loop stays alive`, err);
       const fallback = worldCache.values().next().value as BuiltWorld | undefined;
       if (fallback) return fallback;
-      w = buildWorld(u, engine.quality, flags.seed, 'starry');
+      // Nothing cached yet (first boot): stand in with The Starry Night, cached under its own id. If The Starry
+      // Night itself failed there is nothing to stand in with, so the boot fails and main.ts shows the error.
+      if (id === 'starry') throw err;
+      builtId = 'starry';
+      w = buildWorld(u, engine.quality, flags.seed, builtId);
     }
     const self = runInvarianceSelfTest(w.buffer);
-    if (!self.ok) console.error(`[punctum:${id}] invariance self-test failed: max canvas error ${self.maxErr.toExponential(2)}`);
+    if (!self.ok) console.error(`[punctum:${builtId}] invariance self-test failed: max canvas error ${self.maxErr.toExponential(2)}`);
     w.strokes.group.visible = false;
     w.underlays.visible = false;
     masterScene.add(w.strokes.group, w.underlays);
     engine.renderer.compile(masterScene, engine.camera);
-    worldCache.set(id, w);
-    console.info(`[punctum:${id}] ${w.buffer.count} strokes, tier ${engine.quality.tier}, build ${Math.round(performance.now() - tb)} ms`, w.timings, `self-test ${self.maxErr.toExponential(1)}`);
+    worldCache.set(builtId, w);
+    console.info(`[punctum:${builtId}] ${w.buffer.count} strokes, tier ${engine.quality.tier}, build ${Math.round(performance.now() - tb)} ms`, w.timings, `self-test ${self.maxErr.toExponential(1)}`);
     return w;
   };
 

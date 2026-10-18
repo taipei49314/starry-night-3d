@@ -136,7 +136,7 @@ function padPerDepth(L: number, W: number, kappa: number, under: boolean): numbe
 
 function chunkBounds(data: Float32Array, idx: number[], cls: StrokeClass, rule: 'morton' | 'vortex' | 'ring'): { center: Vector3; radius: number; dMax: number } {
   const anim = CLASS_INFO[cls].anim;
-  const stirPad = (CLASS_INFO[cls].sky || cls === StrokeClass.STAR_CORE) ? STIR_PAD_H * TWO_T : 0; // world pad per metre of depth
+  const stirPad = CLASS_INFO[cls].sky ? STIR_PAD_H * TWO_T : 0; // world pad per metre of depth
   const acc = new SphereAcc();
   let dMax = 0;
   const F = FLOATS_PER_STROKE;

@@ -18,7 +18,9 @@ import {
 const P = PALETTE;
 const N_UP = new Vector3(0, 1, 0.14).normalize();
 const N_FRONT = new Vector3(0, 0, 1);
-const N_RIGHT = new Vector3(-0.74, 0, 0.67).normalize();
+// The Yellow House right wing recedes to the right (d grows with u; world x grows with u, E looks down -z), so its
+// face points right-front (+x).
+const N_RIGHT = new Vector3(0.74, 0, 0.67).normalize();
 const T_DIR = new Vector3(1, 0, 0);
 
 function makeVillage(aspect: number, uP: number, v: number, d: number): VillageInfo {
