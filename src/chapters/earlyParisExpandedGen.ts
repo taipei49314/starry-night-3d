@@ -613,10 +613,11 @@ export function generateGaletteChapter(
       const v = rng.range(0.71, 0.79) + wave;
       const bandColor = sU < 0.33 ? TRICOLOR_BLUE : sU < 0.66 ? P.zincWhite : TRICOLOR_RED;
       T_DIR.set(1, 0.18 * Math.cos(sU * 6.0), 0).normalize();
+      // A daylight flag is cloth, not a lamp: a static solid (HOUSE) in its own colours, no emissive flicker.
       emitSurfaceStroke(
-        sink, GALETTE_ASPECT, StrokeClass.WINDOW, uP, v, rng.range(548, 568),
+        sink, GALETTE_ASPECT, StrokeClass.HOUSE, uP, v, rng.range(548, 568),
         0.012, 0.0042, T_DIR, N_FRONT,
-        bandColor, P.zincWhite, rng, { emissive: 0.75 },
+        bandColor, bandColor, rng,
       );
     }
   }
@@ -647,7 +648,7 @@ export function generateGaletteChapter(
       emitCanvasStroke(
         sink, GALETTE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(162, 232),
         rng.range(0.015, 0.030), baseAng + (isSpine ? 0 : Math.PI * 0.5), rng.range(0.0036, 0.0068),
-        i % 7 === 0 ? TRICOLOR_RED : MILL_TIMBER, FENCE_OCHRE, rng, { flags: StrokeFlag.OUTLINE },
+        MILL_TIMBER, FENCE_OCHRE, rng, { flags: StrokeFlag.OUTLINE },
       );
     }
   }

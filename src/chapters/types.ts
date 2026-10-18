@@ -90,11 +90,18 @@ const _rec: StrokeRecord = {
   kappa: 0, q1: 0, q2: 0, q3: 0,
 };
 
+/**
+ * HOUSE and WINDOW start at 450 m (the Starry Night village). Nearer companion-world architecture is emitted as
+ * GROVE, the solid class whose range reaches 200 m, so it keeps its authored depth instead of being clamped onto
+ * one 450-458 m plane (behind any GROVE wall in front of it). The Starry Night never uses these helpers.
+ */
+function nearSolidClass(cls: StrokeClass, d: number): StrokeClass {
+  return (cls === StrokeClass.HOUSE || cls === StrokeClass.WINDOW) && d < 458 ? StrokeClass.GROVE : cls;
+}
+
 /** Push a stroke after clamping its depth safely inside CLASS_INFO[r.cls].dRange. */
 export function pushChapterStroke(sink: StrokeSink, r: StrokeRecord): void {
-  if (r.cls === StrokeClass.HOUSE && r.d < 458) {
-    r.cls = StrokeClass.GROVE;
-  }
+  r.cls = nearSolidClass(r.cls, r.d);
   const [d0, d1] = CLASS_INFO[r.cls].dRange;
   r.d = clamp(r.d, d0 + 1, d1 - 1);
   sink.push(r);
@@ -124,7 +131,7 @@ export function emitCanvasStroke(
     q3?: number;
   },
 ): void {
-  const effCls = cls === StrokeClass.HOUSE && d < 458 ? StrokeClass.GROVE : cls;
+  const effCls = nearSolidClass(cls, d);
   const [d0, d1] = CLASS_INFO[effCls].dRange;
   _rec.u = uFromPaint(uP, aspect);
   _rec.v = v;
@@ -169,7 +176,7 @@ export function emitSurfaceStroke(
   rng: Rng,
   opts?: { emissive?: number; kappa?: number; flags?: number },
 ): void {
-  const effCls = cls === StrokeClass.HOUSE && d < 458 ? StrokeClass.GROVE : cls;
+  const effCls = nearSolidClass(cls, d);
   const [d0, d1] = CLASS_INFO[effCls].dRange;
   const dc = clamp(d, d0 + 8, d1 - 8);
   const u = uFromPaint(uP, aspect);
@@ -332,7 +339,20 @@ export function emitCustomStar(
   }
 }
 
-/** Build a simple canvas-mapped quad underlay mesh (two triangles) for architectural or terrain backing. */
+/** Grid resolution of buildCanvasQuadMesh, and how far behind its authored depths the backing sits. */
+const QUAD_GRID = 8;
+const QUAD_BACK_SCALE = 1.04;
+const QUAD_BACK_METRES = 12;
+
+/**
+ * Build a canvas-mapped underlay (architectural or terrain backing) over the quad corners 0 -> 1 -> 2 -> 3.
+ *
+ * A 2-triangle quad between corners at different depths bows toward E (on screen it is 1/d that interpolates
+ * linearly), so it can sit in front of the very strokes it backs. Instead the quad is a QUAD_GRID x QUAD_GRID grid:
+ * every vertex lies on its own canvas ray at the bilinear corner depth, pushed back by 4% + 12 m. The footprint
+ * seen from E is unchanged, the residual bow between neighbouring vertices is small, and the backing keeps its
+ * authored slope off E (a floor stays a floor), unlike pushing every corner to one far depth.
+ */
 export function buildCanvasQuadMesh(
   aspect: number,
   corners: readonly [readonly [number, number, number], readonly [number, number, number], readonly [number, number, number], readonly [number, number, number]],
@@ -340,19 +360,34 @@ export function buildCanvasQuadMesh(
   colorHex: number,
   name: string,
 ): Mesh {
-  // Place all 4 corners at a uniform backing depth behind the motif's foreground/architecture strokes
-  // so harmonic 1/d perspective interpolation across a 2-triangle quad never bows in front of strokes from E,
-  // while anamorphic ray projection preserves the exact 2D canvas footprint (uP, v) from E.
-  const dBack = Math.max(corners[0][2], corners[1][2], corners[2][2], corners[3][2], 680) + 160;
-  const pts = corners.map(([uP, v]) => canvasToWorld(uFromPaint(uP, aspect), v, dBack));
-  const pos = new Float32Array([
-    pts[0].x, pts[0].y, pts[0].z,
-    pts[1].x, pts[1].y, pts[1].z,
-    pts[2].x, pts[2].y, pts[2].z,
-    pts[0].x, pts[0].y, pts[0].z,
-    pts[2].x, pts[2].y, pts[2].z,
-    pts[3].x, pts[3].y, pts[3].z,
-  ]);
+  const [c0, c1, c2, c3] = corners;
+  const lerp = (a: number, b: number, k: number): number => a + (b - a) * k;
+  const n = QUAD_GRID;
+  const grid: Vector3[] = [];
+  for (let j = 0; j <= n; j++) {
+    const t = j / n; // along 0 -> 3 (and 1 -> 2)
+    for (let i = 0; i <= n; i++) {
+      const s = i / n; // along 0 -> 1 (and 3 -> 2)
+      const uP = lerp(lerp(c0[0], c1[0], s), lerp(c3[0], c2[0], s), t);
+      const v = lerp(lerp(c0[1], c1[1], s), lerp(c3[1], c2[1], s), t);
+      const d = lerp(lerp(c0[2], c1[2], s), lerp(c3[2], c2[2], s), t);
+      grid.push(canvasToWorld(uFromPaint(uP, aspect), v, d * QUAD_BACK_SCALE + QUAD_BACK_METRES));
+    }
+  }
+  // Same winding as the original two triangles (0, 1, 2) and (0, 2, 3), cell by cell.
+  const pos = new Float32Array(n * n * 18);
+  let k = 0;
+  const put = (p: Vector3): void => { pos[k++] = p.x; pos[k++] = p.y; pos[k++] = p.z; };
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const p00 = grid[j * (n + 1) + i];
+      const p10 = grid[j * (n + 1) + i + 1];
+      const p11 = grid[(j + 1) * (n + 1) + i + 1];
+      const p01 = grid[(j + 1) * (n + 1) + i];
+      put(p00); put(p10); put(p11);
+      put(p00); put(p11); put(p01);
+    }
+  }
   const geo = new BufferGeometry();
   geo.setAttribute('position', new BufferAttribute(pos, 3));
   geo.computeVertexNormals();

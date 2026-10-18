@@ -222,12 +222,11 @@ export function generateRoadCypressChapter(
     );
   }
 
-  // 4. Twin Towering Cypress Flames at Center (CYPRESS [146..238 m]):
-  //    - Left main cypress: uCenter ~ 0.42, v = 0.20..0.99, d = 148..194 m
-  //    - Right companion cypress: uCenter ~ 0.56, v = 0.22..0.88, d = 196..238 m
+  // 4. One Towering Cypress Flame at Center (CYPRESS [146..238 m]). The painting has a single cypress, which Van Gogh
+  //    described as 'very tall, very straight, very dark'; it splits the sky between the star and the crescent moon.
+  //    uCenter ~ 0.48, v = 0.20..1.00, d ~ 160..220 m (front at the spine, back at the flanks).
   const cypressTrees = [
-    { uBase: 0.42, vMin: 0.20, vSpan: 0.79, width: 0.075, dBase: 164, dSpan: 24, count: 5200, swayPhase: 0.0 },
-    { uBase: 0.56, vMin: 0.22, vSpan: 0.66, width: 0.062, dBase: 212, dSpan: 22, count: 3800, swayPhase: 1.4 },
+    { uBase: 0.48, vMin: 0.20, vSpan: 0.80, width: 0.105, dBase: 160, dSpan: 60, count: 9000, swayPhase: 0.0 },
   ];
   for (const tree of cypressTrees) {
     // Trunk at base of each cypress
@@ -311,18 +310,13 @@ export function generateRoadCypressChapter(
   underlays.name = 'underlays:roadcypress';
   underlays.add(buildCanvasQuadMesh(
     ROADCYPRESS_ASPECT,
-    [[-0.04, 0.0, 210], [1.04, 0.0, 210], [1.04, 0.38, 1540], [-0.04, 0.38, 1540]],
+    [[-0.04, 0.0, 210], [1.04, 0.0, 210], [1.04, 0.335, 1360], [-0.04, 0.335, 1360]], // stops below the Alpilles (v >= 0.32)
     mat, 0x3b3422, 'roadcypress-road',
   ));
   underlays.add(buildCanvasQuadMesh(
     ROADCYPRESS_ASPECT,
-    [[0.38, 0.20, 172], [0.46, 0.20, 172], [0.44, 0.92, 176], [0.40, 0.92, 176]],
-    mat, CYPRESS_FLAME, 'roadcypress-left-core',
-  ));
-  underlays.add(buildCanvasQuadMesh(
-    ROADCYPRESS_ASPECT,
-    [[0.52, 0.22, 218], [0.59, 0.22, 218], [0.57, 0.84, 222], [0.54, 0.84, 222]],
-    mat, CYPRESS_FLAME, 'roadcypress-right-core',
+    [[0.44, 0.20, 196], [0.52, 0.20, 196], [0.495, 0.94, 200], [0.465, 0.94, 200]],
+    mat, CYPRESS_FLAME, 'roadcypress-cypress-core',
   ));
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
