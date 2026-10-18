@@ -284,22 +284,23 @@ export class Director {
     const dist = this.pos.distanceTo(EYE);
     const fwd = tv1.set(0, 0, -1).applyQuaternion(this.quat);
     const ang = Math.acos(Math.max(-1, Math.min(1, fwd.dot(FORWARD))));
-    const dur = Math.max(3, Math.min(6, 3 + 1.2 * Math.abs(Math.log10(Math.max(dist, 1) / 360)) + (1.5 * ang) / Math.PI));
+    let dur = Math.max(3, Math.min(6, 3 + 1.2 * Math.abs(Math.log10(Math.max(dist, 1) / 360)) + (1.5 * ang) / Math.PI));
     const actSec = this.track.actSeconds;
     let homeStart: number;
     let homeEnd: number;
     if (actSec && this.track.loopSeconds > actSec) {
       const actStart = Math.floor(this.loopTime / actSec) * actSec;
       const tau = this.loopTime - actStart;
-      if (tau >= 26.8) {
-        // already dissolving: land on the incoming act's opening hold at E instead of rewinding to the outgoing painting
-        homeStart = homeEnd = wrap(actStart + actSec, this.track.loopSeconds);
-      } else if (tau >= 25.0) {
-        // already in the clean hold at E
-        homeStart = homeEnd = this.loopTime;
+      // During a dissolve, home is the incoming painting; never rewind to the outgoing one.
+      const homeAct = tau >= 26.8 ? wrap(actStart + actSec, this.track.loopSeconds) : actStart;
+      if (dist < 1 && tau >= 25.0) {
+        // already registered at E (the hold, or a dissolve under way): settle on that painting's E, briefly
+        homeStart = homeEnd = tau >= 26.8 ? homeAct : this.loopTime;
+        dur = 0.5;
       } else {
-        homeStart = actStart + 20.5;
-        homeEnd = actStart + 25.0;
+        // away from E: fly to that painting's H0 and play its homecoming, which closes the matte on arrival
+        homeStart = homeAct + 20.5;
+        homeEnd = homeAct + 25.0;
       }
     } else {
       homeStart = Math.max(0, this.track.loopSeconds - 8);
@@ -308,6 +309,7 @@ export class Director {
     this.cancelPendingJump();
     this.flight = this.newFlight(dur, homeStart, true, homeEnd);
     this._mode = 'returning';
+    this._paused = false; // an explicit command to move: a paused timeline would desync from the flight
     this.interacted = true;
   }
 
@@ -390,7 +392,7 @@ export class Director {
         this.vel.copy(this.pilot.vel);
         analyticVel = true;
         this.freeEnv(dt);
-        if (!this.freeLock && this.input && this.input.idle && this.bootSeconds - this.lastActivity >= IDLE_SECONDS) this.startRejoin();
+        if (!this._paused && !this.freeLock && this.input && this.input.idle && this.bootSeconds - this.lastActivity >= IDLE_SECONDS) this.startRejoin();
         break;
       }
       case 'rejoin': {
@@ -615,7 +617,9 @@ export class Director {
     if (actSec && this.track.loopSeconds > actSec) {
       // Multi-act mode: scope rejoin to the current act's [actStart, actStart + 20.0] window so C / idle never jumps to
       // Act I, and a flight of up to 5 s still lands by tau 25.0, before the dissolve starts at 26.8.
-      const actStart = Math.floor(this.loopTime / actSec) * actSec;
+      const curStart = Math.floor(this.loopTime / actSec) * actSec;
+      // During a dissolve, rejoin the incoming act; never rewind to the outgoing painting.
+      const actStart = this.loopTime - curStart >= 26.8 ? wrap(curStart + actSec, this.track.loopSeconds) : curStart;
       let targetT = actStart;
       let bestCost = 0;
       if (dist >= 50) {

@@ -296,7 +296,8 @@ export async function boot(container: HTMLElement): Promise<void> {
       return w;
     }
     if (brokenWorlds.has(id)) {
-      const standIn = worldCache.values().next().value as BuiltWorld | undefined;
+      // The Starry Night stands in when it is cached (eviction keeps it while any world is broken), else any cached world.
+      const standIn = worldCache.get('starry') ?? (worldCache.values().next().value as BuiltWorld | undefined);
       if (standIn) return standIn;
     }
     const tb = performance.now();
@@ -306,7 +307,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     } catch (err) {
       brokenWorlds.add(id);
       console.error(`[punctum:${id}] scene generator failed; falling back so render loop stays alive`, err);
-      const fallback = worldCache.values().next().value as BuiltWorld | undefined;
+      const fallback = worldCache.get('starry') ?? (worldCache.values().next().value as BuiltWorld | undefined);
       if (fallback) return fallback;
       // Nothing cached yet (first boot): stand in with The Starry Night, cached under its own id. If The Starry
       // Night itself failed there is nothing to stand in with, so the boot fails and main.ts shows the error.
@@ -330,6 +331,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     for (const [id, w] of worldCache.entries()) {
       if (worldCache.size <= MAX_CACHED_WORLDS) break;
       if (id === keepA || id === keepB || id === keepC) continue;
+      if (id === 'starry' && brokenWorlds.size > 0) continue; // the stand-in for broken worlds
       masterScene.remove(w.strokes.group, w.underlays);
       w.strokes.dispose?.();
       const disposedMats = new Set<Material>();
