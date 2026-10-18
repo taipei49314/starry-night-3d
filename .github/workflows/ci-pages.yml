@@ -13,7 +13,8 @@ permissions:
 
 concurrency:
   group: "pages-${{ github.ref }}"
-  cancel-in-progress: true
+  # Superseded PR runs may be cancelled; a main run (which deploys Pages) is never cancelled mid-deploy.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -48,6 +49,21 @@ jobs:
         with:
           name: punctum-starry-night-3d-singlefile
           path: dist-single/index.html
+
+      - name: Install Playwright Chromium for headless 30-world verification
+        run: |
+          npm install --no-save playwright@1.51.1
+          npx playwright install --with-deps chromium
+
+      - name: Verify all 30 worlds in headless Chromium & capture screenshots
+        run: node scripts/verify-worlds.mjs
+
+      - name: Upload 30-world screenshots & verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: punctum-30-worlds-screenshots
+          path: artifacts/screenshots/
 
       - name: Configure Pages
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

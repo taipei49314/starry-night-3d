@@ -18,9 +18,9 @@ These are dropped:
 
 ## 1. Vision
 
-**Name:** PUNCTUM: The Starry Night, 250 km Deep.
+**Name:** PUNCTUM: The Starry Night & The Van Gogh World System, 250 km Deep (5 Chapters · 30 Iconic Worlds).
 
-**Logline.** From one exact point, about 170,000 sculpted brushstrokes scattered across 250 km line up into The Starry Night. Step away and the painting tears open. In one 96-second take the camera:
+**Logline.** From one exact point, about **181,400** sculpted brushstrokes in *The Starry Night* (budget 181,600; roughly 47,000–130,000 in each of the 29 companion worlds, per the CI `verification-report.json`) scattered across 250 km line up into the painting. Step away and the painting tears open. Opening the application launches directly into the signature **96-second, 10-shot standalone *The Starry Night*** (`mode = 'theme'`, `pathId = 'single'`), where in one continuous take the camera:
 1. climbs a 145 m black-flame cypress;
 2. rides its tip as it turns into wind;
 3. punches through Venus into a tunnel of counter-rotating halo rings;
@@ -28,7 +28,7 @@ These are dropped:
 5. falls down one of them;
 6. from the calm eye, sees the tiny lit village of Saint-Rémy framed in the throat.
 
-A storm then tears everything apart. The painting can only reassemble as the camera backs into the painter's eye. The last frame is the first frame.
+A storm then tears everything apart. The painting can only reassemble as the camera backs into the painter's eye $E$. The last frame is the first frame, where an invitation pill (`✦ 進入梵谷 30 個世界 · 五章三十幕旅程`) opens the 900-second, 5-Chapter, 30-Act Odyssey (§10).
 
 **Single central mechanism: anamorphic invariance.**
 - Every stroke is authored in canvas space as (u, v, Δu, Δv, width, colours), plus **one free parameter, its depth d from the eye E**.
@@ -60,7 +60,7 @@ A storm then tears everything apart. The painting can only reassemble as the cam
   - Position (u, v) uses fractions: u is a fraction of canvas width, v of canvas height.
   - **Offsets and lengths** (du, dv, L, W, radii) use **canvas-height units ("h-units")**. In h-units a horizontal canvas distance is Δu·A.
   - Flow-field space uses `p = (u·A, v)` in h-units.
-- At 16:9 the canvas pose shows u ∈ [−0.21, 1.21]. All content is generated over **u ∈ [−0.30, 1.30], v ∈ [−0.12, 1.10]**.
+- At 16:9 the canvas pose shows u ∈ [−0.21, 1.21]. All content is generated over **u ∈ [−0.30, 1.30], v ∈ [−0.12, 1.10]** (extended sky `SKY_GEN_U = [−1.0, 2.0]`, `SKY_GEN_V = [0.15, 1.75]` for wide-FOV coverage near E).
   - For aspects narrower than 1.2497, the canvas-pose FOV becomes `2·atan(t·1.2497/aspect)` so the full canvas width stays visible.
 - **Mapping** (TS and GLSL must be identical):
   ```
@@ -74,17 +74,17 @@ A storm then tears everything apart. The painting can only reassemble as the cam
 
 | Class | Depth d from E | Notes |
 |---|---|---|
-| CYPRESS | 150–235 m (axis 192 m) | nearest object |
-| GROUND fields / GROVE | 260–2,700 m (ground hits) | real ground surface |
-| HOUSE / WINDOW / CHURCH | 520–2,700 m (ground hits) | real solids |
-| HILL walls | 2.1–5.9 km | 3 sloped walls |
-| WIND_JET | 0.22 → 12 km | cypress tip to Venus |
-| MOON (crescent) | 11.0 km | MOON_RING bell 11–24 km |
-| STAR_CORE | 12–16 km | STAR_RING horns up to ×1.96 (≤ 31.4 km) |
-| SWIRL funnels | c1 40–90 km, c2 42–91 km | conical helices |
-| EDDY funnels | 45–70 km | 4 small vortices |
-| SKY_BAND decks | 96–190 km | 14 tilted strata |
-| UNDERPAINT | 230–250 km | dark ground; fills holes |
+| CYPRESS | 140–245 m (axis 192 m) | nearest object |
+| GROUND fields / GROVE | 200–7,500 m (ground hits & near interior solids) | real ground surface & near furniture solids (`d < 458 m`) |
+| HOUSE / WINDOW / CHURCH | 450–2,900 m (ground hits) | real solids |
+| HILL walls | 1.6–6.1 km | 3 sloped walls |
+| WIND_JET | 0.20 → 12.5 km | cypress tip to Venus |
+| MOON (crescent) | 11.0 km | MOON_RING bell 10.9–25 km |
+| STAR_CORE | 11.8–16.1 km | STAR_RING horns up to ×1.96 (≤ 32 km) |
+| SWIRL funnels | c1 40–90 km, c2 42–91 km | conical helices + `StrokeFlag.UNDERLAYER` funnel shells |
+| EDDY funnels | 44–82 km | 4 small vortices |
+| SKY_BAND decks | 94–212 km | 14 tilted strata + extended sky |
+| UNDERPAINT | 229–251 km | dark ground; fills holes |
 | Backdrop | ∞ (screen pass) | direction-space strokes beyond the generated canvas |
 
 Required ordering assertions where classes overlap on the canvas (every d of the left class must be less than every d of the right class):
@@ -92,6 +92,7 @@ Required ordering assertions where classes overlap on the canvas (every d of the
 - MOON < MOON_RING < SKY_BAND
 - HILL < STAR_CORE
 - EDDY < SKY_BAND
+- CYPRESS < HOUSE
 
 ### 2.3 Earth (positions computed from the mapping)
 
@@ -353,21 +354,22 @@ vec3 stormField(vec3 q, float t) {                 // q dimensionless; t = uTime
 
 ### 4.0 Overview
 
-The lead writes `src/contracts.ts` (about 230 LOC) from §2–§4 **before** fan-out. Every module imports only `contracts.ts` and `src/shared/*`, except M10, which imports everything. GLSL lives in TS template strings (`export const strokeVert = /* glsl */\`...\``), so no loader config is needed.
+The lead writes `src/contracts.ts` from §2–§4 **before** fan-out. Every module imports only `contracts.ts` and `src/shared/*`, except M10/M11, which orchestrate the 30-world system. GLSL lives in TS template strings (`export const strokeVert = /* glsl */\`...\``), so no loader config is needed.
 
-| # | Module | Owner (8 agents) | Files | LOC |
-|---|---|---|---|---|
-| M1 | Engine bootstrap, quality tiers, dynamic resolution | A1 | `src/engine/*` | 260 |
-| M2 | Palette, canvas space, flow field, GLSL header and chunks, uniforms, RNG | A2 | `src/shared/*` | 400 |
-| M3 | Stroke system: buffer, chunking, ribbon, material, impasto shaders, underlay material | A3 | `src/strokes/*` | 600 |
-| M4 | Sky: underpainting, decks, funnels, eddies, wind jet, backdrop, dust | A4 | `src/sky/*` | 450 |
-| M5 | Stars, Venus, moon | A5 | `src/celestial/*` | 280 |
-| M6 | Cypress | A5 | `src/earth/cypressGen.ts` | 210 |
-| M7 | Terrain, hills, village, church, steeple, windows, groves, fields | A6 | `src/earth/{terrain,hillsGen,villageGen}.ts` | 420 |
-| M8 | Camera director, shots, paths, free mode, hand-back, UI | A7 | `src/camera/*` | 580 |
-| M9 | Post-processing | A8 | `src/post/*` | 240 |
-| M10 | Composition and integration, storm/snap logic, self-test, debug overlay, main | A8 + lead | `src/app/*`, `src/main.ts` | 250 |
-| | **Total** | | | **≈ 3,920** (with contracts) |
+| # | Module | Owner | Files |
+|---|---|---|---|
+| M1 | Engine bootstrap, quality tiers, dynamic resolution | A1 | `src/engine/*` |
+| M2 | Palette, canvas space, flow field, GLSL header and chunks, uniforms, RNG | A2 | `src/shared/*` |
+| M3 | Stroke system: buffer, chunking, ribbon, material, impasto shaders, underlay material | A3 | `src/strokes/*` |
+| M4 | Sky: underpainting, decks, funnels, eddies, wind jet, multi-era backdrop, dust, 3D portal vortex | A4 | `src/sky/*` |
+| M5 | Stars, Venus, moon | A5 | `src/celestial/*` |
+| M6 | Cypress | A5 | `src/earth/cypressGen.ts` |
+| M7 | Terrain, hills, village, church, steeple, windows, groves, fields | A6 | `src/earth/{terrain,hillsGen,villageGen}.ts` |
+| M8 | Camera director, shots, paths, free mode, touch flight pad, hand-back, UI & World Graph Atlas | A7 | `src/camera/*` |
+| M9 | Post-processing | A8 | `src/post/*` |
+| M10 | Composition and integration, storm/snap logic, self-test, debug overlay, main | A8 + lead | `src/app/*`, `src/main.ts` |
+| M11 | 5-Chapter, 30-World generators, `WORLD_GRAPH`, 6 Motif Transition Grammars, `compilePathTrack` | Lead | `src/chapters/*` |
+| M12 | 30-World procedural Web Audio soundscape & 6 Motif harmonic bridges | Lead | `src/audio/soundscape.ts` |
 
 ### 4.1 `contracts.ts` (lead): exact contents
 
@@ -379,17 +381,19 @@ export const EYE_PITCH_DEG = 10;
 export const CAMERA_NEAR = 0.1, CAMERA_FAR = 600_000;
 
 export enum StrokeClass { UNDERPAINT=0, SKY_BAND=1, SWIRL=2, EDDY=3, STAR_CORE=4, STAR_RING=5, MOON=6,
-  MOON_RING=7, WIND_JET=8, HILL=9, GROUND=10, GROVE=11, HOUSE=12, WINDOW=13, CHURCH=14, CYPRESS=15, UNDERLAYER=16 }
-export const CLASS_COUNT = 17;
+  MOON_RING=7, WIND_JET=8, HILL=9, GROUND=10, GROVE=11, HOUSE=12, WINDOW=13, CHURCH=14, CYPRESS=15 }
+export const CLASS_COUNT = 16;
+export const FLAG_STRIDE = 32;
+export enum StrokeFlag { NONE=0, UNDERLAYER=1, OUTLINE=2 }
 export enum AnimKind { STATIC=0, VORTEX=1, RING=2, BAND=3, CYPRESS=4, JET=5, FLICKER=6 }
 export interface ClassInfo { anim: AnimKind; solid: boolean; outline: number; sky: boolean;
   tierFraction: { high: number; medium: number; low: number }; budgetHigh: number; dRange: [number, number]; }
 export const CLASS_INFO: Record<StrokeClass, ClassInfo>;   // values from the §4.3 table and §7
 
 // Instance record: 16 float32 = 64 bytes, four vec4 attributes a0..a3
-//  a0 = (u, v, d, cls)
+//  a0 = (u, v, d, cls + FLAG_STRIDE*flags)
 //  a1 = (du, dv, dlnd, W)    du,dv in h-units (stroke spans centre ± ½(du/A, dv)); dlnd = ln(dEnd/dStart)
-//                            VORTEX/RING/JET kinds: a1 = (L, 0, 0, W) - direction recomputed in shader
+//                            VORTEX/RING/JET kinds: a1 = (L, 0, 0, W) - direction recomputed in shader (when abs(a1.y) <= 1e-7)
 //  a2 = (colA, colB, emissive, seed)   colA/colB = packed sRGB 0xRRGGBB as float (exact < 2^24); seed in [0,1)
 //  a3 = (kappa, q1, q2, q3)  solid classes: (kappa, nx, ny, nz) world face normal
 //                            VORTEX: (kappa, vortexIdx*2+arm, sigma0, across[-1,1])
@@ -399,7 +403,7 @@ export const CLASS_INFO: Record<StrokeClass, ClassInfo>;   // values from the §
 //                            JET:    (kappa, sigma0, filamentOffset (h-units), depthJitter)
 //                            FLICKER:(kappa, nx, ny, nz) + emissive animated by seed
 export const FLOATS_PER_STROKE = 16;
-export interface StrokeRecord { u: number; v: number; d: number; cls: StrokeClass;
+export interface StrokeRecord { u: number; v: number; d: number; cls: StrokeClass; flags: number;
   du: number; dv: number; dlnd: number; w: number; colA: number; colB: number; emissive: number;
   seed: number; kappa: number; q1: number; q2: number; q3: number; }
 export interface StrokeSink { push(r: StrokeRecord): void; readonly count: number; }
@@ -1161,26 +1165,25 @@ Conventions:
 
 ### 7.2 Class budgets (High) and tier fractions
 
-| Class | High count | Medium | Low |
-|---|---|---|---|
-| UNDERPAINT | 3,000 | 1 | 1 |
-| SKY_BAND | 32,000 | 0.55 | 0.25 |
-| SWIRL | 30,000 | 0.6 | 0.3 |
-| EDDY | 6,000 | 0.5 | 0.25 |
-| STAR_CORE | 2,200 | 1 | 1 |
-| STAR_RING | 14,000 | 1 | 1 |
-| MOON | 1,800 | 1 | 1 |
-| MOON_RING | 4,200 | 1 | 1 |
-| WIND_JET | 2,400 | 0.6 | 0.35 |
-| HILL | 15,000 | 0.55 | 0.3 |
-| GROUND | 8,000 | 0.55 | 0.25 |
-| GROVE | 6,000 | 0.55 | 0.3 |
-| HOUSE | 14,000 | 0.6 | 0.35 |
-| WINDOW | 400 | 1 | 1 |
-| CHURCH | 3,600 | 0.8 | 0.5 |
-| CYPRESS | 18,000 | 0.6 | 0.3 |
-| UNDERLAYER | 6,000 | 1 | 1 |
-| **Total** | **≈ 166,600** | **≈ 112k** | **≈ 70k** |
+| Class | High budget (`CLASS_INFO.budgetHigh`) | Medium | Low | Notes |
+|---|---|---|---|---|
+| UNDERPAINT | 6,000 | 1 | 1 | 3,000 canvas + up to 3,000 extended sky (`SKY_GEN_U`/`SKY_GEN_V`) |
+| SKY_BAND | 44,000 | 0.55 | 0.25 | 32,000 canvas + up to 12,000 extended sky |
+| SWIRL | 33,000 | 0.6 | 0.3 | 30,000 spiral arms + 3,000 `StrokeFlag.UNDERLAYER` funnel shells |
+| EDDY | 6,000 | 0.5 | 0.25 | 4 small vortices |
+| STAR_CORE | 2,200 | 1 | 1 | Venus + 10 stars |
+| STAR_RING | 14,000 | 1 | 1 | never thinned (prevents dark backing rings from swallowing halo bands) |
+| MOON | 1,800 | 1 | 1 | crescent + unlit disc |
+| MOON_RING | 4,200 | 1 | 1 | 10 concentric bell rings |
+| WIND_JET | 2,400 | 0.6 | 0.35 | 32 filaments × 75 strokes |
+| HILL | 16,500 | 0.55 | 0.3 | 15,000 slope + crest strokes + 1,500 `StrokeFlag.UNDERLAYER` ridge fill |
+| GROUND | 8,000 | 0.55 | 0.25 | foreground fields |
+| GROVE | 6,000 | 0.55 | 0.3 | olive/cypress groves & near interior solids (`200–7,500 m`) |
+| HOUSE | 14,000 | 0.6 | 0.35 | village walls & gable roofs (`450–2,900 m`) |
+| WINDOW | 400 | 1 | 1 | lit windows (`AnimKind.FLICKER`) |
+| CHURCH | 3,600 | 0.8 | 0.5 | nave, octagonal shaft & spire (`600–760 m`) |
+| CYPRESS | 19,500 | 0.6 | 0.3 | 18,000 flame strokes + 1,500 `StrokeFlag.UNDERLAYER` core fill |
+| **Total (`starry`)** | **181,600 budget (about 181,400 generated, CI report 2026-10-18)** | **≈ 118k** | **≈ 72k** | Companion worlds: roughly 47,000–130,000 strokes |
 
 ### 7.3 Tier table
 
@@ -1222,7 +1225,7 @@ Conventions:
    - Measure the worst frames (t = 3, 60, 75) on Low. The reversed-depth experiment is optional (§2.5).
 2. **The anamorphic lock drifts between TS and GLSL.**
    - Constants come only from `header.ts`.
-   - The boot self-test must pass (error < 1e-4), and the CI build runs it headless if available.
+   - The boot self-test must pass (error < 1e-4), and the CI build runs it headless across all 30 worlds (`scripts/verify-worlds.mjs`).
    - Never hand-copy numbers into GLSL.
 3. **Off-axis confetti or cardboard.**
    - Every motif is a coherent surface: funnel wall plus underlayer shell, ring horns on the exact E axis, cypress tubes plus core mesh, sloped hill walls plus backs, solid houses plus cores.
@@ -1237,7 +1240,7 @@ Conventions:
    - Acceptance: rings legible at t = 37.6.
 9. **Motion sickness.**
    - Roll ≤ 30°, roll rate ≤ 25°/s, yaw pirouette ≤ 33°/s, FOV ≤ 80°.
-   - Calm mode and reduced-motion support.
+   - Calm mode and reduced-motion support (including zeroed smear/storm in `CompanionTrack.env` and dampened transition scatter/vortex in `composition.ts`).
    - Velocity and smear reset on cuts (`frame.cut`).
 10. **Float time drift.** `uTime` is wrapped to [0, 96). Every periodic term has a period that divides 96: 4, 6, 8, 12, 16, 24, 48, 96.
 11. **Composition fidelity.**
@@ -1246,10 +1249,11 @@ Conventions:
 12. **Init time on weak CPUs.**
     - Analytic generation only: no per-stroke streamline integration, except the 32 jet filaments. Typed arrays; mulberry32.
     - If generation exceeds 250 ms, time-slice by class across frames during the first-boot lay-in, uploading each chunk once when complete (no partial re-uploads).
+    - Status (2026-10-18): not met yet. A world build is still one synchronous task. The lookahead pre-warm runs in an idle callback, only on multi-act tracks and only after the first ~8 s of a track, so it no longer lands in the lay-in (the single loop builds the next world on request); LRU eviction (`MAX_CACHED_WORLDS = 4`) disposes per-world buffers without touching the shared ribbon geometry.
 13. **Sandbox and single-file.**
     - No workers, blob URLs, pointer lock, fullscreen requirement, fetches or assets.
     - Storage only via try/catch, and only for the calm/tier preference.
-    - Build with `vite-plugin-singlefile`. The bundle is expected under 1 MB; the hard limit is 16 MB.
+    - Build with `vite-plugin-singlefile`. The bundle is expected under 1 MB; the hard limit is 16 MB. (2026-10-15 deploy: the web bundle's JS is about 0.98 MB; the single-file size is not tracked yet.)
 14. **Parallel drift.** `contracts.ts` is frozen before fan-out. Any change goes through the lead and requires a re-run of the self-test and paint-order assertions.
 
 ---
@@ -1318,4 +1322,46 @@ Conventions:
 - **Performance:** High holds 60 fps at 1080p through the whole loop (p95 frame time ≤ 16.7 ms). Low on Intel UHD holds ≥ 30 fps p95 with dynamic resolution, and every set piece is still recognisable on Low.
 - **Invariance demo:** in free mode at E, a warp sweep 0 → 1.6 changes no pixel beyond A2C dither; one metre to the side, the world visibly refolds.
 - **Hand-off:** every input hands off in ≤ 1 frame. Idle for 12 s rejoins smoothly. Space returns to the eye and the snap re-registers the painting.
-- **Build:** a single HTML file under 1 MB (hard limit 16 MB); no network requests (devtools network panel empty after load); runs in a sandboxed iframe and in an Electron pane.
+- **Build:** a single HTML file under 1 MB (hard limit 16 MB) plus the web bundle (`dist/`); no network requests after load; runs in a sandboxed iframe and in an Electron pane.
+- **CI verification:** GitHub Actions (`ci-pages.yml`) runs `scripts/verify-worlds.mjs` in headless Chromium (SwiftShader WebGL 2, which the tier regex treats as Low). It fails on page or console errors, a world whose generator threw, a self-test error ≥ 1e-4, a paint-order violation, a camera not registered at $E$, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at $E$ and the holds. It records off-$E$ frames and a high-tier set, with size and renderer state, without failing on them. Pixel-level comparison against golden frames at the §9.2 checkpoints is not in place yet, so the art itself still needs a human look at the uploaded `punctum-30-worlds-screenshots`.
+
+---
+
+## 10. The 5-Chapter, 30-World Van Gogh World System (`src/chapters/*`, `src/audio/*`)
+
+### 10.1 Default Opening vs. Multi-Act Odyssey Choreography
+
+- **Default Opening (`/` or `?mode=theme&path=single`):**
+  - Boots directly into standalone *The Starry Night* (`painting = 'starry'`, `pathId = 'single'`, `loopSeconds = 96`, 10 shots) with the 4-second radial lay-in (`uLayIn`) and impasto inflation (`uInflate`) enabled.
+  - The 30-painting strip is collapsed behind `🎨 30 幅畫作 ▾` so the opening screen stays uncluttered; from `t ≥ 84 s` of the first loop on, the golden invitation pill `✦ 進入梵谷 30 個世界 · 五章三十幕旅程` is offered, but like the rest of the chrome it is hidden while the painting is registered at $E$ (`data-clean-eye="1"`).
+- **Multi-Act Odyssey (`?mode=odyssey`, `900 s` = 30 acts × `30 s`) & Thematic Paths (`compilePathTrack`):**
+  - Each 30-second act (`ACT_SECONDS = 30`, timings from the `odysseyAct` CompanionTrack built in `makeChapterTracks` (loop 30 s, hold 1.6, home 21.0, home end 25.0) and from `evalOdysseyMorph`) follows a 5-stage arc. In free mode the act clock holds before 26.8 and never rewinds:
+    1. `τ ∈ [0.0, 1.6)`: Canvas lock at $E$ (with the incoming snap ripple settling).
+    2. `τ ∈ [1.6, 21.0)`: Flight through the painting's 3D world (in *The Starry Night* act, the deepest waypoint is `d = 38.5 km`, `lookAt = 44 km`, in front of the 40 km vortex throat, about 0.06 canvas units off its axis).
+    3. `τ ∈ [21.0, 25.0)`: Log-polar homecoming to exact registration at $E$. Return to the Eye (Space) flies to the act's pose at `τ = 20.5` and plays it to 25.0; during the hold or a dissolve it lands at $E$ of the painting on screen instead of rewinding.
+    4. `τ ∈ [25.0, 26.8)`: **1.8-second Clean Reassembled Hold at $E$** (`uAlign = 1`, `primaryScatter = 0`, `primaryFade = 1`). While `uAlign > 0.72` (and the user hasn't moved the pointer within 2.4 s), `.pn-ui[data-clean-eye="1"]` fades out persistent UI chrome, suppresses 3D portal beacons, and fades golden portal vortex particles to `0`.
+    5. `τ ∈ [26.8, 30.0)`: **Dual-World 3D Brushstroke Cross-Dissolve** (`evalOdysseyMorph`) governed by the active `WORLD_GRAPH` edge's Motif Transition Grammar (`light`, `road`, `sky`, `flora`, `dwelling`, `gaze`).
+
+### 10.2 Five Grand Chapters & 30 Iconic Worlds (`DEFAULT_ODYSSEY_SEQUENCE`)
+
+| Chapter | Acts | Worlds (`id` · Year) |
+|---|---|---|
+| **I · Earth (`earth` · 黑土與人, Nuenen & Antwerp)** | `I`–`IV` (4 Worlds) | `I. potato` (1885) · `II. weaver` (1884) · `III. tower` (1885) · `IV. skull` (1886) |
+| **II · Color (`color` · 巴黎與覺醒, Paris & Montmartre)** | `V`–`XI` (7 Worlds) | `V. shoes` (1886) · `VI. galette` (1886) · `VII. paris` (1887) · `VIII. seine` (1887) · `IX. plum` (1887) · `X. tanguy` (1887) · `XI. selfportrait` (1887) |
+| **III · Sun (`sun` · 亞爾的黃金時代, Arles)** | `XII`–`XIX` (8 Worlds) | `XII. yellowhouse` (1888) · `XIII. sunflowers` (1888) · `XIV. harvest` (1888) · `XV. sower` (1888) · `XVI. cafe` (1888) · `XVII. nightcafe` (1888) · `XVIII. rhone` (1888) · `XIX. bedroom` (1888) |
+| **IV · Cosmos (`cosmos` · 聖雷米的內在宇宙, Saint-Rémy)** | `XX`–`XXV` (6 Worlds) | `XX. starry` (1889) · `XXI. irises` (1889) · `XXII. olive` (1889) · `XXIII. wheat` (1889) · `XXIV. roadcypress` (1890) · `XXV. almond` (1890) |
+| **V · Road (`road` · 奧維爾的路與風, Auvers-sur-Oise)** | `XXVI`–`XXX` (5 Worlds) | `XXVI. cottages` (1890) · `XXVII. church` (1890) · `XXVIII. gachet` (1890) · `XXIX. daubigny` (1890) · `XXX. crows` (1890) |
+
+### 10.3 Shader & World-Builder Contracts for Companion Worlds
+
+- **Canvas-authored `VORTEX`/`JET` guard (`src/strokes/glsl/stroke.vert.ts`):**
+  - *The Starry Night* encodes procedural `VORTEX`/`RING`/`JET` strokes with `a1 = (L, 0, 0, W)` (`a1.y == 0`), whereas companion worlds author explicit canvas endpoints `(du, dv, dlnd, W)` via `emitCanvasStroke` (`abs(a1.y) >= 1e-5`).
+  - For `VORTEX` (SWIRL, EDDY) and `JET` (WIND_JET) the vertex shader runs the procedural Starry re-projection only when `abs(a1.y) <= 1e-7`; otherwise it keeps the stroke's authored canvas position `(u, v, d)`, so companion-world clouds, smoke and rain stay where they were drawn.
+  - `RING` (STAR_RING, MOON_RING) has no such guard: it is always re-projected onto the Starry star and moon geometry. Companion worlds must not emit those classes (none do; `emitCustomStar` uses STAR_CORE).
+  - The guard is a convention on `a1.y`, not a flag; a stroke-flag bit would be sturdier (open work).
+- **Linear-space fog (`src/chapters/suite.ts`):**
+  - *The Starry Night*'s `fogNearHex` is `shadeHex(PALETTE.ultramarine, 0.5)`: half of ultramarine in linear light (about `#11204f`), the same value as the `createSharedUniforms` default, so the §4.3 near fog is unchanged by the World System. An earlier value halved the sRGB channels instead, which made every frame away from $E$ darker and less blue.
+  - Companion worlds carry their own hand-picked `fogNearHex` / `fogFarHex` values.
+- **Starry Night invariants the World System must keep:** near and far fog equal to the §4.3 colours; the `uSkyMode == 0` backdrop path unchanged; the 96 s, 10-shot track as the default opening; nothing that is not paint (beacon, portal motes, chrome, invitation pill) drawn while the painting is registered at $E$; no change to Starry strokes, shaders or generators without a frame comparison at the §9.2 checkpoints.
+- **Nocturnal vs. Daylight Portals:**
+  - `emitCustomStar` halo horns are reserved exclusively for nocturnal/twilight worlds (`starry`, `rhone`, `cafe`, `roadcypress`, plus scene-matched warm `gapHex` halos in `potato`, `sower`, `nightcafe`, `olive`), never in daylight interiors, portraits, or still lifes.

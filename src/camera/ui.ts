@@ -109,10 +109,21 @@ const CSS = `
 .pn-tl-thumb{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#f5e27a;
   box-shadow:0 0 8px rgba(242,194,48,.85),0 0 0 1.5px #050a18;left:0%}
 .pn-tl-mark{position:absolute;top:-1px;bottom:-1px;width:1px;background:rgba(5,10,24,.88);z-index:1}
-.pn-tl-acts{display:grid;margin-top:4px;font-size:9.5px;color:rgba(232,237,240,.58)}
-.pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 1px;cursor:pointer;transition:color .15s ease}
+.pn-suite[data-strip-open="0"] .pn-suite-nav,
+.pn-suite[data-strip-open="0"] .pn-suite-scroll{display:none}
+.pn-tl-acts{display:grid;margin-top:4px;font-size:9.5px;color:rgba(232,237,240,.58);overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.pn-tl-acts::-webkit-scrollbar{display:none}
+.pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px;cursor:pointer;transition:color .15s ease;min-width:26px}
 .pn-tl-act:hover{color:#fff}
 .pn-tl-act[data-active="1"]{color:#f5e27a;font-weight:600;overflow:visible;position:relative;z-index:2}
+.pn-touch-pad{position:absolute;left:14px;bottom:94px;pointer-events:auto;display:none;flex-direction:column;gap:6px;z-index:24;
+  transition:opacity .35s ease}
+.pn-ui[data-clean-eye="1"] .pn-touch-pad{opacity:0 !important;pointer-events:none !important}
+.pn-touch-btn{appearance:none;border:0;width:44px;height:38px;border-radius:12px;background:rgba(5,10,24,.76);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.45),inset 0 0 0 1px rgba(242,194,48,.35);
+  color:#f5e27a;font:600 11px/1.1 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.pn-touch-btn:active,.pn-touch-btn[data-active="1"]{background:rgba(242,194,48,.28);color:#fff;box-shadow:0 0 16px rgba(242,194,48,.65),inset 0 0 0 1.5px #fff}
 .pn-atlas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,calc(100% - 24px));max-height:calc(100% - 104px);
   box-sizing:border-box;padding:15px 18px;border-radius:18px;background:rgba(5,10,24,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   box-shadow:0 16px 48px rgba(0,0,0,.68),0 0 0 1px rgba(242,194,48,.32);pointer-events:auto;display:none;overflow-y:auto;z-index:30}
@@ -149,8 +160,17 @@ const CSS = `
   box-shadow:0 0 8px #f2c230;flex-shrink:0}
 .pn-focusable:focus{outline:none}
 .pn-focusable:focus-visible{outline:2px solid #f2c230;outline-offset:-3px}
-@media (max-width:720px){.pn-neighbors{display:none}.pn-tl-shot{max-width:100%}}
-@media (prefers-reduced-motion:reduce){.pn-hint,.pn-card,.pn-suite,.pn-pathbar,.pn-tl,.pn-neighbors{transition:none}}
+@media (pointer:coarse){.pn-touch-pad{display:flex}}
+@media (max-width:768px){
+  .pn-neighbors{display:none}
+  .pn-tl-shot{max-width:100%}
+  .pn-suite{flex-wrap:wrap;justify-content:center;border-radius:16px;padding:5px 8px;gap:4px;width:calc(100% - 16px)}
+  .pn-suite-scroll{max-width:calc(100vw - 74px);flex:1 1 calc(100vw - 74px);-webkit-overflow-scrolling:touch}
+  .pn-suite-sep{display:none}
+  .pn-pathbar{top:76px}
+  .pn-touch-pad{display:flex}
+}
+@media (prefers-reduced-motion:reduce){.pn-hint,.pn-card,.pn-suite,.pn-pathbar,.pn-tl,.pn-neighbors,.pn-touch-pad{transition:none}}
 `;
 
 export interface RingState { x: number; y: number; r: number; visible: boolean; opacity: number }
@@ -408,6 +428,8 @@ export class DirectorUI {
   private readonly suiteBar: HTMLDivElement;
   private readonly suiteScroll: HTMLDivElement;
   private readonly chapterBtns = new Map<PaintingId, HTMLButtonElement>();
+  private readonly drawerToggleBtn: HTMLButtonElement;
+  private readonly topPauseBtn: HTMLButtonElement;
   private readonly odysseyBtn: HTMLButtonElement;
   private readonly themeBtn: HTMLButtonElement;
   private readonly atlasBtn: HTMLButtonElement;
@@ -445,6 +467,8 @@ export class DirectorUI {
   private readonly beaconBtn: HTMLButtonElement;
   private readonly beaconLbl: HTMLSpanElement;
   private readonly odysseyInviteBtn: HTMLButtonElement;
+  private readonly touchPad: HTMLDivElement;
+  private stripUserExpanded = false;
   private beaconTargetId: PaintingId = 'weaver';
   private cardTimer: number | null = null;
   private hudText = '';
@@ -472,6 +496,7 @@ export class DirectorUI {
   private onSeek: ((fraction: number) => void) | null = null;
   private onSelectShot: ((shotIndex: number) => void) | null = null;
   private onAction: ((action: UiAction) => void) | null = null;
+  private onTouchThrust: ((dir: number) => void) | null = null;
   private scrubbing = false;
   private currentActive: PaintingId = 'starry';
   private currentMode: ViewMode = 'theme';
@@ -504,12 +529,30 @@ export class DirectorUI {
     win.addEventListener('pointerdown', markUiActivity, { passive: true });
     win.addEventListener('keydown', markUiActivity, { passive: true });
     win.addEventListener('wheel', markUiActivity, { passive: true });
-    win.addEventListener('touchstart', markUiActivity, { passive: true });
+    win.addEventListener('touchstart', () => {
+      markUiActivity();
+      this.touchPad.style.display = 'flex';
+    }, { passive: true });
 
     // Top-center 30-World / 5-Chapter Suite Bar with smooth horizontal scroll strip + nav buttons + pinned mode controls
     this.suiteBar = doc.createElement('div');
     this.suiteBar.className = 'pn-suite';
     this.suiteBar.style.display = 'none';
+    this.suiteBar.dataset.stripOpen = '0';
+
+    this.drawerToggleBtn = doc.createElement('button');
+    this.drawerToggleBtn.type = 'button';
+    this.drawerToggleBtn.className = 'pn-odyssey-btn';
+    this.drawerToggleBtn.textContent = '🎨 30 幅畫作 ▾';
+    this.drawerToggleBtn.title = '展開 / 收合 30 幅梵谷立體畫作快速導覽列';
+    this.drawerToggleBtn.dataset.on = '0';
+    this.drawerToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.stripUserExpanded = this.suiteBar.dataset.stripOpen !== '1';
+      this.suiteBar.dataset.stripOpen = this.stripUserExpanded ? '1' : '0';
+      this.drawerToggleBtn.dataset.on = this.stripUserExpanded ? '1' : '0';
+      this.input.focus();
+    });
 
     const scrollLeftBtn = doc.createElement('button');
     scrollLeftBtn.type = 'button';
@@ -567,6 +610,18 @@ export class DirectorUI {
     const sep = doc.createElement('div');
     sep.className = 'pn-suite-sep';
 
+    this.topPauseBtn = doc.createElement('button');
+    this.topPauseBtn.type = 'button';
+    this.topPauseBtn.className = 'pn-odyssey-btn';
+    this.topPauseBtn.textContent = '⏸ 暫停';
+    this.topPauseBtn.title = '暫停 / 繼續運鏡 (快捷鍵 P)';
+    this.topPauseBtn.dataset.on = '0';
+    this.topPauseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onAction?.('pause');
+      this.input.focus();
+    });
+
     this.odysseyBtn = doc.createElement('button');
     this.odysseyBtn.type = 'button';
     this.odysseyBtn.className = 'pn-odyssey-btn';
@@ -619,7 +674,18 @@ export class DirectorUI {
       this.onToggleSound?.();
       this.input.focus();
     });
-    this.suiteBar.append(scrollLeftBtn, this.suiteScroll, scrollRightBtn, sep, this.odysseyBtn, this.themeBtn, this.atlasBtn, this.soundBtn);
+    this.suiteBar.append(
+      this.drawerToggleBtn,
+      scrollLeftBtn,
+      this.suiteScroll,
+      scrollRightBtn,
+      sep,
+      this.topPauseBtn,
+      this.odysseyBtn,
+      this.themeBtn,
+      this.atlasBtn,
+      this.soundBtn,
+    );
 
     // Secondary Theme Path selector bar (Mode C)
     this.pathBar = doc.createElement('div');
@@ -745,6 +811,7 @@ export class DirectorUI {
         nb.append(titleDiv, motifDiv);
         nb.addEventListener('click', (e) => {
           e.stopPropagation();
+          this.atlasModal.style.display = 'none';
           this.onSelectPainting?.(it.id);
           this.input.focus();
         });
@@ -899,6 +966,44 @@ export class DirectorUI {
       this.input.focus();
     });
 
+    // Mobile & Touch Flight Pad (Forward / Backward / Return to E)
+    this.touchPad = doc.createElement('div');
+    this.touchPad.className = 'pn-touch-pad';
+    const makeThrustBtn = (label: string, title: string, dir: number): HTMLButtonElement => {
+      const b = doc.createElement('button');
+      b.type = 'button';
+      b.className = 'pn-touch-btn';
+      b.textContent = label;
+      b.title = title;
+      const stop = (e: Event) => {
+        e.stopPropagation();
+        b.dataset.active = '0';
+        this.onTouchThrust?.(0);
+      };
+      b.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        b.dataset.active = '1';
+        try { b.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+        this.onTouchThrust?.(dir);
+      });
+      b.addEventListener('pointerup', stop);
+      b.addEventListener('pointercancel', stop);
+      b.addEventListener('lostpointercapture', stop);
+      return b;
+    };
+    const fwdBtn = makeThrustBtn('▲\n前進', '按住向前飛入 3D 筆觸世界', 1);
+    const backBtn = makeThrustBtn('▼\n後退', '按住向後飛離', -1);
+    const homeTouchBtn = doc.createElement('button');
+    homeTouchBtn.type = 'button';
+    homeTouchBtn.className = 'pn-touch-btn';
+    homeTouchBtn.textContent = '◎\n歸位';
+    homeTouchBtn.title = '飛回畫家唯一凝視點 E';
+    homeTouchBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onAction?.('return');
+    });
+    this.touchPad.append(fwdBtn, backBtn, homeTouchBtn);
+
     this.root.append(
       this.ring,
       this.beaconBtn,
@@ -908,6 +1013,7 @@ export class DirectorUI {
       this.atlasModal,
       this.card,
       this.odysseyInviteBtn,
+      this.touchPad,
       this.tlRoot,
       this.hint,
       this.hud,
@@ -973,7 +1079,7 @@ export class DirectorUI {
     }
 
     this.tlActsRow.style.display = 'grid';
-    this.tlActsRow.style.gridTemplateColumns = `repeat(${seq.length}, 1fr)`;
+    this.tlActsRow.style.gridTemplateColumns = `repeat(${seq.length}, minmax(28px, 1fr))`;
     for (let k = 1; k < seq.length; k++) {
       const m = doc.createElement('div');
       m.className = 'pn-tl-mark';
@@ -1056,6 +1162,7 @@ export class DirectorUI {
     enterBtn.textContent = `✦ 進入《${item.titleZh}》3D 世界`;
     enterBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      this.atlasModal.style.display = 'none';
       this.onSelectPainting?.(active);
       this.input.focus();
     });
@@ -1074,6 +1181,7 @@ export class DirectorUI {
       eb.textContent = `${ms.icon} 飛往《${tItem.titleZh}》：${edge.reasonZh}`;
       eb.addEventListener('click', (e) => {
         e.stopPropagation();
+        this.atlasModal.style.display = 'none';
         this.onSelectPainting?.(edge.to);
         this.input.focus();
       });
@@ -1086,6 +1194,7 @@ export class DirectorUI {
     weaveBtn.title = '依當前畫作與選中母題，沿世界圖譜任意門自動編織 6 幕連貫旅程';
     weaveBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      this.atlasModal.style.display = 'none';
       this.onWeavePath?.(
         active,
         this.activeMotifFilter === 'all' ? undefined : this.activeMotifFilter,
@@ -1114,6 +1223,7 @@ export class DirectorUI {
     onSeek?: (fraction: number) => void;
     onSelectShot?: (shotIndex: number) => void;
     onAction?: (action: UiAction) => void;
+    onTouchThrust?: (dir: number) => void;
   }): void {
     this.onSelectPainting = opts.onSelect;
     this.onSelectMode = opts.onSelectMode;
@@ -1122,6 +1232,7 @@ export class DirectorUI {
     this.onSeek = opts.onSeek ?? null;
     this.onSelectShot = opts.onSelectShot ?? null;
     this.onAction = opts.onAction ?? null;
+    this.onTouchThrust = opts.onTouchThrust ?? null;
     const show = opts.showBar !== false;
     this.suiteBar.style.display = show ? 'flex' : 'none';
     this.tlRoot.style.display = show ? 'block' : 'none';
@@ -1205,6 +1316,14 @@ export class DirectorUI {
     }
 
     const isSingle = opts.pathId === 'single';
+    const stripOpen = !isSingle || this.stripUserExpanded;
+    this.suiteBar.dataset.stripOpen = stripOpen ? '1' : '0';
+    const activeItem = SUITE_ITEM_MAP.get(opts.active);
+    this.drawerToggleBtn.dataset.on = stripOpen ? '1' : '0';
+    this.drawerToggleBtn.textContent = activeItem
+      ? `🎨 ${activeItem.roman}·${activeItem.shortZh} (30幅) ${stripOpen ? '▴' : '▾'}`
+      : `🎨 30 幅畫作 ${stripOpen ? '▴' : '▾'}`;
+
     this.odysseyBtn.dataset.on = opts.mode === 'odyssey' ? '1' : '0';
     this.themeBtn.dataset.on = opts.mode === 'theme' && !isSingle ? '1' : '0';
     this.atlasBtn.dataset.on = opts.mode === 'atlas' ? '1' : '0';
@@ -1354,6 +1473,8 @@ export class DirectorUI {
       const paused = !!s.paused;
       this.playPauseBtn.dataset.on = paused ? '1' : '0';
       this.playPauseBtn.textContent = paused ? '▶ 繼續' : '⏸ 暫停';
+      this.topPauseBtn.dataset.on = paused ? '1' : '0';
+      this.topPauseBtn.textContent = paused ? '▶ 繼續' : '⏸ 暫停';
 
       const inFree = s.mode === 'free';
       this.modeToggleBtn.dataset.on = inFree ? '1' : '0';
