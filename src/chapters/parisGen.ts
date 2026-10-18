@@ -11,7 +11,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -63,9 +63,6 @@ function genParisSky(sink: StrokeSink, rng: Rng): void {
       { q1: 0.14, q2: i & 3, q3: rng.next() },
     );
   }
-
-  // Radiant Parisian morning sun-haze at the end of the boulevard (uP = 0.46, v = 0.56)
-  emitCustomStar(sink, PARIS_ASPECT, 0.46, 0.56, 13200, 0.024, 7, 1.15, rng, P.lemon);
 }
 
 /** 2. Pointillist Boulevard Pavement converging toward (0.46, 0.42) & Strolling Parisian Figures. */

@@ -12,7 +12,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -64,9 +64,6 @@ function genUndulatingBlueBackdrop(sink: StrokeSink, rng: Rng): void {
       { q1: 0.24, q2: i & 3, q3: rng.next() },
     );
   }
-
-  // Luminous melancholic gaze & foxglove spirit portal at (uP = 0.54, v = 0.60)
-  emitCustomStar(sink, GACHET_ASPECT, 0.54, 0.60, 12500, 0.022, 7, 1.22, rng, BOOK_YELLOW);
 }
 
 /** 2. Tilted Vermilion-Red Tabletop, Two Yellow Novels & Purple Foxglove Stem (GROUND, HOUSE, GROVE & WINDOW). */

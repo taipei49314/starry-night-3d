@@ -12,7 +12,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -60,9 +60,6 @@ function genGardenMeadowBackdrop(sink: StrokeSink, rng: Rng): void {
       { q1: 0.16, q2: i & 3, q3: rng.next() },
     );
   }
-
-  // Luminous halo around the Solitary Pearl-White Iris Portal at (uP = 0.24, v = 0.58)
-  emitCustomStar(sink, IRISES_ASPECT, 0.24, 0.58, 12400, 0.024, 7, 1.25, rng, P.zincWhite);
 }
 
 /** 2. Terracotta-Sienna Garden Soil & Arching Sage-Viridian Sword Leaves (GROUND & GROVE). */

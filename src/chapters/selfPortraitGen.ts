@@ -11,7 +11,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -66,9 +66,6 @@ function genRadialAuraBackdrop(sink: StrokeSink, rng: Rng): void {
       { q1: 0.25, q2: i & 3, q3: rng.next() },
     );
   }
-
-  // Luminous golden-emerald gaze halo centered between the painter's eyes (uP = 0.49, v = 0.56)
-  emitCustomStar(sink, SELFPORTRAIT_ASPECT, 0.49, 0.56, 12400, 0.022, 7, 1.25, rng, STRAW_GOLD);
 }
 
 /** 2. Blue Cobalt Painter's Jacket & Collar in the Foreground (GROUND [155..510 m]). */

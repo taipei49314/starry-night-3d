@@ -70,7 +70,7 @@ export function generateOliveChapter(
       cA, P.zincWhite, rng,
     );
   }
-  emitCustomStar(sink, OLIVE_ASPECT, 0.54, 0.80, 12400, 0.034, 7, 1.35, rng, P.lemon);
+  emitCustomStar(sink, OLIVE_ASPECT, 0.54, 0.80, 12400, 0.034, 7, 1.35, rng, P.lemon, P.chrome);
 
   // 2. Undulating Rose-Ochre Earth & Cobalt Tree Shadows (GROUND [205..1650 m])
   for (let i = 0; i < 19500; i++) {
@@ -189,11 +189,26 @@ export function generateRoadCypressChapter(
   emitCustomStar(sink, ROADCYPRESS_ASPECT, 0.76, 0.78, 12200, 0.026, 7, 1.3, rng, P.chrome);
   emitCustomStar(sink, ROADCYPRESS_ASPECT, 0.22, 0.74, 12800, 0.022, 6, 1.15, rng, P.lemon);
 
-  // 2. Winding Provençal Road & Golden Wheat Shoulder (GROUND [205..1580 m])
+  // 2. Distant Undulating Blue-Violet Alpilles Hills across Horizon (HILL [1850..3600 m])
+  for (let i = 0; i < 2400; i++) {
+    const uP = rng.range(-0.04, 1.04);
+    const ridgeTop = 0.41 + 0.035 * Math.sin(uP * 8.5 + 0.6);
+    const v = rng.range(0.32, ridgeTop);
+    const d = rng.range(1850, 3550);
+    const slope = 0.28 * Math.cos(uP * 8.5 + 0.6);
+    emitCanvasStroke(
+      sink, ROADCYPRESS_ASPECT, StrokeClass.HILL, uP, v, d,
+      rng.range(0.016, 0.032), slope + rng.range(-0.12, 0.12), rng.range(0.005, 0.009),
+      shadeHex(mixHex(P.prussian, P.cobalt, rng.range(0.25, 0.75)), rng.range(0.85, 1.12)), P.cerulean, rng,
+      { flags: StrokeFlag.OUTLINE },
+    );
+  }
+
+  // 3. Winding Provençal Road & Golden Wheat Shoulder (GROUND [205..1580 m])
   for (let i = 0; i < 17500; i++) {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.15);
-    const v = 0.002 + 0.38 * t;
+    const v = 0.002 + 0.36 * t;
     const d = clamp(208 + 1340 * (t * t), 205, 1560);
     const roadCenter = 0.52 - 0.18 * Math.sin(v * 7.5);
     const onRoad = Math.abs(uP - roadCenter) < 0.22 * (1 - 0.55 * t);
@@ -207,30 +222,88 @@ export function generateRoadCypressChapter(
     );
   }
 
-  // 3. Twin Towering Cypress Flames at Center (CYPRESS [146..238 m]) + Wayfarers, Carriage & Inn (HOUSE & WINDOW)
-  for (let i = 0; i < 8200; i++) {
-    const s = Math.pow(rng.next(), 0.85);
-    const v = 0.22 + 0.76 * s;
-    const taper = Math.max(0.018, 0.14 * (1 - 0.82 * s));
-    const uP = 0.48 + 0.025 * Math.sin(v * 9.0) + rng.range(-taper, taper);
-    const d = clamp(150 + 78 * Math.abs(uP - 0.48) / 0.15 + rng.range(-5, 5), 146, 238);
-    const curl = 1.57 + 0.32 * Math.sin(v * 14.0 + uP * 10.0);
-    emitCanvasStroke(
-      sink, ROADCYPRESS_ASPECT, StrokeClass.CYPRESS, uP, v, d,
-      rng.range(0.020, 0.042), curl, rng.range(0.005, 0.0095),
-      CYPRESS_FLAME, P.cypressGreen, rng, { flags: StrokeFlag.OUTLINE },
+  // 4. Twin Towering Cypress Flames at Center (CYPRESS [146..238 m]):
+  //    - Left main cypress: uCenter ~ 0.42, v = 0.20..0.99, d = 148..194 m
+  //    - Right companion cypress: uCenter ~ 0.56, v = 0.22..0.88, d = 196..238 m
+  const cypressTrees = [
+    { uBase: 0.42, vMin: 0.20, vSpan: 0.79, width: 0.075, dBase: 164, dSpan: 24, count: 5200, swayPhase: 0.0 },
+    { uBase: 0.56, vMin: 0.22, vSpan: 0.66, width: 0.062, dBase: 212, dSpan: 22, count: 3800, swayPhase: 1.4 },
+  ];
+  for (const tree of cypressTrees) {
+    // Trunk at base of each cypress
+    for (let j = 0; j < 280; j++) {
+      const uP = tree.uBase + rng.range(-0.018, 0.018);
+      const v = rng.range(tree.vMin - 0.04, tree.vMin + 0.08);
+      emitCanvasStroke(
+        sink, ROADCYPRESS_ASPECT, StrokeClass.CYPRESS, uP, v, tree.dBase + rng.range(-6, 6),
+        0.018, Math.PI * 0.5 + rng.range(-0.08, 0.08), 0.005,
+        0x3b281c, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+    // Surging dark-emerald and bronze-black flame foliage
+    for (let i = 0; i < tree.count; i++) {
+      const s = Math.pow(rng.next(), 0.85);
+      const v = tree.vMin + tree.vSpan * s;
+      const taper = Math.max(0.012, tree.width * (1 - 0.82 * s));
+      const spineU = tree.uBase + 0.020 * Math.sin(v * 9.0 + tree.swayPhase);
+      const offset = rng.range(-taper, taper);
+      const uP = spineU + offset;
+      const d = clamp(tree.dBase + tree.dSpan * (Math.abs(offset) / Math.max(0.01, taper)) + rng.range(-4, 4), 146, 238);
+      const curl = 1.57 + 0.32 * Math.sin(v * 14.0 + uP * 10.0 + tree.swayPhase);
+      const cA = (i % 5 === 0) ? mixHex(P.cypressGreen, P.ochre, 0.35) : CYPRESS_FLAME;
+      emitCanvasStroke(
+        sink, ROADCYPRESS_ASPECT, StrokeClass.CYPRESS, uP, v, d,
+        rng.range(0.020, 0.040), curl, rng.range(0.005, 0.0092),
+        cA, P.cypressGreen, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+  }
+
+  // 5. Two Nocturnal Wayfarers (d = 340 m), Horse-Drawn Yellow Carriage (d = 660 m) & Roadside Inn (d = 820 m)
+  // Two wayfarers walking side by side at uP = 0.34 & 0.39, v = 0.11..0.23, d = 340 m (promoted to GROVE)
+  for (const wu of [0.34, 0.39]) {
+    for (let j = 0; j < 320; j++) {
+      const s = rng.next();
+      const v = 0.11 + 0.12 * s;
+      const uP = wu + rng.range(-0.016, 0.016);
+      const isHat = s > 0.82;
+      T_DIR.set(0, 1, 0);
+      emitSurfaceStroke(
+        sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, uP, v, 340 + rng.range(-12, 12),
+        0.014, 0.0048, T_DIR, N_FRONT,
+        isHat ? P.chrome : P.cobalt, P.prussian, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+  }
+  // Yellow horse-drawn carriage at uP = 0.62..0.73, v = 0.20..0.31, d = 660 m
+  for (let i = 0; i < 1100; i++) {
+    const isHorse = i < 380;
+    const uP = isHorse ? rng.range(0.61, 0.66) : rng.range(0.66, 0.73);
+    const v = isHorse ? rng.range(0.20, 0.27) : rng.range(0.21, 0.31);
+    T_DIR.set(isHorse ? 1 : 0, isHorse ? 0.2 : 1, 0).normalize();
+    emitSurfaceStroke(
+      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, uP, v, 660 + rng.range(-18, 18),
+      0.015, 0.005, T_DIR, N_FRONT,
+      isHorse ? 0xd8d4c8 : P.chrome, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Yellow carriage, two nocturnal wayfarers & glowing inn on right horizon (HOUSE & WINDOW [470..1150 m])
-  for (let i = 0; i < 2400; i++) {
-    const isCarriage = i < 1200;
-    const uP = isCarriage ? 0.66 + rng.range(-0.05, 0.05) : 0.36 + rng.range(-0.04, 0.04);
-    const v = isCarriage ? rng.range(0.20, 0.30) : rng.range(0.10, 0.22);
+  // Roadside cottage/inn on right horizon (uP = 0.80..0.94, v = 0.28..0.44, d = 820 m) + glowing window
+  for (let i = 0; i < 950; i++) {
+    const uP = rng.range(0.80, 0.94);
+    const v = rng.range(0.28, 0.44);
+    const isRoof = v > 0.38;
+    T_DIR.set(isRoof ? 1 : 0, isRoof ? -0.25 : 1, 0).normalize();
+    emitSurfaceStroke(
+      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, uP, v, 820 + rng.range(-22, 22),
+      0.016, 0.0052, T_DIR, N_FRONT,
+      isRoof ? 0xb85228 : 0xd8cfa8, P.cobalt, rng, { flags: StrokeFlag.OUTLINE },
+    );
+  }
+  for (let j = 0; j < 220; j++) {
     T_DIR.set(0, 1, 0);
     emitSurfaceStroke(
-      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, uP, v, isCarriage ? 680 : 490,
-      0.016, 0.005, T_DIR, N_FRONT,
-      isCarriage ? P.chrome : P.cobalt, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
+      sink, ROADCYPRESS_ASPECT, StrokeClass.WINDOW, 0.85 + rng.range(-0.016, 0.016), 0.33 + rng.range(-0.02, 0.02), 805,
+      0.013, 0.0045, T_DIR, N_FRONT, P.lemon, P.chrome, rng, { emissive: 1.25 },
     );
   }
 
@@ -240,6 +313,16 @@ export function generateRoadCypressChapter(
     ROADCYPRESS_ASPECT,
     [[-0.04, 0.0, 210], [1.04, 0.0, 210], [1.04, 0.38, 1540], [-0.04, 0.38, 1540]],
     mat, 0x3b3422, 'roadcypress-road',
+  ));
+  underlays.add(buildCanvasQuadMesh(
+    ROADCYPRESS_ASPECT,
+    [[0.38, 0.20, 172], [0.46, 0.20, 172], [0.44, 0.92, 176], [0.40, 0.92, 176]],
+    mat, CYPRESS_FLAME, 'roadcypress-left-core',
+  ));
+  underlays.add(buildCanvasQuadMesh(
+    ROADCYPRESS_ASPECT,
+    [[0.52, 0.22, 218], [0.59, 0.22, 218], [0.57, 0.84, 222], [0.54, 0.84, 222]],
+    mat, CYPRESS_FLAME, 'roadcypress-right-core',
   ));
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
@@ -287,7 +370,6 @@ export function generateCottagesChapter(
       cA, P.cobalt, rng,
     );
   }
-  emitCustomStar(sink, COTTAGES_ASPECT, 0.34, 0.80, 13000, 0.022, 6, 1.1, rng, P.zincWhite);
 
   // 2. Waving Auvers Spring Meadow & Rain-Washed Path (GROUND [205..1600 m])
   for (let i = 0; i < 19000; i++) {
@@ -391,7 +473,6 @@ export function generateDaubignyChapter(
       shadeHex(mixHex(0xa8dcd2, P.zincWhite, rng.range(0.25, 0.78)), rng.range(0.92, 1.08)), P.lemon, rng,
     );
   }
-  emitCustomStar(sink, DAUBIGNY_ASPECT, 0.52, 0.74, 13000, 0.022, 6, 1.15, rng, P.lemon);
 
   // 2. Sweeping 2:1 Garden Lawn, Rose Flowerbeds & Ochre Gravel Paths (GROUND [205..1650 m])
   for (let i = 0; i < 23500; i++) {

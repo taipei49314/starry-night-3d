@@ -18,6 +18,7 @@ import {
 const P = PALETTE;
 const N_UP = new Vector3(0, 1, 0.14).normalize();
 const N_FRONT = new Vector3(0, 0, 1);
+const N_RIGHT = new Vector3(-0.74, 0, 0.67).normalize();
 const T_DIR = new Vector3(1, 0, 0);
 
 function makeVillage(aspect: number, uP: number, v: number, d: number): VillageInfo {
@@ -36,6 +37,7 @@ const SKY_FIERCE_COBALT = 0x162c6e;
 const HOUSE_CHROME = 0xf4c428;
 const SHUTTER_GREEN = 0x267e46;
 const PINK_CAFE = 0xdca08c;
+const ROOF_TERRACOTTA = 0xd85c28;
 
 export function generateYellowHouseChapter(
   sink: StrokeSink,
@@ -48,7 +50,7 @@ export function generateYellowHouseChapter(
   const t0 = performance.now();
   const rng = forkRng(seed, 'yellowhouse:all');
 
-  // 1. Fierce, almost-black cobalt sky over Place Lamartine (UNDERPAINT & SKY_BAND)
+  // 1. Fierce, almost-black cobalt midday sky over Place Lamartine (UNDERPAINT & SKY_BAND)
   for (let i = 0; i < 5200; i++) {
     emitCanvasStroke(
       sink, YELLOWHOUSE_ASPECT, StrokeClass.UNDERPAINT, rng.range(-0.10, 1.10), rng.range(0.46, 1.06), rng.range(230000, 250000),
@@ -66,55 +68,101 @@ export function generateYellowHouseChapter(
       cA, P.ultramarine, rng,
     );
   }
-  emitCustomStar(sink, YELLOWHOUSE_ASPECT, 0.48, 0.62, 12800, 0.022, 6, 1.15, rng, HOUSE_CHROME);
 
-  // 2. Sun-baked Place Lamartine street & gas-pipe trench mounds (GROUND [205..1600 m] & CYPRESS)
+  // 2. Sun-baked Place Lamartine street & gas-pipe trench mounds (GROUND [205..1580 m] & CYPRESS)
   for (let i = 0; i < 19500; i++) {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.15);
     const v = 0.002 + 0.46 * t;
     const d = clamp(208 + 1350 * (t * t), 205, 1580);
-    const cA = shadeHex(mixHex(HOUSE_CHROME, P.ochre, rng.range(0.25, 0.85)), rng.range(0.88, 1.12));
+    const inTrench = uP > 0.20 && uP < 0.64 && v > 0.08 && v < 0.28;
+    const cA = inTrench
+      ? shadeHex(mixHex(0xb87832, P.ochre, rng.range(0.2, 0.7)), rng.range(0.82, 1.10))
+      : shadeHex(mixHex(HOUSE_CHROME, P.ochre, rng.range(0.25, 0.85)), rng.range(0.88, 1.12));
     emitCanvasStroke(
       sink, YELLOWHOUSE_ASPECT, StrokeClass.GROUND, uP, v, d,
       rng.range(0.014, 0.028), rng.range(-0.25, 0.25), rng.range(0.0045, 0.0085),
       cA, 0xb87832, rng, { q1: N_UP.x, q2: N_UP.y, q3: N_UP.z },
     );
   }
-  // Foreground trench sand mounds (CYPRESS [154..232 m])
-  for (let i = 0; i < 1800; i++) {
-    const uP = rng.range(0.18, 0.68);
-    const v = rng.range(0.06, 0.24);
-    emitCanvasStroke(
-      sink, YELLOWHOUSE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 228),
-      rng.range(0.016, 0.032), rng.range(-0.35, 0.35), rng.range(0.005, 0.009),
-      P.ochre, HOUSE_CHROME, rng,
-    );
+  // Foreground trench sand mounds & workmen/pedestrian figures (CYPRESS [156..232 m] & GROVE [280..440 m])
+  for (let i = 0; i < 2400; i++) {
+    const isPedestrian = i >= 1850;
+    if (isPedestrian) {
+      const pIdx = i % 3;
+      const uP = (pIdx === 0 ? 0.34 : pIdx === 1 ? 0.52 : 0.72) + rng.range(-0.015, 0.015);
+      const v = rng.range(0.26, 0.38);
+      T_DIR.set(0, 1, 0);
+      emitSurfaceStroke(
+        sink, YELLOWHOUSE_ASPECT, StrokeClass.GROVE, uP, v, 360 + pIdx * 40,
+        0.012, 0.004, T_DIR, N_FRONT,
+        pIdx === 1 ? P.zincWhite : P.prussian, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    } else {
+      const uP = rng.range(0.18, 0.68);
+      const v = rng.range(0.06, 0.24);
+      emitCanvasStroke(
+        sink, YELLOWHOUSE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 228),
+        rng.range(0.016, 0.032), rng.range(-0.35, 0.35), rng.range(0.005, 0.009),
+        P.ochre, HOUSE_CHROME, rng,
+      );
+    }
   }
 
-  // 3. The Yellow House Corner Facade, Pink Neighbor Café & Railway Bridges (HOUSE & WINDOW [465..1250 m])
-  for (let i = 0; i < 7800; i++) {
-    const isBridge = i >= 6200;
-    const uP = isBridge ? rng.range(0.68, 0.98) : rng.range(0.16, 0.68);
-    const v = isBridge ? rng.range(0.36, 0.50) : rng.range(0.38, 0.78);
-    const d = isBridge ? rng.range(850, 1220) : clamp(480 + 260 * Math.abs(uP - 0.46), 470, 820);
-    const isPink = !isBridge && uP < 0.30;
-    const cA = isBridge ? 0x6e6858 : isPink ? PINK_CAFE : HOUSE_CHROME;
-    const ang = v > 0.70 && !isBridge ? (uP < 0.46 ? 0.45 : -0.45) : Math.PI * 0.5;
+  // 3. Multi-plane Architecture: Yellow House Left Wing (470..530 m), Receding Right Wing (500..660 m),
+  //    Pink Neighbor Restaurant (540..640 m), Terracotta Roofs, Plane Trees (GROVE), & Railway Bridges (820..1280 m)
+  for (let i = 0; i < 9200; i++) {
+    const isBridge = i >= 7200;
+    const uP = isBridge ? rng.range(0.68, 0.98) : rng.range(0.12, 0.68);
+    const roofPeak = uP < 0.32 ? 0.72 : 0.78 - 0.14 * Math.abs(uP - 0.48);
+    const v = isBridge ? rng.range(0.36, 0.51) : rng.range(0.36, roofPeak);
+    const isPink = !isBridge && uP < 0.32;
+    const isRightWing = !isBridge && uP > 0.49;
+    const isRoof = !isBridge && v > roofPeak - 0.065;
+    const d = isBridge
+      ? rng.range(850, 1250)
+      : isPink
+        ? rng.range(540, 630)
+        : isRightWing
+          ? 495 + (uP - 0.49) * 820 + rng.range(-8, 8)
+          : 472 + Math.abs(uP - 0.44) * 280 + rng.range(-8, 8);
+    const cA = isBridge
+      ? (v > 0.48 ? 0x2a2e38 : 0x6e6858)
+      : isRoof
+        ? ROOF_TERRACOTTA
+        : isPink
+          ? PINK_CAFE
+          : HOUSE_CHROME;
+    const ang = isRoof ? (uP < 0.48 ? 0.38 : -0.38) : isBridge ? 0 : Math.PI * 0.5;
     T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
+    const faceN = isRightWing ? N_RIGHT : N_FRONT;
     emitSurfaceStroke(
       sink, YELLOWHOUSE_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.015, 0.030), rng.range(0.005, 0.0095), T_DIR, N_FRONT,
+      rng.range(0.014, 0.028), rng.range(0.0048, 0.0090), T_DIR, faceN,
       shadeHex(cA, rng.range(0.88, 1.12)), P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Emerald-green shutters on Vincent's guest room & studio windows (WINDOW [465..620 m])
-  const winCoords = [[0.38, 0.62], [0.45, 0.62], [0.53, 0.62], [0.60, 0.62], [0.45, 0.46], [0.55, 0.46]];
-  for (const [wu, wv] of winCoords) {
+  // Place Lamartine avenue plane trees & train steam puff over the right railway bridge (GROVE [380..980 m])
+  for (let i = 0; i < 1600; i++) {
+    const isSteam = i >= 1200;
+    const uP = isSteam ? rng.range(0.76, 0.92) : (i < 600 ? rng.range(0.04, 0.16) : rng.range(0.66, 0.78));
+    const v = isSteam ? rng.range(0.51, 0.58) : rng.range(0.38, 0.62);
+    const d = isSteam ? rng.range(860, 980) : rng.range(420, 740);
+    const ang = rng.range(0, Math.PI * 2);
+    T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
+    emitSurfaceStroke(
+      sink, YELLOWHOUSE_ASPECT, StrokeClass.GROVE, uP, v, d,
+      0.015, 0.005, T_DIR, N_FRONT,
+      isSteam ? P.zincWhite : mixHex(SHUTTER_GREEN, P.ochre, rng.range(0.15, 0.55)), P.lemon, rng,
+    );
+  }
+  // Emerald-green shutters on Vincent's guest room (0.45, 0.62) & studio windows (WINDOW [465..620 m])
+  const winCoords = [[0.38, 0.62, 495], [0.45, 0.62, 475], [0.53, 0.62, 525], [0.60, 0.62, 575], [0.45, 0.45, 475], [0.55, 0.45, 540]];
+  for (const [wu, wv, wd] of winCoords) {
     for (let j = 0; j < 260; j++) {
       T_DIR.set(0, 1, 0);
       emitSurfaceStroke(
-        sink, YELLOWHOUSE_ASPECT, StrokeClass.WINDOW, wu + rng.range(-0.020, 0.020), wv + rng.range(-0.035, 0.035), rng.range(468, 540),
+        sink, YELLOWHOUSE_ASPECT, StrokeClass.WINDOW, wu + rng.range(-0.020, 0.020), wv + rng.range(-0.035, 0.035), wd + rng.range(-6, 6),
         0.015, 0.005, T_DIR, N_FRONT,
         SHUTTER_GREEN, HOUSE_CHROME, rng, { emissive: 0.7 },
       );
@@ -128,10 +176,15 @@ export function generateYellowHouseChapter(
     [[-0.04, 0.0, 210], [1.04, 0.0, 210], [1.04, 0.46, 1550], [-0.04, 0.46, 1550]],
     mat, P.ochre, 'yellowhouse-street',
   ));
+  underlays.add(buildCanvasQuadMesh(
+    YELLOWHOUSE_ASPECT,
+    [[0.32, 0.36, 485], [0.66, 0.36, 620], [0.66, 0.74, 620], [0.32, 0.74, 485]],
+    mat, 0xc8981e, 'yellowhouse-facade',
+  ));
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
   return {
     underlays,
-    village: makeVillage(YELLOWHOUSE_ASPECT, 0.48, 0.62, 520),
+    village: makeVillage(YELLOWHOUSE_ASPECT, 0.48, 0.62, 485),
     timings,
   };
 }
@@ -172,7 +225,6 @@ export function generateHarvestChapter(
       shadeHex(mixHex(CRAU_TURQUOISE, P.zincWhite, rng.range(0.2, 0.65)), rng.range(0.92, 1.08)), P.lemon, rng,
     );
   }
-  emitCustomStar(sink, HARVEST_ASPECT, 0.52, 0.84, 13200, 0.022, 6, 1.15, rng, CRAU_GOLD);
 
   // Violet-blue Alpilles ridge along v in [0.68, 0.78] (HILL [1800..4600 m])
   for (let i = 0; i < 4800; i++) {
@@ -298,7 +350,7 @@ export function generateSowerChapter(
       cA, P.chrome, rng, { emissive: r < 0.22 ? 0.65 : 0.15 },
     );
   }
-  emitCustomStar(sink, SOWER_ASPECT, 0.58, 0.60, 12200, 0.042, 8, 1.45, rng, P.lemon);
+  emitCustomStar(sink, SOWER_ASPECT, 0.58, 0.60, 12200, 0.042, 8, 1.45, rng, P.lemon, SUN_CHARTREUSE);
 
   // 2. Violet-and-Ultramarine Ploughed Furrows (GROUND [205..1650 m])
   for (let i = 0; i < 19000; i++) {
@@ -403,11 +455,11 @@ export function generateNightCafeChapter(
       shadeHex(CEILING_VIRIDIAN, rng.range(0.86, 1.14)), P.lemon, rng,
     );
   }
-  // 4 blazing gasoliers suspended from the ceiling
-  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.28, 0.78, 12400, 0.022, 6, 1.25, rng, P.lemon);
-  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.44, 0.76, 13200, 0.018, 5, 1.05, rng, P.chrome);
-  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.62, 0.76, 13400, 0.018, 5, 1.05, rng, P.chrome);
-  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.76, 0.78, 12600, 0.022, 6, 1.25, rng, P.lemon);
+  // 4 blazing gasoliers suspended from the viridian ceiling (with viridian/sulfur halo rings, not Prussian blue)
+  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.28, 0.78, 12400, 0.020, 5, 1.18, rng, P.lemon, CEILING_VIRIDIAN);
+  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.44, 0.76, 13200, 0.016, 4, 1.00, rng, P.chrome, CEILING_VIRIDIAN);
+  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.62, 0.76, 13400, 0.016, 4, 1.00, rng, P.chrome, CEILING_VIRIDIAN);
+  emitCustomStar(sink, NIGHTCAFE_ASPECT, 0.76, 0.78, 12600, 0.020, 5, 1.18, rng, P.lemon, CEILING_VIRIDIAN);
 
   // 2. Steeply Plunging Sulfur-Pine Floorboards radiating from Open Doorway (0.52, 0.48) (GROUND [205..1450 m])
   for (let i = 0; i < 19500; i++) {

@@ -12,9 +12,9 @@ export type PaintingId =
   | 'potato'
   | 'weaver'
   | 'tower'
-  | 'shoes'
   | 'skull'
   // Chapter II — Color (Paris & Montmartre, 1886–1887)
+  | 'shoes'
   | 'galette'
   | 'paris'
   | 'seine'
@@ -45,8 +45,8 @@ export type PaintingId =
   | 'crows';
 
 export const ALL_PAINTING_IDS: readonly PaintingId[] = [
-  'potato', 'weaver', 'tower', 'shoes', 'skull',
-  'galette', 'paris', 'seine', 'plum', 'tanguy', 'selfportrait',
+  'potato', 'weaver', 'tower', 'skull',
+  'shoes', 'galette', 'paris', 'seine', 'plum', 'tanguy', 'selfportrait',
   'yellowhouse', 'sunflowers', 'harvest', 'sower', 'cafe', 'nightcafe', 'rhone', 'bedroom',
   'starry', 'irises', 'olive', 'wheat', 'roadcypress', 'almond',
   'cottages', 'church', 'gachet', 'daubigny', 'crows',
@@ -92,6 +92,9 @@ const _rec: StrokeRecord = {
 
 /** Push a stroke after clamping its depth safely inside CLASS_INFO[r.cls].dRange. */
 export function pushChapterStroke(sink: StrokeSink, r: StrokeRecord): void {
+  if (r.cls === StrokeClass.HOUSE && r.d < 458) {
+    r.cls = StrokeClass.GROVE;
+  }
   const [d0, d1] = CLASS_INFO[r.cls].dRange;
   r.d = clamp(r.d, d0 + 1, d1 - 1);
   sink.push(r);
@@ -121,11 +124,12 @@ export function emitCanvasStroke(
     q3?: number;
   },
 ): void {
-  const [d0, d1] = CLASS_INFO[cls].dRange;
+  const effCls = cls === StrokeClass.HOUSE && d < 458 ? StrokeClass.GROVE : cls;
+  const [d0, d1] = CLASS_INFO[effCls].dRange;
   _rec.u = uFromPaint(uP, aspect);
   _rec.v = v;
   _rec.d = clamp(d, d0 + 2, d1 - 2);
-  _rec.cls = cls;
+  _rec.cls = effCls;
   _rec.flags = opts?.flags ?? StrokeFlag.NONE;
   _rec.du = L * Math.cos(ang);
   _rec.dv = L * Math.sin(ang);
@@ -136,7 +140,7 @@ export function emitCanvasStroke(
   _rec.emissive = opts?.emissive ?? 0;
   _rec.seed = rng.next();
   _rec.kappa = opts?.kappa ?? rng.range(-0.22, 0.22);
-  const isSkyBand = cls === StrokeClass.SKY_BAND;
+  const isSkyBand = effCls === StrokeClass.SKY_BAND;
   _rec.q1 = opts?.q1 ?? (isSkyBand ? 0.22 : 0);
   _rec.q2 = opts?.q2 ?? (isSkyBand ? Math.floor(_rec.seed * 4) : 0);
   _rec.q3 = opts?.q3 ?? (isSkyBand ? (_rec.seed * 17.37) % 1 : 0);
@@ -166,7 +170,8 @@ export function emitSurfaceStroke(
   rng: Rng,
   opts?: { emissive?: number; kappa?: number; flags?: number },
 ): void {
-  const [d0, d1] = CLASS_INFO[cls].dRange;
+  const effCls = cls === StrokeClass.HOUSE && d < 458 ? StrokeClass.GROVE : cls;
+  const [d0, d1] = CLASS_INFO[effCls].dRange;
   const dc = clamp(d, d0 + 8, d1 - 8);
   const u = uFromPaint(uP, aspect);
   canvasToWorld(u, v, dc, _c);
@@ -178,7 +183,7 @@ export function emitSurfaceStroke(
   const s = segmentToStroke(_a, _b);
   const dA = s.d * Math.exp(-0.5 * s.dlnd);
   const dB = s.d * Math.exp(0.5 * s.dlnd);
-  _rec.cls = cls;
+  _rec.cls = effCls;
   _rec.flags = opts?.flags ?? StrokeFlag.NONE;
   _rec.w = wh;
   _rec.colA = packSrgb(colA);
@@ -220,6 +225,7 @@ export function emitCustomStar(
   gain: number,
   rng: Rng,
   tintHex: number = PALETTE.lemon,
+  gapHex?: number,
 ): void {
   const cx = uFromPaint(uP, aspect) * CANVAS_ASPECT;
   const cy = v;
@@ -254,9 +260,15 @@ export function emitCustomStar(
   }
 
   // 2. Concentric halo rings stepping back in depth inside STAR_CORE [11,900..16,000]
-  const ringColors = [PALETTE.lemon, PALETTE.chrome, tintHex, PALETTE.blueGreen];
-  const gapColorA = mixHex(PALETTE.ultramarine, PALETTE.prussian, 0.35);
-  const gapColorB = mixHex(PALETTE.cobalt, PALETTE.ultramarine, 0.45);
+  const ringColors = gapHex !== undefined
+    ? [PALETTE.lemon, PALETTE.chrome, tintHex, mixHex(tintHex, gapHex, 0.35)]
+    : [PALETTE.lemon, PALETTE.chrome, tintHex, PALETTE.blueGreen];
+  const gapColorA = gapHex !== undefined
+    ? shadeHex(gapHex, 0.92)
+    : mixHex(PALETTE.ultramarine, PALETTE.prussian, 0.35);
+  const gapColorB = gapHex !== undefined
+    ? mixHex(gapHex, tintHex, 0.28)
+    : mixHex(PALETTE.cobalt, PALETTE.ultramarine, 0.45);
   const dRho = rhoCore * 0.58;
   for (let k = 0; k < rings; k++) {
     const rho = rhoCore * (1.05 + 0.58 * k);
