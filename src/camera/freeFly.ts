@@ -7,7 +7,7 @@ const DEG = Math.PI / 180;
 
 export type DirectorCommand =
   | { kind: 'return' } | { kind: 'resume' } | { kind: 'restart' } | { kind: 'storm' } | { kind: 'calm' } | { kind: 'hud' }
-  | { kind: 'shot'; index: number };
+  | { kind: 'pause' } | { kind: 'freelock' } | { kind: 'shot'; index: number };
 
 export interface InputCallbacks {
   /** Any pointerdown, movement/unbound keydown or wheel: the pilot takes over (§5.3 hand-off). */
@@ -92,6 +92,11 @@ export class PilotInput {
 
   resetWarp(): void {
     this.warpK = 1;
+    this.warpAcc = 0;
+  }
+
+  setWarp(k: number): void {
+    this.warpK = Math.round(Math.max(0, Math.min(1.6, k)) * 10) / 10;
     this.warpAcc = 0;
   }
 
@@ -205,6 +210,8 @@ export class PilotInput {
     if (c === 'KeyG') return cmd({ kind: 'storm' });
     if (c === 'KeyM') return cmd({ kind: 'calm' });
     if (c === 'KeyH') return cmd({ kind: 'hud' });
+    if (c === 'KeyP') return cmd({ kind: 'pause' });
+    if (c === 'KeyF') return cmd({ kind: 'freelock' });
     if (MOVE_CODES.has(c)) {
       e.preventDefault();
       this.keys.add(c);

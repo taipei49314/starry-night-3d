@@ -118,16 +118,19 @@ function readFlags(): Flags {
   const modeParam = p.get('mode')?.toLowerCase();
   const pathParam = p.get('path')?.toLowerCase();
 
-  let mode: ViewMode = 'odyssey';
-  let pathId = 'odyssey';
+  let mode: ViewMode = 'theme';
+  let pathId = 'single';
 
-  if (odysseyParam === '0' || isHarnessPin) {
+  if (odysseyParam === '1' || modeParam === 'odyssey' || pathParam === 'odyssey') {
+    mode = 'odyssey';
+    pathId = 'odyssey';
+  } else if (odysseyParam === '0' || isHarnessPin) {
     mode = 'theme';
     pathId = 'single';
   } else if (modeParam === 'atlas') {
     mode = 'atlas';
     pathId = pathParam ?? 'odyssey';
-  } else if (modeParam === 'theme' || (pathParam && pathParam !== 'odyssey')) {
+  } else if (modeParam === 'theme' || (pathParam && pathParam !== 'odyssey' && pathParam !== 'single')) {
     mode = 'theme';
     pathId = pathParam ?? 'nights';
   }
@@ -135,7 +138,9 @@ function readFlags(): Flags {
   const defaultPaint: PaintingId =
     pathId === 'single'
       ? 'starry'
-      : getThemePathSpec(pathId).sequence[0] ?? 'potato';
+      : pathId === 'odyssey'
+        ? DEFAULT_ODYSSEY_SEQUENCE[0]
+        : getThemePathSpec(pathId).sequence[0] ?? 'starry';
 
   return {
     t: num('t'),
@@ -219,6 +224,7 @@ function derivedUniforms(
   camera: PerspectiveCamera,
   viewportH: number,
   canvasAspect = CANVAS_ASPECT,
+  enableLayIn = true,
 ): void {
   const t = (f as DirectorFrameEx).animTime ?? f.loopTime;
   u.uTime.value = ((t % LOOP_SECONDS) + LOOP_SECONDS) % LOOP_SECONDS;
@@ -233,7 +239,7 @@ function derivedUniforms(
   u.uWarpK.value = f.warpK;
   if (f.stir) u.uStir.value.set(f.stir[0], f.stir[1], f.stir[2], f.stir[3]);
   else u.uStir.value.z = 0;
-  const boot = f.firstBoot ? f.bootSeconds : Infinity;
+  const boot = f.firstBoot && enableLayIn ? f.bootSeconds : Infinity;
   u.uLayIn.value = boot < 4 ? boot : -1;
   u.uInflate.value = Math.min(10, boot - 1.2);
   u.uImpastoGain.value = f.env.impastoGain;
@@ -279,6 +285,8 @@ export async function boot(container: HTMLElement): Promise<void> {
 
   const MAX_CACHED_WORLDS = 4;
   const worldCache = new Map<PaintingId, BuiltWorld>();
+  // Ids whose generator threw: never rebuilt every frame, only stood in for by a cached world.
+  const brokenWorlds = new Set<PaintingId>();
   const getOrBuildWorld = (id: PaintingId): BuiltWorld => {
     let w = worldCache.get(id);
     if (w) {
@@ -287,16 +295,34 @@ export async function boot(container: HTMLElement): Promise<void> {
       worldCache.set(id, w);
       return w;
     }
+    if (brokenWorlds.has(id)) {
+      // The Starry Night stands in when it is cached (eviction keeps it while any world is broken), else any cached world.
+      const standIn = worldCache.get('starry') ?? (worldCache.values().next().value as BuiltWorld | undefined);
+      if (standIn) return standIn;
+    }
     const tb = performance.now();
-    w = buildWorld(u, engine.quality, flags.seed, id);
+    let builtId: PaintingId = id;
+    try {
+      w = buildWorld(u, engine.quality, flags.seed, id);
+    } catch (err) {
+      brokenWorlds.add(id);
+      console.error(`[punctum:${id}] scene generator failed; falling back so render loop stays alive`, err);
+      const fallback = worldCache.get('starry') ?? (worldCache.values().next().value as BuiltWorld | undefined);
+      if (fallback) return fallback;
+      // Nothing cached yet (first boot): stand in with The Starry Night, cached under its own id. If The Starry
+      // Night itself failed there is nothing to stand in with, so the boot fails and main.ts shows the error.
+      if (id === 'starry') throw err;
+      builtId = 'starry';
+      w = buildWorld(u, engine.quality, flags.seed, builtId);
+    }
     const self = runInvarianceSelfTest(w.buffer);
-    if (!self.ok) console.error(`[punctum:${id}] invariance self-test failed: max canvas error ${self.maxErr.toExponential(2)}`);
+    if (!self.ok) console.error(`[punctum:${builtId}] invariance self-test failed: max canvas error ${self.maxErr.toExponential(2)}`);
     w.strokes.group.visible = false;
     w.underlays.visible = false;
     masterScene.add(w.strokes.group, w.underlays);
     engine.renderer.compile(masterScene, engine.camera);
-    worldCache.set(id, w);
-    console.info(`[punctum:${id}] ${w.buffer.count} strokes, tier ${engine.quality.tier}, build ${Math.round(performance.now() - tb)} ms`, w.timings, `self-test ${self.maxErr.toExponential(1)}`);
+    worldCache.set(builtId, w);
+    console.info(`[punctum:${builtId}] ${w.buffer.count} strokes, tier ${engine.quality.tier}, build ${Math.round(performance.now() - tb)} ms`, w.timings, `self-test ${self.maxErr.toExponential(1)}`);
     return w;
   };
 
@@ -305,12 +331,17 @@ export async function boot(container: HTMLElement): Promise<void> {
     for (const [id, w] of worldCache.entries()) {
       if (worldCache.size <= MAX_CACHED_WORLDS) break;
       if (id === keepA || id === keepB || id === keepC) continue;
+      if (id === 'starry' && brokenWorlds.size > 0) continue; // the stand-in for broken worlds
       masterScene.remove(w.strokes.group, w.underlays);
       w.strokes.dispose?.();
+      const disposedMats = new Set<Material>();
       w.underlays.traverse((obj) => {
-        const m = obj as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } };
+        const m = obj as { geometry?: { dispose?: () => void }; material?: Material };
         m.geometry?.dispose?.();
-        m.material?.dispose?.();
+        if (m.material && !disposedMats.has(m.material)) {
+          disposedMats.add(m.material);
+          m.material.dispose();
+        }
       });
       w.backdrop.geometry?.dispose?.();
       (w.backdrop.material as Material | undefined)?.dispose?.();
@@ -339,7 +370,7 @@ export async function boot(container: HTMLElement): Promise<void> {
   const storm = new StormController();
   const overlay = flags.overlay ? new DebugOverlay(container) : null;
   const soundscape = new SoundscapeEngine({
-    onStateChange: (enabled) => director.ui?.setSoundState(enabled),
+    onStateChange: (enabled, active) => director.ui?.setSoundState(enabled, active),
   });
 
   let manualMorph: ManualMorph | null = null;
@@ -352,12 +383,19 @@ export async function boot(container: HTMLElement): Promise<void> {
   let lastBeaconTarget: PaintingId = 'shoes';
   const _portalWorld = new Vector3();
 
+  const currentShotsForUi = () =>
+    getPaintingSpec(activeId).track.shots.map((s) => ({
+      name: s.name,
+      dur: Math.max(1, Math.round((s.t1 - s.t0) * 10) / 10),
+    }));
+
   const syncUi = (showCard = true) => {
     director.ui?.setWorldState({
       active: activeId,
       mode: viewMode,
       pathId,
       sequence: activeSequence,
+      shots: currentShotsForUi(),
       pathTitleZh: pathId === 'woven' ? wovenTitleZh : undefined,
       showCard,
     });
@@ -368,11 +406,16 @@ export async function boot(container: HTMLElement): Promise<void> {
     const prevId = activeId;
     activeId = targetId;
 
+    // Selecting a painting inside the Atlas automatically exits the modal so the user sees the 3D world
+    if (viewMode === 'atlas') {
+      viewMode = pathId === 'odyssey' ? 'odyssey' : 'theme';
+    }
+
     if (pathId === 'single') {
       activeSequence = [activeId];
       director.setTrack(getPaintingSpec(targetId).track, 0, false);
     } else if (!activeSequence.includes(targetId)) {
-      // Jumping to a painting outside the current theme sequence switches to the full 15-Act Odyssey sequence
+      // Jumping to a painting outside the current theme sequence switches to the full 30-Act Odyssey sequence
       pathId = 'odyssey';
       if (viewMode === 'theme') viewMode = 'odyssey';
       activeSequence = DEFAULT_ODYSSEY_SEQUENCE;
@@ -442,8 +485,8 @@ export async function boot(container: HTMLElement): Promise<void> {
   };
 
   const toggleSound = () => {
-    const on = soundscape.toggle();
-    director.ui?.setSoundState(on);
+    soundscape.toggle();
+    director.ui?.setSoundState(soundscape.enabled, soundscape.active);
   };
 
   const isHarnessPin = flags.t !== undefined || flags.freeze || flags.overlay;
@@ -452,12 +495,38 @@ export async function boot(container: HTMLElement): Promise<void> {
     mode: viewMode,
     pathId,
     sequence: activeSequence,
+    shots: currentShotsForUi(),
     soundEnabled: soundscape.enabled,
+    soundActive: soundscape.active,
     showBar: !isHarnessPin,
     onSelect: (id) => triggerTransition(id),
     onSelectMode: (m, p) => selectModeAndPath(m, p),
     onWeavePath: (startId, motif) => weaveAndPlay(startId, motif),
     onToggleSound: toggleSound,
+    onSelectShot: (shotIdx) => director.jumpToShot(shotIdx),
+    onAction: (action) => {
+      switch (action) {
+        case 'pause':
+          director.togglePause();
+          break;
+        case 'freelock':
+          director.toggleFreeExplore();
+          break;
+        case 'return':
+          director.returnToEye();
+          break;
+        case 'storm':
+          director.triggerStorm();
+          break;
+        case 'warp':
+          director.cycleWarp();
+          break;
+        case 'singleToggle':
+          if (pathId === 'single') selectModeAndPath('odyssey', 'odyssey');
+          else selectModeAndPath('theme', 'single');
+          break;
+      }
+    },
     onSeek: (fraction) => {
       const targetT = fraction * director.activeTrack.loopSeconds;
       director.seekTo(targetT);
@@ -541,6 +610,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     selectModeAndPath,
     weaveAndPlay,
     frames: () => frames,
+    brokenWorlds: () => [...brokenWorlds],
   };
   (window as unknown as { __punctum: typeof debug }).__punctum = debug;
 
@@ -634,8 +704,10 @@ export async function boot(container: HTMLElement): Promise<void> {
         snapTriggered = true;
       }
       if (ms.activeId !== activeId) {
+        // Always track the painting on screen, so a pick made from the Atlas dissolves out of the right world;
+        // only the UI refresh waits, so the Atlas detail the visitor is reading does not change under them.
         activeId = ms.activeId;
-        syncUi(true);
+        if (viewMode !== 'atlas') syncUi(true);
       }
     } else {
       primaryId = activeId;
@@ -647,7 +719,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     world = getOrBuildWorld(primaryId);
     const secondaryWorld = secondaryId ? getOrBuildWorld(secondaryId) : null;
 
-    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 15 worlds
+    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 30 worlds
     const lookaheadSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
     const lookaheadId = nextPaintingId(primaryId, 1, lookaheadSeq);
     if (!isHarnessPin && !secondaryId && frames >= 36 && frames % 36 === 0 && !worldCache.has(lookaheadId)) {
@@ -660,7 +732,8 @@ export async function boot(container: HTMLElement): Promise<void> {
     engine.renderer.getDrawingBufferSize(bufSize);
     const bufW = bufSize.x;
     const bufH = bufSize.y;
-    derivedUniforms(u, f, engine.camera, bufH, displayAspect);
+    const enableLayIn = activeId === 'starry' && pathId === 'single';
+    derivedUniforms(u, f, engine.camera, bufH, displayAspect, enableLayIn);
 
     // Apply Motif Transition Grammar modulations (depth warp fold, pigment dust drift, and portal vortex stir)
     if (!isHarnessPin && (morphWarpOffset !== 0 || morphDust !== 0 || morphStirPulse > 0)) {
@@ -675,33 +748,39 @@ export async function boot(container: HTMLElement): Promise<void> {
     storm.update(f, engine.camera.position, dt, u, world.strokes);
 
     // Compute 3D Portal Vortex state & project In-Scene 3D Spatial Portal Beacon
+    // Suppress golden portal particles and floating beacon whenever the painting is registered at E
     const pSpec = getPaintingSpec(primaryId);
     const tau = isMultiAct() ? ((f.loopTime % ACT_SECONDS) + ACT_SECONDS) % ACT_SECONDS : f.loopTime;
     const portalEdge = resolveTransitionEdge(primaryId, secondaryId ?? lookaheadId);
-    const portalProximity =
+    const eyeFade = 1 - smoothstep(0.35, 0.72, u.uAlign.value);
+    const rawPortalProximity =
       secondaryId !== null
         ? 1.0
         : f.mode === 'free'
           ? 0.55 + 0.45 * u.uOff.value
           : isMultiAct()
-            ? smoothstep(14.0, 24.5, tau)
-            : smoothstep(pSpec.track.loopSeconds * 0.55, pSpec.track.loopSeconds * 0.85, tau);
+            ? smoothstep(14.0, 21.5, tau) * (1 - smoothstep(23.2, 24.8, tau))
+            : 0;
+    const portalProximity = secondaryId !== null ? 1.0 : rawPortalProximity * eyeFade;
 
-    masterPortalVortex.setPortalState(isHarnessPin ? 0 : 0.28 + 0.92 * portalProximity, portalEdge.motif);
+    masterPortalVortex.setPortalState(
+      isHarnessPin || portalProximity <= 0.01 ? 0 : (0.28 + 0.92 * portalProximity) * eyeFade,
+      portalEdge.motif,
+    );
 
     if (director.ui && !isHarnessPin) {
       canvasToWorld(pSpec.moonUVD[0], pSpec.moonUVD[1], pSpec.moonUVD[2], _portalWorld);
-      const inPortalWindow = isMultiAct() ? tau >= 17.5 && tau <= 25.0 : tau >= pSpec.track.loopSeconds * 0.62;
+      const inPortalWindow = isMultiAct() && tau >= 16.5 && tau <= 23.8;
       const beaconEnabled =
-        viewMode !== 'atlas' && !manualMorph && (f.mode === 'free' || inPortalWindow);
+        viewMode !== 'atlas' && !manualMorph && u.uAlign.value <= 0.72 && (f.mode === 'free' || inPortalWindow);
       const targetSpec = getPaintingSpec(lookaheadId);
       const mIcon = MOTIF_SPECS[portalEdge.motif].icon;
       const winAlpha =
-        f.mode === 'free'
+        (f.mode === 'free'
           ? 0.92
           : isMultiAct()
-            ? smoothstep(17.5, 19.2, tau) * (1 - smoothstep(23.8, 25.0, tau))
-            : smoothstep(pSpec.track.loopSeconds * 0.62, pSpec.track.loopSeconds * 0.72, tau);
+            ? smoothstep(16.5, 18.2, tau) * (1 - smoothstep(22.5, 23.8, tau))
+            : 0) * eyeFade;
       const beaconState = projectPortalBeacon(
         engine.camera,
         engine.cssWidth,

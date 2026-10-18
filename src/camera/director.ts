@@ -15,6 +15,7 @@ export interface DirectorTrack {
   readonly aspect: number;
   readonly shots: readonly ShotDef[];
   readonly shotStarts: readonly number[];
+  readonly actSeconds?: number;
   aspectAt?(t: number): number;
   pose(t: number, out: CamPose): CamPose;
   position(t: number, out: Vector3): Vector3;
@@ -48,6 +49,10 @@ export interface DirectorFrameEx extends DirectorFrame {
   wrapped?: boolean;
   /** Active painting canvas aspect ratio. */
   canvasAspect?: number;
+  /** True while cinematic timeline progression is paused. */
+  paused?: boolean;
+  /** True while free-explore mode is locked against idle auto-rejoin. */
+  freeLocked?: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -58,6 +63,7 @@ const IDLE_SECONDS = 12;
 const FREE_FOV_RELAX_S = 1.5;
 export const REJOIN_SAMPLES = 960;
 export const REJOIN_DT = 0.1;
+const WARP_PRESETS = [1.0, 1.3, 1.6, 0.0, 0.5] as const;
 
 const smooth = (e0: number, e1: number, x: number) => {
   const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
@@ -89,7 +95,7 @@ export function alignOf(pos: Vector3, quat: Quaternion, fovDeg: number, aspect: 
 
 interface Flight {
   t: number; dur: number; fromPos: Vector3; fromQuat: Quaternion; fromFov: number; fromEnv: EnvSample; fromWarp: number;
-  targetT: number; isStatic: boolean; phase: 1 | 2;
+  targetT: number; homeEnd: number; isStatic: boolean; phase: 1 | 2;
 }
 
 export class Director {
@@ -105,6 +111,8 @@ export class Director {
   private track: DirectorTrack;
   private _mode: DirectorMode = 'cinematic';
   private _calm: boolean;
+  private _paused = false;
+  private manualWarpK = 1;
   private hud = false;
   private loopTime: number;
   private animTime: number;
@@ -179,6 +187,9 @@ export class Director {
 
   get mode(): DirectorMode { return this._mode; }
   get calm(): boolean { return this._calm; }
+  get paused(): boolean { return this._paused; }
+  get freeLocked(): boolean { return this.freeLock; }
+  get warpK(): number { return this.input ? this.input.warpK : this.manualWarpK; }
   get hudVisible(): boolean { return this.hud; }
   get canvasAspect(): number { return this.aspectAt(this.loopTime); }
   get activeTrack(): DirectorTrack { return this.track; }
@@ -188,6 +199,40 @@ export class Director {
   }
 
   setCalm(on: boolean): void { this._calm = on; }
+  setPaused(on: boolean): void { this._paused = on; }
+  togglePause(): boolean {
+    this._paused = !this._paused;
+    return this._paused;
+  }
+  toggleFreeExplore(): boolean {
+    if (this._mode === 'free' && this.freeLock) {
+      this.resumeCinematic();
+      return false;
+    }
+    this.handOff();
+    this.freeLock = true;
+    return true;
+  }
+  triggerStorm(): void {
+    this.stormToggled = true;
+  }
+  setWarpK(k: number): void {
+    const clamped = Math.round(Math.max(0, Math.min(1.6, k)) * 10) / 10;
+    this.manualWarpK = clamped;
+    this.input?.setWarp(clamped);
+  }
+  cycleWarp(): number {
+    const cur = this.warpK;
+    let next: number = WARP_PRESETS[0];
+    for (let i = 0; i < WARP_PRESETS.length; i++) {
+      if (Math.abs(cur - WARP_PRESETS[i]) < 0.06) {
+        next = WARP_PRESETS[(i + 1) % WARP_PRESETS.length];
+        break;
+      }
+    }
+    this.setWarpK(next);
+    return next;
+  }
   setHudText(text: string): void {
     this.ui?.setHudText(text);
   }
@@ -201,12 +246,14 @@ export class Director {
     this.fadeT = 0;
     this.flight = null;
     this._mode = 'cinematic';
+    this._paused = false;
     this.freeLock = false;
     this.loopTime = wrap(startTime, track.loopSeconds);
     this.animTime = wrap(startTime, LOOP_SECONDS);
     this.firstBoot = firstBoot;
     this.bootSeconds = 0;
     this.cutPending = true;
+    this.manualWarpK = 1;
     this.input?.resetWarp();
     this.cinematicPose(this.loopTime, 0, true);
     this.writeCamera();
@@ -237,17 +284,39 @@ export class Director {
     const dist = this.pos.distanceTo(EYE);
     const fwd = tv1.set(0, 0, -1).applyQuaternion(this.quat);
     const ang = Math.acos(Math.max(-1, Math.min(1, fwd.dot(FORWARD))));
-    const dur = Math.max(3, Math.min(6, 3 + 1.2 * Math.abs(Math.log10(Math.max(dist, 1) / 360)) + (1.5 * ang) / Math.PI));
-    const homeStart = Math.max(0, this.track.loopSeconds - 8);
+    let dur = Math.max(3, Math.min(6, 3 + 1.2 * Math.abs(Math.log10(Math.max(dist, 1) / 360)) + (1.5 * ang) / Math.PI));
+    const actSec = this.track.actSeconds;
+    let homeStart: number;
+    let homeEnd: number;
+    if (actSec && this.track.loopSeconds > actSec) {
+      const actStart = Math.floor(this.loopTime / actSec) * actSec;
+      const tau = this.loopTime - actStart;
+      // During a dissolve, home is the incoming painting; never rewind to the outgoing one.
+      const homeAct = tau >= 26.8 ? wrap(actStart + actSec, this.track.loopSeconds) : actStart;
+      if (dist < 1 && tau >= 25.0) {
+        // already registered at E (the hold, or a dissolve under way): settle on that painting's E, briefly
+        homeStart = homeEnd = tau >= 26.8 ? homeAct : this.loopTime;
+        dur = 0.5;
+      } else {
+        // away from E: fly to that painting's H0 and play its homecoming, which closes the matte on arrival
+        homeStart = homeAct + 20.5;
+        homeEnd = homeAct + 25.0;
+      }
+    } else {
+      homeStart = Math.max(0, this.track.loopSeconds - 8);
+      homeEnd = this.track.loopSeconds;
+    }
     this.cancelPendingJump();
-    this.flight = this.newFlight(dur, homeStart, true);
+    this.flight = this.newFlight(dur, homeStart, true, homeEnd);
     this._mode = 'returning';
+    this._paused = false; // an explicit command to move: a paused timeline would desync from the flight
     this.interacted = true;
   }
 
   /** Resume the cinematic now: fly to the best timeline sample (as the idle hand-back does). */
   resumeCinematic(): void {
     this.freeLock = false;
+    this._paused = false;
     if (this._mode === 'free' || this._mode === 'returning') this.startRejoin();
   }
 
@@ -288,20 +357,33 @@ export class Director {
     if (this.firstBoot && this.bootSeconds >= 6) this.firstBoot = false;
 
     const aspect = this.camera.aspect || 16 / 9;
-    const homeStart = Math.max(0, loopLen - 8);
     let analyticVel = false;
     switch (this._mode) {
       case 'cinematic': {
-        if (!cut) this.advanceLoop(dt);
+        if (!cut && !this._paused) this.advanceLoop(dt);
         this.cinematicPose(this.loopTime, dt, cut);
-        this.track.velocity(this.loopTime, this.vel);
+        if (this._paused) this.vel.set(0, 0, 0);
+        else this.track.velocity(this.loopTime, this.vel);
         analyticVel = true;
         this.track.env(this.loopTime, this.pos.distanceTo(EYE), this._calm, this.env);
         if (!this.firstBoot && this.loopTime < 2) this.env.impastoGain = 1 + 0.15 * Math.sin((Math.PI * this.loopTime) / 2);
         break;
       }
       case 'free': {
-        this.advanceLoop(dt);
+        if (!this._paused) {
+          const actSec = this.track.actSeconds;
+          if (actSec && loopLen > actSec) {
+            // In multi-act mode, hold loopTime before the dissolve (tau 26.8) so the painting never dissolves into the
+            // next world while the user is free-exploring or inspecting at E. Never rewind: a dissolve already under
+            // way when the user takes over finishes into the next act, which is then held the same way.
+            const actStart = Math.floor(this.loopTime / actSec) * actSec;
+            const tau = this.loopTime - actStart;
+            if (tau < 26.8) this.loopTime = Math.min(actStart + Math.max(25.0, tau), this.loopTime + dt);
+            else this.advanceLoop(dt);
+          } else {
+            this.advanceLoop(dt);
+          }
+        }
         this.pilot.update(dt, this.input, this.inputEl.clientHeight || 720);
         this.pilot.fov += (canvasPoseFovDeg(aspect, cAspect) - this.pilot.fov) * (1 - Math.exp(-dt / FREE_FOV_RELAX_S));
         this.pos.copy(this.pilot.pos);
@@ -310,12 +392,12 @@ export class Director {
         this.vel.copy(this.pilot.vel);
         analyticVel = true;
         this.freeEnv(dt);
-        if (!this.freeLock && this.input && this.input.idle && this.bootSeconds - this.lastActivity >= IDLE_SECONDS) this.startRejoin();
+        if (!this._paused && !this.freeLock && this.input && this.input.idle && this.bootSeconds - this.lastActivity >= IDLE_SECONDS) this.startRejoin();
         break;
       }
       case 'rejoin': {
         const F = this.flight!;
-        F.t = Math.min(F.dur, F.t + dt);
+        F.t = Math.min(F.dur, F.t + (this._paused ? 0 : dt));
         const s = ease.inOutSine(F.t / F.dur);
         const tt = F.isStatic ? F.targetT : wrap(F.targetT + F.t, loopLen);
         this.loopTime = tt;
@@ -331,37 +413,45 @@ export class Director {
           this._mode = 'cinematic';
           this.rollOut = this.target.roll;
           this.flight = null;
+          this.manualWarpK = 1;
           if (this.input) this.input.resetWarp();
         }
         break;
       }
       case 'returning': {
         const F = this.flight!;
-        this.advanceLoop(dt);
+        const hStart = F.targetT;
+        const hEnd = F.homeEnd;
+        if (!this._paused && (!this.track.actSeconds || loopLen <= this.track.actSeconds)) {
+          this.advanceLoop(dt);
+        }
         if (F.phase === 1) {
-          F.t = Math.min(F.dur, F.t + dt);
+          F.t = Math.min(F.dur, F.t + (this._paused ? 0 : dt));
+          if (this.track.actSeconds && loopLen > this.track.actSeconds) this.loopTime = hStart;
           const s = ease.inOutSine(F.t / F.dur);
-          this.track.pose(homeStart, this.target);
+          this.track.pose(hStart, this.target);
           applyComfort(this.target, aspect, this._calm, cAspect);
           logPolarAboutEye(F.fromPos, this.target.p, s, this.pos);
           this.quat.slerpQuaternions(F.fromQuat, poseQuaternion(this.target.d, this.target.roll, tq1), s);
           this.fov = F.fromFov + (this.target.fov - F.fromFov) * s;
-          this.track.env(homeStart, this.pos.distanceTo(EYE), this._calm, this.envTmp);
+          this.track.env(hStart, this.pos.distanceTo(EYE), this._calm, this.envTmp);
           lerpEnv(F.fromEnv, this.envTmp, s, this.env);
           if (this.input) this.input.warpK = F.fromWarp + (1 - F.fromWarp) * s;
-          if (F.t >= F.dur) { F.phase = 2; F.t = 0; this.input?.resetWarp(); }
+          if (F.t >= F.dur) { F.phase = 2; F.t = 0; this.manualWarpK = 1; this.input?.resetWarp(); }
         } else {
-          F.t += dt;
-          const tt = Math.min(loopLen, homeStart + F.t);
+          if (!this._paused) F.t += dt;
+          const tt = Math.min(hEnd, hStart + F.t);
+          if (this.track.actSeconds && loopLen > this.track.actSeconds) this.loopTime = tt;
           this.track.pose(tt, this.target);
           applyComfort(this.target, aspect, this._calm, cAspect);
           this.pos.copy(this.target.p);
           poseQuaternion(this.target.d, this.target.roll, this.quat);
           this.fov = this.target.fov;
           this.track.env(tt, this.pos.distanceTo(EYE), this._calm, this.env);
-          if (homeStart + F.t >= loopLen) {
+          if (hStart + F.t >= hEnd) {
             this.flight = null;
             this._mode = 'free';
+            if (this.track.actSeconds && loopLen > this.track.actSeconds) this.loopTime = hEnd;
             this.pilot.takeOver(EYE, this.quat, canvasPoseFovDeg(aspect, cAspect), ZERO);
             this.lastActivity = this.bootSeconds;
           }
@@ -394,6 +484,7 @@ export class Director {
     const fade = this.fadeValue();
     const env: ShotEnvelope = { ...this.env, fade };
     const shot = this.shotIndexAt(this.loopTime);
+    const warpK = this.input ? this.input.warpK : this.manualWarpK;
     const frame: DirectorFrameEx = {
       mode: this._mode,
       loopTime: this.loopTime,
@@ -405,7 +496,7 @@ export class Director {
       camVelocity: [this.vel.x, this.vel.y, this.vel.z],
       env,
       stir,
-      warpK: this.input ? this.input.warpK : 1,
+      warpK,
       stormToggled,
       calm: this._calm,
       hud: this.hud,
@@ -413,6 +504,8 @@ export class Director {
       align,
       wrapped: this.wrappedThisFrame,
       canvasAspect: cAspect,
+      paused: this._paused,
+      freeLocked: this.freeLock,
     };
     this.renderUi(frame);
     return frame;
@@ -467,6 +560,7 @@ export class Director {
     this.animTime = wrap(t, LOOP_SECONDS);
     this.firstBoot = false;
     this.freeLock = false;
+    this.manualWarpK = 1;
     this.input?.resetWarp();
   }
 
@@ -493,27 +587,71 @@ export class Director {
 
   private command(c: DirectorCommand): void {
     this.interacted = true;
+    const actSec = this.track.actSeconds;
+    const isMultiAct = !!actSec && this.track.loopSeconds > actSec;
+    const actBaseShot = isMultiAct ? Math.floor(this.loopTime / actSec) * 4 : 0;
     switch (c.kind) {
       case 'return': this.returnToEye(); break;
       case 'resume': this.resumeCinematic(); break;
-      case 'restart': this.jumpToShot(0); break;
-      case 'shot': this.jumpToShot(c.index); break;
+      case 'restart': this.jumpToShot(actBaseShot); break;
+      case 'shot': this.jumpToShot(isMultiAct ? actBaseShot + Math.min(3, c.index) : c.index); break;
       case 'storm': this.stormToggled = true; break;
       case 'calm': this.setCalm(!this._calm); break;
       case 'hud': this.hud = !this.hud; break;
+      case 'pause': this.togglePause(); break;
+      case 'freelock': this.toggleFreeExplore(); break;
     }
   }
 
-  private newFlight(dur: number, targetT: number, isStatic: boolean): Flight {
+  private newFlight(dur: number, targetT: number, isStatic: boolean, homeEnd = this.track.loopSeconds): Flight {
     return {
       t: 0, dur, fromPos: this.pos.clone(), fromQuat: this.quat.clone(), fromFov: this.fov,
-      fromEnv: { ...this.env }, fromWarp: this.input ? this.input.warpK : 1, targetT, isStatic, phase: 1,
+      fromEnv: { ...this.env }, fromWarp: this.warpK, targetT, homeEnd, isStatic, phase: 1,
     };
   }
 
   /** Idle / C hand-back (§5.3): best of the 960 samples by the log-distance + angle cost, flown to in 3-5 s. */
   startRejoin(): void {
     const dist = this.pos.distanceTo(EYE);
+    const actSec = this.track.actSeconds;
+    if (actSec && this.track.loopSeconds > actSec) {
+      // Multi-act mode: scope rejoin to the current act's [actStart, actStart + 20.0] window so C / idle never jumps to
+      // Act I, and a flight of up to 5 s still lands by tau 25.0, before the dissolve starts at 26.8.
+      const curStart = Math.floor(this.loopTime / actSec) * actSec;
+      // During a dissolve, rejoin the incoming act; never rewind to the outgoing painting.
+      const actStart = this.loopTime - curStart >= 26.8 ? wrap(curStart + actSec, this.track.loopSeconds) : curStart;
+      let targetT = actStart;
+      let bestCost = 0;
+      if (dist >= 50) {
+        const viewDir = tv3.set(0, 0, -1).applyQuaternion(this.quat);
+        const cx = this.pos.x - EYE.x, cy = this.pos.y - EYE.y, cz = this.pos.z - EYE.z;
+        const dc = Math.hypot(cx, cy, cz);
+        const lc = Math.log10(Math.max(dc, 10));
+        const P = newPose();
+        bestCost = Infinity;
+        for (let k = 0; k <= 200; k++) {
+          const sampleT = actStart + k * 0.1;
+          this.track.pose(sampleT, P);
+          const sx = P.p.x - EYE.x, sy = P.p.y - EYE.y, sz = P.p.z - EYE.z;
+          const ds = Math.hypot(sx, sy, sz);
+          let cost = 2 * Math.abs(lc - Math.log10(Math.max(ds, 10)));
+          if (dc > 1e-6 && ds > 1e-6) cost += Math.acos(Math.max(-1, Math.min(1, (cx * sx + cy * sy + cz * sz) / (dc * ds)))) / Math.PI;
+          const vd = viewDir.x * P.d.x + viewDir.y * P.d.y + viewDir.z * P.d.z;
+          cost += (0.5 * Math.acos(Math.max(-1, Math.min(1, vd)))) / Math.PI;
+          if (cost < bestCost) {
+            bestCost = cost;
+            targetT = sampleT;
+          }
+        }
+      }
+      const dur = 3 + 2 * Math.min(1, bestCost / 1.5);
+      this.cancelPendingJump();
+      this.flight = this.newFlight(dur, targetT, dist < 50);
+      this._mode = 'rejoin';
+      this.freeLock = false;
+      return;
+    }
+
     const stepDt = this.track.loopSeconds / REJOIN_SAMPLES;
     let best = 0;
     let bestCost = 0;
@@ -594,14 +732,19 @@ export class Director {
     const h = this.inputEl.clientHeight;
     let hint = 0;
     const loopLen = this.track.loopSeconds;
-    if (this.loopCount === 0 && !this.interacted && this._mode === 'cinematic' && f.loopTime >= loopLen - 6) {
-      hint = smooth(loopLen - 6, loopLen - 5.4, f.loopTime) * (1 - smooth(loopLen - 0.7, loopLen - 0.1, f.loopTime));
+    if (!this.interacted && this._mode === 'cinematic') {
+      if (this.bootSeconds >= 1.2 && this.bootSeconds <= 9.5) {
+        hint = Math.max(hint, smooth(1.2, 2.0, this.bootSeconds) * (1 - smooth(8.5, 9.5, this.bootSeconds)));
+      }
+      if (this.loopCount === 0 && f.loopTime >= loopLen - 6) {
+        hint = Math.max(hint, smooth(loopLen - 6, loopLen - 5.4, f.loopTime) * (1 - smooth(loopLen - 0.7, loopLen - 0.1, f.loopTime)));
+      }
     }
     const ring = this._mode === 'free'
       ? projectEyeRing(this.camera, w, h, f.align)
       : { x: 0, y: 0, r: 0, visible: false, opacity: 0 };
     const shotName = this.track.shots[f.shot]?.name ?? '';
-    const hudLine = `${f.mode} · t ${f.loopTime.toFixed(1)} s · shot ${f.shot + 1} (${shotName}) · fov ${this.fov.toFixed(1)}°` +
+    const hudLine = `${f.mode}${this._paused ? ' (paused)' : ''}${this.freeLock ? ' (locked)' : ''} · t ${f.loopTime.toFixed(1)} s · shot ${f.shot + 1} (${shotName}) · fov ${this.fov.toFixed(1)}°` +
       `${f.calm ? ' · calm' : ''}${f.warpK !== 1 ? ` · warp ${f.warpK.toFixed(1)}` : ''}` +
       `${this._mode === 'free' ? ` · speed 2^${this.input?.speedExp ?? 0}` : ''}`;
     this.ui.render({
@@ -612,6 +755,12 @@ export class Director {
       loopTime: f.loopTime,
       loopSeconds: loopLen,
       shotName,
+      shotIndex: f.shot,
+      mode: f.mode,
+      paused: this._paused,
+      freeLocked: this.freeLock,
+      warpK: f.warpK,
+      align: f.align,
     });
   }
 }

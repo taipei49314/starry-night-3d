@@ -67,7 +67,7 @@ import {
   generateOliveChapter, generateRoadCypressChapter,
   OLIVE_ASPECT, ROADCYPRESS_ASPECT,
 } from './lateExpandedGen';
-import { ALL_PAINTING_IDS, clamp, clamp01, smoothstep, uFromPaint, type ChapterId, type MotifId, type PaintingId } from './types';
+import { ALL_PAINTING_IDS, clamp, clamp01, shadeHex, smoothstep, uFromPaint, type ChapterId, type MotifId, type PaintingId } from './types';
 import { resolveTransitionEdge } from './worldGraph';
 
 export interface ChapterTrack {
@@ -75,6 +75,7 @@ export interface ChapterTrack {
   readonly aspect: number;
   readonly shots: readonly ShotDef[];
   readonly shotStarts: readonly number[];
+  readonly actSeconds?: number;
   aspectAt?(t: number): number;
   pose(t: number, out: CamPose): CamPose;
   position(t: number, out: Vector3): Vector3;
@@ -131,7 +132,8 @@ const E_TARGET = EYE.clone().addScaledVector(FORWARD, 1000);
  * Analytic C1 Catmull-Rom + Homecoming track for a painting chapter:
  *  - Shot 1 (0..tHold): Locked at EYE in the painting's matte frame.
  *  - Shots 2..4 (tHold..tHome): Smooth C1 spline through the painting's 3D landmarks into its Spatial Portal, ending at H0 = E + 360 F.
- *  - Shot 5 (tHome..loopSeconds): Reverse dolly-zoom homecoming H0 -> E along F while strokes cross-dissolve.
+ *  - Shot 5 (tHome..tHomeEnd): Reverse dolly-zoom homecoming H0 -> E along F, snapping into exact registration at E at tHomeEnd
+ *    and holding the reassembled painting cleanly at E from tHomeEnd..loopSeconds before dissolving into the next act.
  */
 class CompanionTrack implements ChapterTrack {
   readonly shotStarts: readonly number[];
@@ -143,6 +145,7 @@ class CompanionTrack implements ChapterTrack {
     readonly loopSeconds = 48,
     private readonly tHold = 6,
     private readonly tHome = 40,
+    private readonly tHomeEnd = 46,
   ) {
     this.shotStarts = shots.map((s) => s.t0);
   }
@@ -151,8 +154,8 @@ class CompanionTrack implements ChapterTrack {
     const tc = clamp(t, 0, this.loopSeconds);
     if (tc <= this.tHold) return out.copy(EYE);
     if (tc >= this.tHome) {
-      const span = Math.max(0.5, this.loopSeconds - this.tHome - 0.35);
-      const s = tc >= this.tHome + span ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
+      const span = Math.max(0.5, this.tHomeEnd - this.tHome);
+      const s = tc >= this.tHomeEnd ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
       return out.copy(EYE).addScaledVector(FORWARD, s);
     }
     const wps = this.waypoints;
@@ -194,8 +197,8 @@ class CompanionTrack implements ChapterTrack {
       return out;
     }
     if (tc >= this.tHome) {
-      const span = Math.max(0.5, this.loopSeconds - this.tHome - 0.35);
-      const s = tc >= this.tHome + span ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
+      const span = Math.max(0.5, this.tHomeEnd - this.tHome);
+      const s = tc >= this.tHomeEnd ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
       out.d.copy(FORWARD);
       out.fov = dollyZoomFov(36, 675, Math.max(0, 675 - s));
       out.roll = 0;
@@ -227,25 +230,25 @@ class CompanionTrack implements ChapterTrack {
 
   env(t: number, camDistFromE: number, calm: boolean, out: EnvSample): EnvSample {
     const tc = clamp(t, 0, this.loopSeconds);
-    const stormStart = this.tHome - 2.6;
-    const stormPeak = this.tHome + 0.8;
-    const snapAt = this.loopSeconds - 1.2;
+    const stormStart = this.tHome - 2.2;
+    const stormPeak = this.tHome + 0.6;
+    const snapAt = this.tHomeEnd;
     out.matte = tc < this.tHold
-      ? 1 - smoothstep(this.tHold - 1.0, this.tHold, tc)
+      ? 1 - smoothstep(this.tHold - 0.8, this.tHold, tc)
       : tc > snapAt - 0.8
-        ? smoothstep(snapAt - 0.8, this.loopSeconds - 0.15, tc)
+        ? smoothstep(snapAt - 0.8, snapAt, tc)
         : 0;
     out.impastoGain = 0.3 + 0.7 * smoothstep(2, 80, camDistFromE);
     out.galleryLightDeg = 32;
     out.exposure = 1;
-    out.bloom = this.baseBloom + 0.18 * smoothstep(14, 24, tc) * (1 - smoothstep(26, 38, tc));
+    out.bloom = this.baseBloom + 0.18 * smoothstep(this.tHold + 4, this.tHome - 4, tc) * (1 - smoothstep(this.tHome - 2, snapAt, tc));
     const smPeak = calm ? 0.12 : 0.28;
-    out.smear = smPeak * smoothstep(this.tHold + 1, this.tHold + 7, tc) * (1 - smoothstep(stormStart - 2, this.tHome, tc));
+    out.smear = smPeak * smoothstep(this.tHold + 1, this.tHold + 5, tc) * (1 - smoothstep(stormStart - 1.5, this.tHome, tc));
     out.storm = tc >= stormStart && tc < snapAt
-      ? smoothstep(stormStart, stormPeak, tc) * (1 - 0.18 * smoothstep(stormPeak, snapAt, tc))
+      ? smoothstep(stormStart, stormPeak, tc) * (1 - smoothstep(stormPeak, snapAt - 0.15, tc))
       : 0;
     out.fade = 0;
-    out.dust = 0.55 * smoothstep(5, 80, camDistFromE) * (1 - smoothstep(this.tHome + 1, this.loopSeconds, tc));
+    out.dust = 0.55 * smoothstep(5, 80, camDistFromE) * (1 - smoothstep(this.tHome + 0.5, snapAt, tc));
     return out;
   }
 }
@@ -286,29 +289,37 @@ function makeChapterTracks(
     48,
     6,
     40,
+    46,
   );
 
+  // In multi-act Odyssey mode (30s per act):
+  // - 0.0..1.6s: Initial lock at E after incoming dissolve
+  // - 1.6..21.0s: Flight through the painting's 3D world to H0
+  // - 21.0..25.0s: Reverse dolly-zoom homecoming H0 -> E, arriving at exact E at tau = 25.0s
+  // - 25.0..26.8s: 1.8s unobstructed hold of the reassembled original painting at E
+  // - 26.8..30.0s: 3D brushstroke cross-dissolve into the next painting
   const odysseyAct = new CompanionTrack(
     aspect,
     [
       { index: 0, name: `${actLabel} · ${shotNames[0]}`, t0: 0,    t1: 3.8,  setPiece: shotNames[0] },
-      { index: 1, name: `${actLabel} · ${shotNames[1]}`, t0: 3.8,  t1: 11.5, setPiece: shotNames[1] },
-      { index: 2, name: `${actLabel} · ${shotNames[2]}`, t0: 11.5, t1: 19.5, setPiece: shotNames[2] },
-      { index: 3, name: `${actLabel} · ${shotNames[3]}`, t0: 19.5, t1: 30.0, setPiece: shotNames[3] },
+      { index: 1, name: `${actLabel} · ${shotNames[1]}`, t0: 3.8,  t1: 11.2, setPiece: shotNames[1] },
+      { index: 2, name: `${actLabel} · ${shotNames[2]}`, t0: 11.2, t1: 18.8, setPiece: shotNames[2] },
+      { index: 3, name: `${actLabel} · ${shotNames[3]}`, t0: 18.8, t1: 30.0, setPiece: shotNames[3] },
     ],
     [
-      { t: 3.8,  pos: EYE.clone(), lookAt: E_TARGET.clone(), fov: 36, roll: 0 },
-      { t: 7.2,  ...portalPts[0] },
-      { t: 11.0, ...portalPts[1] },
-      { t: 15.0, ...portalPts[2] },
-      { t: 18.8, ...portalPts[3] },
-      { t: 22.0, ...portalPts[4] },
-      { t: 24.6, pos: H0.clone(),  lookAt: E_TARGET.clone(), fov: dollyZoomFov(36, 675, 315), roll: 0 },
+      { t: 1.6,  pos: EYE.clone(), lookAt: E_TARGET.clone(), fov: 36, roll: 0 },
+      { t: 5.0,  ...portalPts[0] },
+      { t: 8.6,  ...portalPts[1] },
+      { t: 12.2, ...portalPts[2] },
+      { t: 15.6, ...portalPts[3] },
+      { t: 18.4, ...portalPts[4] },
+      { t: 21.0, pos: H0.clone(),  lookAt: E_TARGET.clone(), fov: dollyZoomFov(36, 675, 315), roll: 0 },
     ],
     baseBloom,
     30,
-    3.8,
-    24.6,
+    1.6,
+    21.0,
+    25.0,
   );
 
   return { standalone, odysseyAct };
@@ -429,13 +440,13 @@ const BEDROOM_TRACKS = makeChapterTracks(
 // 9. Chapter IV (Cosmos): The Starry Night -> Portal: Orange Crescent Moon -> Irises
 const STARRY_ODYSSEY_TRACK = makeChapterTracks(
   CANVAS_ASPECT, 'Ch.IV 星夜',
-  ['聖雷米夜空畫幅', '黑焰絲柏與金星光冕隧道', '穿越雙星雲大漩渦回望教堂尖塔', '迎向橘黃新月晨光任意門 → 療養院鳶尾花'],
+  ['聖雷米夜空畫幅', '黑焰絲柏與金星光冕隧道', '深入 40 km 雙星雲大漩渦核心', '俯瞰聖雷米村莊尖塔與橘黃新月 → 療養院鳶尾花'],
   [
     { pos: pt(CANVAS_ASPECT, 0.20, 0.32, 185),   lookAt: pt(CANVAS_ASPECT, 0.28, 0.52, 420),   fov: 46, roll: -3 },
-    { pos: pt(CANVAS_ASPECT, 0.33, 0.38, 2200),  lookAt: pt(CANVAS_ASPECT, 0.35, 0.36, 11800), fov: 50, roll: 2 },
-    { pos: pt(CANVAS_ASPECT, 0.44, 0.56, 14500), lookAt: pt(CANVAS_ASPECT, 0.51, 0.64, 42000), fov: 56, roll: -3.5 },
-    { pos: pt(CANVAS_ASPECT, 0.54, 0.34, 920),   lookAt: pt(CANVAS_ASPECT, 0.55, 0.20, 680),   fov: 46, roll: 1.5 },
-    { pos: pt(CANVAS_ASPECT, 0.78, 0.74, 8200),  lookAt: pt(CANVAS_ASPECT, 0.85, 0.78, 12800), fov: 52, roll: -2 },
+    { pos: pt(CANVAS_ASPECT, 0.33, 0.38, 3200),  lookAt: pt(CANVAS_ASPECT, 0.36, 0.42, 12800), fov: 50, roll: 2 },
+    { pos: pt(CANVAS_ASPECT, 0.48, 0.62, 38500), lookAt: pt(CANVAS_ASPECT, 0.54, 0.66, 44000), fov: 58, roll: -4 },
+    { pos: pt(CANVAS_ASPECT, 0.55, 0.32, 920),   lookAt: pt(CANVAS_ASPECT, 0.55, 0.20, 680),   fov: 46, roll: 1.5 },
+    { pos: pt(CANVAS_ASPECT, 0.80, 0.75, 11200), lookAt: pt(CANVAS_ASPECT, 0.85, 0.78, 12800), fov: 52, roll: -2 },
   ],
   0.55,
 ).odysseyAct;
@@ -527,7 +538,7 @@ const CROWS_TRACKS = makeChapterTracks(
 // 16. Chapter I (Earth): The Weaver -> Portal: Cottage Window Sunbeam
 const WEAVER_TRACKS = makeChapterTracks(
   WEAVER_ASPECT, 'Ch.I 織布工',
-  ['紐넨織布工坊暗褐畫幅', '巨大橡木織布機立柱與經緯線', '穿梭梭子與專注的織工', '穿過右側農舍明窗光束任意門 → 舊教堂塔樓'],
+  ['紐南織布工坊暗褐畫幅', '巨大橡木織布機立柱與經緯線', '穿梭梭子與專注的織工', '穿過右側農舍明窗光束任意門 → 舊教堂塔樓'],
   [
     { pos: pt(WEAVER_ASPECT, 0.24, 0.22, 185), lookAt: pt(WEAVER_ASPECT, 0.48, 0.46, 520),   fov: 43, roll: -1.5 },
     { pos: pt(WEAVER_ASPECT, 0.38, 0.36, 240), lookAt: pt(WEAVER_ASPECT, 0.52, 0.50, 620),   fov: 46, roll: 1.5 },
@@ -541,7 +552,7 @@ const WEAVER_TRACKS = makeChapterTracks(
 // 17. Chapter I (Earth): The Old Church Tower at Nuenen -> Portal: Belfry Twilight & Churchyard Path
 const TOWER_TRACKS = makeChapterTracks(
   TOWER_ASPECT, 'Ch.I 舊教堂塔樓',
-  ['紐넨暮色墓園畫幅', '歪斜木十字架與風中荒草', '斑駁紅磚鐘樓與盤旋寒鴉', '穿過鐘樓暮光任意門 → 一雙舊鞋'],
+  ['紐南暮色墓園畫幅', '歪斜木十字架與風中荒草', '斑駁紅磚鐘樓與盤旋寒鴉', '穿過鐘樓暮光任意門 → 一雙舊鞋'],
   [
     { pos: pt(TOWER_ASPECT, 0.32, 0.16, 185), lookAt: pt(TOWER_ASPECT, 0.48, 0.48, 620),   fov: 43, roll: -2.0 },
     { pos: pt(TOWER_ASPECT, 0.42, 0.28, 250), lookAt: pt(TOWER_ASPECT, 0.48, 0.62, 650),   fov: 46, roll: 2.0 },
@@ -805,9 +816,10 @@ export interface OdysseyMorphState {
 
 /**
  * Evaluate the Continuous Path Morph state at master clock `t` for ANY sequence of paintings (`sequence`).
- * During the last 5.4 s of each 30 s Act (tau in [24.3, 29.7]), the outgoing painting's brushstrokes
+ * After the camera returns to E by tau = 25.0 s and holds the reassembled current painting cleanly at E for 1.8 s
+ * (tau in [25.0, 26.8)), during the final 3.2 s (tau in [26.8, 30.0)) the outgoing painting's brushstrokes
  * unbind through its Spatial Portal according to the connecting edge's Motif Transition Grammar while
- * the next painting's brushstrokes condense in 3D and lock into exact registration at E by tau = 29.7 s.
+ * the next painting's brushstrokes condense in 3D and lock into exact registration at E by tau = 29.8 s.
  */
 export function evalOdysseyMorph(
   t: number,
@@ -824,8 +836,8 @@ export function evalOdysseyMorph(
   const edge = resolveTransitionEdge(specA.id, specB.id);
   const g = edge.grammar;
 
-  if (tau >= 24.3 && n > 1) {
-    const m = clamp01((tau - 24.3) / 5.3); // reaches 1.0 at tau = 29.6 s
+  if (tau >= 26.8 && n > 1) {
+    const m = clamp01((tau - 26.8) / 3.0); // reaches 1.0 at tau = 29.8 s
     const bell = Math.sin(Math.PI * m);
     const pFade = 1 - smoothstep(0.08, 0.88, m);
     const sFade = smoothstep(0.06, 0.86, m);
@@ -845,7 +857,7 @@ export function evalOdysseyMorph(
       secondaryScatter: sScat,
       atmoMix,
       displayAspect,
-      snapIncoming: tau >= 28.4 && tau <= 29.8,
+      snapIncoming: tau >= 29.0 && tau <= 29.95,
       transitionMotif: edge.motif,
       transitionNameZh: g.nameZh,
       smearBoost: g.smearBoost * bell,
@@ -927,14 +939,15 @@ export function compilePathTrack(sequence: readonly PaintingId[] = DEFAULT_ODYSS
     aspect: CANVAS_ASPECT,
     shots,
     shotStarts,
+    actSeconds: n > 1 ? ACT_SECONDS : undefined,
     aspectAt: (t: number) => {
       const tw = ((t % loopSeconds) + loopSeconds) % loopSeconds;
       const actIdx = Math.min(n - 1, Math.floor(tw / ACT_SECONDS));
       const tau = tw - actIdx * ACT_SECONDS;
       const specA = getPaintingSpec(seq[actIdx]);
-      if (tau < 24.3 || n <= 1) return specA.aspect;
+      if (tau < 26.8 || n <= 1) return specA.aspect;
       const specB = getPaintingSpec(seq[(actIdx + 1) % n]);
-      const m = clamp01((tau - 24.3) / 5.3);
+      const m = clamp01((tau - 26.8) / 3.0);
       const atmoMix = smoothstep(0.10, 0.90, m);
       return specA.aspect + (specB.aspect - specA.aspect) * atmoMix;
     },
@@ -1018,7 +1031,7 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     titleEn: 'The Weaver',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)',
     year: '1884.05',
-    portalZh: '穿過右側農舍明窗光束 → 望見暮色中的《紐넨的舊教堂塔樓》',
+    portalZh: '穿過右側農舍明窗光束 → 望見暮色中的《紐南的舊教堂塔樓》',
     aspect: WEAVER_ASPECT,
     skyMode: 0.7,
     fogNearHex: 0x2a1f15,
@@ -1032,7 +1045,7 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     chapterId: 'earth',
     roman: 'III',
     shortZh: '舊教堂塔樓',
-    titleZh: '紐넨的舊教堂塔樓',
+    titleZh: '紐南的舊教堂塔樓',
     titleEn: 'The Old Church Tower at Nuenen',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)',
     year: '1885.05',
@@ -1351,7 +1364,7 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     portalZh: '迎向熾熱橘黃新月 → 晨光降落聖保羅療養院花園的《鳶尾花》',
     aspect: CANVAS_ASPECT,
     skyMode: 0,
-    fogNearHex: 0x0e1837,
+    fogNearHex: shadeHex(PALETTE.ultramarine, 0.5),
     fogFarHex: PALETTE.prussian,
     moonUVD: [MOON_DEF.u, MOON_DEF.v, MOON_DEF.d],
     track: STARRY_TRACK,
