@@ -1249,7 +1249,7 @@ Conventions:
 12. **Init time on weak CPUs.**
     - Analytic generation only: no per-stroke streamline integration, except the 32 jet filaments. Typed arrays; mulberry32.
     - If generation exceeds 250 ms, time-slice by class across frames during the first-boot lay-in, uploading each chunk once when complete (no partial re-uploads).
-    - Status (2026-10-18): not met yet. A world build is still one synchronous task. The lookahead pre-warm runs in an idle callback and is held back for the first ~8 s of a track, so it no longer lands in the lay-in; LRU eviction (`MAX_CACHED_WORLDS = 4`) disposes per-world buffers without touching the shared ribbon geometry.
+    - Status (2026-10-18): not met yet. A world build is still one synchronous task. The lookahead pre-warm runs in an idle callback, only on multi-act tracks and only after the first ~8 s of a track, so it no longer lands in the lay-in (the single loop builds the next world on request); LRU eviction (`MAX_CACHED_WORLDS = 4`) disposes per-world buffers without touching the shared ribbon geometry.
 13. **Sandbox and single-file.**
     - No workers, blob URLs, pointer lock, fullscreen requirement, fetches or assets.
     - Storage only via try/catch, and only for the calm/tier preference.
@@ -1323,7 +1323,7 @@ Conventions:
 - **Invariance demo:** in free mode at E, a warp sweep 0 → 1.6 changes no pixel beyond A2C dither; one metre to the side, the world visibly refolds.
 - **Hand-off:** every input hands off in ≤ 1 frame. Idle for 12 s rejoins smoothly. Space returns to the eye and the snap re-registers the painting.
 - **Build:** a single HTML file under 1 MB (hard limit 16 MB) plus the web bundle (`dist/`); no network requests after load; runs in a sandboxed iframe and in an Electron pane.
-- **CI verification:** GitHub Actions (`ci-pages.yml`) runs `scripts/verify-worlds.mjs` in headless Chromium (SwiftShader WebGL 2, which the tier regex treats as Low). It fails on page or console errors, a world whose generator threw, a self-test error ≥ 1e-4, a paint-order violation, a camera not registered at $E$, an unclean Odyssey hold (Act I and *The Starry Night* act), or a blank frame. It records, without judging them, off-$E$ frames and a high-tier set. Pixel-level comparison against golden frames at the §9.2 checkpoints is not in place yet, so the art itself still needs a human look at the uploaded `punctum-30-worlds-screenshots`.
+- **CI verification:** GitHub Actions (`ci-pages.yml`) runs `scripts/verify-worlds.mjs` in headless Chromium (SwiftShader WebGL 2, which the tier regex treats as Low). It fails on page or console errors, a world whose generator threw, a self-test error ≥ 1e-4, a paint-order violation, a camera not registered at $E$, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at $E$ and the holds. It records off-$E$ frames and a high-tier set, with size and renderer state, without failing on them. Pixel-level comparison against golden frames at the §9.2 checkpoints is not in place yet, so the art itself still needs a human look at the uploaded `punctum-30-worlds-screenshots`.
 
 ---
 
@@ -1335,7 +1335,7 @@ Conventions:
   - Boots directly into standalone *The Starry Night* (`painting = 'starry'`, `pathId = 'single'`, `loopSeconds = 96`, 10 shots) with the 4-second radial lay-in (`uLayIn`) and impasto inflation (`uInflate`) enabled.
   - The 30-painting strip is collapsed behind `🎨 30 幅畫作 ▾` so the opening screen stays uncluttered; from `t ≥ 84 s` of the first loop on, the golden invitation pill `✦ 進入梵谷 30 個世界 · 五章三十幕旅程` is offered, but like the rest of the chrome it is hidden while the painting is registered at $E$ (`data-clean-eye="1"`).
 - **Multi-Act Odyssey (`?mode=odyssey`, `900 s` = 30 acts × `30 s`) & Thematic Paths (`compilePathTrack`):**
-  - Each 30-second act (`ACT_SECONDS = 30`, timings from `makeChapterTracks(..., 30, 1.6, 21.0, 25.0)` and `evalOdysseyMorph`) follows a 5-stage arc. In free mode the act clock holds before 26.8 and never rewinds:
+  - Each 30-second act (`ACT_SECONDS = 30`, timings from the `odysseyAct` CompanionTrack built in `makeChapterTracks` (loop 30 s, hold 1.6, home 21.0, home end 25.0) and from `evalOdysseyMorph`) follows a 5-stage arc. In free mode the act clock holds before 26.8 and never rewinds:
     1. `τ ∈ [0.0, 1.6)`: Canvas lock at $E$ (with the incoming snap ripple settling).
     2. `τ ∈ [1.6, 21.0)`: Flight through the painting's 3D world (in *The Starry Night* act, the deepest waypoint is `d = 38.5 km`, `lookAt = 44 km`, in front of the 40 km vortex throat, about 0.06 canvas units off its axis).
     3. `τ ∈ [21.0, 25.0)`: Log-polar homecoming to exact registration at $E$. Return to the Eye (Space) flies to the act's pose at `τ = 20.5` and plays it to 25.0; during the hold or a dissolve it lands at $E$ of the painting on screen instead of rewinding.

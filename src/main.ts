@@ -3,7 +3,7 @@ import { boot } from './app/composition';
 /** The loading overlay sits above everything, so a failed boot must never leave it spinning over the error. */
 function showBootFailure(container: HTMLElement): void {
   const loader = document.getElementById('loading-overlay');
-  if (!loader) return;
+  if (!loader || loader.getAttribute('data-ready') === '1') return; // already past the first frame
   if (container.querySelector('.fallback')) {
     loader.remove(); // the WebGL 2 message is already in #app
     return;
@@ -17,6 +17,10 @@ function showBootFailure(container: HTMLElement): void {
 
 const container = document.getElementById('app');
 if (container) {
+  // A throw in the first animation frame never reaches boot()'s promise, so watch for errors until the overlay lifts.
+  const onEarlyError = (): void => showBootFailure(container);
+  window.addEventListener('error', onEarlyError);
+  window.setTimeout(() => window.removeEventListener('error', onEarlyError), 30_000);
   boot(container).catch((e) => {
     console.error('[punctum] boot failed', e);
     showBootFailure(container);

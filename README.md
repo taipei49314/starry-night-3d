@@ -47,7 +47,7 @@ Every edge in `WORLD_GRAPH` carries one of six motifs, each driving its own **3D
 - **Zero-Allocation Hot Paths, Idle Pre-Warming & Bounded 30-World VRAM Cache**:
   - Reusable `StrokeRecord` Scratch (`emitCanvasStroke` / `emitSurfaceStroke`) eliminates ~1.95M temporary heap allocations across the 30 worlds.
   - Right-sized `StrokeBuffer` initial capacity (`182,000` for *The Starry Night*, `76,000` for companion worlds); worlds that outgrow it (several companion worlds do) grow the buffer once.
-  - Lookahead world pre-warming in an idle callback (`requestIdleCallback`), held back for the first ~8 s of a track so it never lands in the opening; a world build is still one synchronous task (time-slicing it is open work), O(1) `PAINTING_SPEC_MAP` & `SUITE_ITEM_MAP` lookups, memoized `compilePathTrack`, pre-parsed linear RGB atmosphere cache (`_atmoCache`), and safe GPU geometry/material disposal on LRU world eviction (`MAX_CACHED_WORLDS = 4`).
+  - Lookahead world pre-warming in an idle callback (`requestIdleCallback`), only on multi-act tracks and only after the first ~8 s of a track, so it never lands in the lay-in; the single loop builds the next world when the visitor asks for it. A world build is still one synchronous task, so that moment still hitches (time-slicing is open work). O(1) `PAINTING_SPEC_MAP` & `SUITE_ITEM_MAP` lookups, memoized `compilePathTrack`, pre-parsed linear RGB atmosphere cache (`_atmoCache`), and safe GPU geometry/material disposal on LRU world eviction (`MAX_CACHED_WORLDS = 4`).
 
 ### Three Viewing Modes (`ViewMode`)
 - **Default Opening (`/` or `?mode=theme&path=single`)**: 96-second, 10-shot standalone *The Starry Night* (`starry`) with its 4-second radial lay-in and impasto inflation opener, collapsible 30-world drawer, and end-of-loop invitation to the 30-World Odyssey.
@@ -73,7 +73,7 @@ npm run build               # typecheck + production bundle in dist/
 npm run build:single        # one self-contained dist-single/index.html
 ```
 
-`scripts/verify-worlds.mjs` runs in CI on a GitHub-hosted runner after the build (it needs `dist/` and Playwright's Chromium). It fails the job on page or console errors, a world whose generator threw, a failed self-test or paint-order check, a camera not registered at E, an unclean Odyssey hold, or a blank frame. Each run uploads the screenshots (all 30 worlds at E, Odyssey holds, off-E frames and a high-tier set) and `verification-report.json` as the `punctum-30-worlds-screenshots` artifact.
+`scripts/verify-worlds.mjs` runs in CI on a GitHub-hosted runner after the build (it needs `dist/` and Playwright's Chromium). It fails the job on page or console errors, a world whose generator threw, a failed self-test or paint-order check, a camera not registered at E, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at E and the holds (after one retry). Off-E frames and a high-tier set are recorded for people to look at, with their size and renderer state, but never fail the job. Every run uploads the screenshots as the `punctum-30-worlds-screenshots` artifact; `verification-report.json` is written on passing runs.
 
 ## Controls
 

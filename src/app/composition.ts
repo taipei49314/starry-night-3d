@@ -756,10 +756,11 @@ export async function boot(container: HTMLElement): Promise<void> {
     // Idle lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 30 worlds
     const lookaheadSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
     const lookaheadId = nextPaintingId(primaryId, 1, lookaheadSeq);
-    // Not during the first-boot lay-in, inflation and tier benchmark (the first ~8 s after a track starts): a world
-    // build is still one long task, so it waits for the opening to finish. Broken worlds are never retried here.
+    // A world build is still one long task, so: never in the single loop (the next world is built when the visitor asks
+    // for it), and in multi-act tracks only after the first ~8 s of a track (lay-in, inflation, tier benchmark).
+    // Broken worlds are never retried here.
     if (
-      !isHarnessPin && !secondaryId && !prewarmPending && frames >= 24 && f.bootSeconds >= 8
+      !isHarnessPin && !secondaryId && !prewarmPending && activeSequence.length > 1 && frames >= 24 && f.bootSeconds >= 8
       && !worldCache.has(lookaheadId) && !brokenWorlds.has(lookaheadId)
     ) {
       prewarmPending = true;

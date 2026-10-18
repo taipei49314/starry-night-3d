@@ -5,7 +5,7 @@
 // whose generator threw, a failed invariance self-test, a paint-order violation, a camera not registered at E (NaN
 // counts as a failure), an unclean Odyssey hold, or a screenshot so small that the frame must be blank or flat.
 //
-// What it only records for people to look at: off-E frames and a high-tier set. SwiftShader is detected as the Low
+// What it only records for people to look at (never fails on): off-E frames, the vortex eye and a high-tier set. SwiftShader is detected as the Low
 // tier, which is also what Intel UHD-class laptops get, so the main set shows what many visitors see.
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -76,6 +76,17 @@ const settle = (page, n) => page.evaluate((count) => new Promise((resolve) => {
  * from a world that really renders nothing.
  */
 const retriedShots = [];
+const recordedShots = [];
+
+/** Save a frame for people to look at, with its size and renderer state; never fails the job. */
+async function record(page, fileName) {
+  const buf = await page.screenshot({ path: path.join(OUT_DIR, fileName) });
+  const state = await renderState(page);
+  recordedShots.push({ fileName, pngBytes: buf.length, ...state });
+  if (buf.length < MIN_PNG_BYTES) console.warn(`[verify-worlds] recorded ${fileName} is small (${buf.length} B)`, state);
+  return buf.length;
+}
+
 async function shoot(page, fileName) {
   let buf = await page.screenshot({ path: path.join(OUT_DIR, fileName) });
   if (buf.length < MIN_PNG_BYTES) {
@@ -191,9 +202,12 @@ async function main() {
     }, actIndex);
     const starryAct = await page.evaluate(() => window.__punctum.suite.findIndex((s) => s.id === 'starry'));
     const odysseyHolds = [];
-    for (const [actIndex, fileName] of [[0, '32-odyssey-clean-hold-25_2s.png'], [starryAct, '33-odyssey-starry-hold-25_2s.png']]) {
+    for (const [actIndex, expectedId, fileName] of [[0, 'potato', '32-odyssey-clean-hold-25_2s.png'], [starryAct, 'starry', '33-odyssey-starry-hold-25_2s.png']]) {
       const hold = await holdAt(actIndex);
       console.log('[verify-worlds] Odyssey hold:', hold);
+      if (hold.activeId !== expectedId) {
+        throw new Error(`Expected the Odyssey hold in act ${actIndex} to show '${expectedId}', got '${hold.activeId}'`);
+      }
       if (hold.loopSeconds !== 900) {
         throw new Error(`Expected 30-act Odyssey loopSeconds=900, got ${hold.loopSeconds}`);
       }
@@ -213,7 +227,7 @@ async function main() {
         window.__punctum.director.seekTo(idx * 30 + t);
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       }, [starryAct, tau]);
-      await shoot(page, fileName);
+      await record(page, fileName);
     }
 
     // 3. All 30 worlds at E (t=0, freeze)
@@ -262,7 +276,7 @@ async function main() {
       window.__punctum.pinPainting('starry', 66);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     });
-    await shoot(page, '31-starry-vortex-eye-66s.png');
+    await record(page, '31-starry-vortex-eye-66s.png');
 
     // 4. Off-E frames of companion worlds (standalone track at t=14 s, mid-flight): recorded only.
     console.log('[verify-worlds] 4/5 Capturing off-E frames...');
@@ -271,7 +285,7 @@ async function main() {
         window.__punctum.pinPainting(paintId, 14);
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       }, id);
-      await shoot(page, `${42 + k}-offE-${id}-t14.png`);
+      await record(page, `${42 + k}-offE-${id}-t14.png`);
     }
 
     const brokenWorlds = await page.evaluate(() => window.__punctum.brokenWorlds?.() ?? []);
@@ -281,6 +295,7 @@ async function main() {
 
     // 5. High tier at E for a few worlds (Low is what SwiftShader detects): recorded only.
     console.log('[verify-worlds] 5/5 Capturing a high-tier set at E...');
+    await page.close(); // one rendering page at a time on the runner's CPU
     const high = await context.newPage();
     watch(high);
     await high.goto(`${baseUrl}/?t=0&freeze&tier=high`, { waitUntil: 'domcontentloaded' });
@@ -290,7 +305,7 @@ async function main() {
         window.__punctum.pinPainting(paintId, 0);
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       }, id);
-      await shoot(high, `${60 + k}-high-${id}.png`);
+      await record(high, `${60 + k}-high-${id}.png`); // tier and render scale are in the report: dynamic resolution may have dropped it
     }
     const highBroken = await high.evaluate(() => window.__punctum.brokenWorlds?.() ?? []);
     if (highBroken.length > 0) {
@@ -307,6 +322,7 @@ async function main() {
       openingState,
       odysseyHolds,
       retriedShots,
+      recordedShots,
       totalWorldsVerified: worldReports.length,
       worlds: worldReports,
     };
