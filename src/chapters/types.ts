@@ -341,7 +341,11 @@ export function buildCanvasQuadMesh(
   colorHex: number,
   name: string,
 ): Mesh {
-  const pts = corners.map(([uP, v, d]) => canvasToWorld(uFromPaint(uP, aspect), v, d));
+  // Place all 4 corners at a uniform backing depth behind the motif's foreground/architecture strokes
+  // so harmonic 1/d perspective interpolation across a 2-triangle quad never bows in front of strokes from E,
+  // while anamorphic ray projection preserves the exact 2D canvas footprint (uP, v) from E.
+  const dBack = Math.max(corners[0][2], corners[1][2], corners[2][2], corners[3][2], 680) + 160;
+  const pts = corners.map(([uP, v]) => canvasToWorld(uFromPaint(uP, aspect), v, dBack));
   const pos = new Float32Array([
     pts[0].x, pts[0].y, pts[0].z,
     pts[1].x, pts[1].y, pts[1].z,
