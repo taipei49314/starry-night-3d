@@ -1,19 +1,6 @@
-// Multi-Punctum Suite & Van Gogh World System Registry (5 Grand Chapters, 15 Iconic Worlds, 1885–1890):
-//   Chapter I   (Earth · Nuenen):    1. The Potato Eaters (1885)
-//                                    2. A Pair of Shoes (1886)
-//   Chapter II  (Color · Paris):     3. Boulevard de Clichy (1887)
-//                                    4. Self-Portrait with Straw Hat (1887)
-//   Chapter III (Sun · Arles):       5. Sunflowers (1888)
-//                                    6. Café Terrace at Night (1888)
-//                                    7. Starry Night Over the Rhône (1888)
-//                                    8. The Bedroom in Arles (1888)
-//   Chapter IV  (Cosmos · St-Rémy):  9. The Starry Night (1889)
-//                                   10. Irises (1889)
-//                                   11. Wheat Field with Cypresses (1889)
-//                                   12. Almond Blossom (1890)
-//   Chapter V   (Road · Auvers):    13. The Church at Auvers (1890)
-//                                   14. Portrait of Dr. Gachet (1890)
-//                                   15. Wheatfield with Crows (1890)
+// Multi-Punctum Suite & Van Gogh World System Registry (5 Grand Chapters, 30 Iconic Worlds, 1884–1890).
+// The world order is ALL_PAINTING_IDS in ./types.ts (= the Odyssey sequence); chapters and years are CHAPTER_SPECS in
+// ./worldGraph.ts. Each world's metadata, standalone track and Odyssey act are in PAINTING_SUITE below.
 // Includes standalone tracks AND the Dynamic Path Compiler `compilePathTrack(sequence)` that weaves ANY
 // sequence of worlds (Mode A Odyssey, Mode C Theme Paths, or custom chains) into a seamless one-take 3D journey.
 import { Group, Vector3 } from 'three';
@@ -339,10 +326,10 @@ const POTATO_TRACKS = makeChapterTracks(
   0.42,
 );
 
-// 2. Chapter I (Earth): A Pair of Shoes -> Portal: Trailing Laces & Golden Threshold -> Paris
+// 2. Chapter II (Color): A Pair of Shoes -> Portal: Trailing Laces & Golden Threshold -> Le Moulin de la Galette
 const SHOES_TRACKS = makeChapterTracks(
-  SHOES_ASPECT, 'Ch.I 一雙舊鞋',
-  ['泥土舊鞋靜物畫幅', '斑駁皮革皺褶與鐵釘鞋底', '蜿蜒鬆開的皮鞋帶小徑', '迎向金色門檻光束任意門 → 巴黎克利希大道'],
+  SHOES_ASPECT, 'Ch.II 一雙舊鞋',
+  ['巴黎畫室舊鞋靜物畫幅', '斑駁皮革皺褶與鐵釘鞋底', '蜿蜒鬆開的皮鞋帶小徑', '迎向金色門檻光束任意門 → 蒙馬特磨坊'],
   [
     { pos: pt(SHOES_ASPECT, 0.30, 0.16, 185), lookAt: pt(SHOES_ASPECT, 0.36, 0.38, 470),   fov: 42, roll: -1.5 },
     { pos: pt(SHOES_ASPECT, 0.44, 0.22, 265), lookAt: pt(SHOES_ASPECT, 0.62, 0.34, 485),   fov: 45, roll: 1.5 },
@@ -549,10 +536,10 @@ const WEAVER_TRACKS = makeChapterTracks(
   0.42,
 );
 
-// 17. Chapter I (Earth): The Old Church Tower at Nuenen -> Portal: Belfry Twilight & Churchyard Path
+// 17. Chapter I (Earth): The Old Church Tower at Nuenen -> Portal: Belfry Twilight & Churchyard Path -> Skull
 const TOWER_TRACKS = makeChapterTracks(
   TOWER_ASPECT, 'Ch.I 舊教堂塔樓',
-  ['紐南暮色墓園畫幅', '歪斜木十字架與風中荒草', '斑駁紅磚鐘樓與盤旋寒鴉', '穿過鐘樓暮光任意門 → 一雙舊鞋'],
+  ['紐南暮色墓園畫幅', '歪斜木十字架與風中荒草', '斑駁紅磚鐘樓與盤旋寒鴉', '穿過鐘樓暮光任意門 → 叼菸骷髏'],
   [
     { pos: pt(TOWER_ASPECT, 0.32, 0.16, 185), lookAt: pt(TOWER_ASPECT, 0.48, 0.48, 620),   fov: 43, roll: -2.0 },
     { pos: pt(TOWER_ASPECT, 0.42, 0.28, 250), lookAt: pt(TOWER_ASPECT, 0.48, 0.62, 650),   fov: 46, roll: 2.0 },
@@ -563,10 +550,10 @@ const TOWER_TRACKS = makeChapterTracks(
   0.40,
 );
 
-// 18. Chapter I (Earth): Skull with Burning Cigarette -> Portal: Glowing Cigarette Ember & Smoke
+// 18. Chapter I (Earth): Skull with Burning Cigarette -> Portal: Glowing Cigarette Ember & Smoke -> A Pair of Shoes
 const SKULL_TRACKS = makeChapterTracks(
   SKULL_ASPECT, 'Ch.I 叼菸骷髏',
-  ['安特衛普學院暗室直幅畫框', '象牙白鎖骨與顴骨厚塗筆觸', '深邃眼窩與咬緊的香菸', '飛入赤紅火燼與青煙漩渦任意門 → 蒙馬特磨坊'],
+  ['安特衛普學院暗室直幅畫框', '象牙白鎖骨與顴骨厚塗筆觸', '深邃眼窩與咬緊的香菸', '飛入赤紅火燼與青煙漩渦任意門 → 一雙舊鞋'],
   [
     { pos: pt(SKULL_ASPECT, 0.38, 0.24, 185), lookAt: pt(SKULL_ASPECT, 0.46, 0.52, 520),   fov: 42, roll: -2.0 },
     { pos: pt(SKULL_ASPECT, 0.44, 0.42, 240), lookAt: pt(SKULL_ASPECT, 0.48, 0.58, 540),   fov: 45, roll: 2.0 },
@@ -706,7 +693,7 @@ const OLIVE_TRACKS = makeChapterTracks(
 // 28. Chapter IV (Cosmos): Road with Cypress and Star -> Portal: Crescent Moon & Evening Star
 const ROADCYPRESS_TRACKS = makeChapterTracks(
   ROADCYPRESS_ASPECT, 'Ch.IV 絲柏與星辰之路',
-  ['聖雷米告別夜曲直幅畫框', '蜿蜒夜路、旅人與黃色馬車', '直插雲霄的雙株墨綠火焰絲柏', '穿過新月與金星光環任意門 → 盛開杏花'],
+  ['聖雷米告別夜曲直幅畫框', '蜿蜒夜路、旅人與黃色馬車', '直插雲霄的墨綠火焰絲柏', '穿過新月與金星光環任意門 → 盛開杏花'],
   [
     { pos: pt(ROADCYPRESS_ASPECT, 0.46, 0.14, 175), lookAt: pt(ROADCYPRESS_ASPECT, 0.48, 0.42, 480),   fov: 43, roll: -2.0 },
     { pos: pt(ROADCYPRESS_ASPECT, 0.42, 0.32, 225), lookAt: pt(ROADCYPRESS_ASPECT, 0.48, 0.62, 520),   fov: 46, roll: 2.0 },
@@ -1049,7 +1036,7 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     titleEn: 'The Old Church Tower at Nuenen',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)',
     year: '1885.05',
-    portalZh: '由教堂墓園泥土小徑低頭凝視 → 聚焦遠行起點《一雙舊鞋》',
+    portalZh: '穿過鐘樓暮光與盤旋寒鴉 → 踏入安特衛普學院暗室《叼菸骷髏》',
     aspect: TOWER_ASPECT,
     skyMode: 0.9,
     fogNearHex: 0x3b3428,
@@ -1059,33 +1046,15 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     generate: generateTowerChapter,
   },
   {
-    id: 'shoes',
-    chapterId: 'earth',
-    roman: 'IV',
-    shortZh: '一雙舊鞋',
-    titleZh: '一雙舊鞋',
-    titleEn: 'A Pair of Shoes',
-    placeZh: 'Chapter I · 黑土與人 (Nuenen / Paris)',
-    year: '1886.09',
-    portalZh: '順著蜿蜒鞋帶衝向暗室微光 → 凝視安特衛普《叼菸骷髏》',
-    aspect: SHOES_ASPECT,
-    skyMode: 0.8,
-    fogNearHex: 0x2e2116,
-    fogFarHex: 0x16110c,
-    moonUVD: [uFromPaint(0.62, SHOES_ASPECT), 0.72, 12600],
-    track: SHOES_TRACKS.standalone,
-    generate: generateShoesChapter,
-  },
-  {
     id: 'skull',
     chapterId: 'earth',
-    roman: 'V',
+    roman: 'IV',
     shortZh: '叼菸骷髏',
     titleZh: '叼著點燃香菸的骷髏',
     titleEn: 'Skull of a Skeleton with Burning Cigarette',
     placeZh: 'Chapter I · 黑土與人 (安特衛普 Antwerp)',
     year: '1886.02',
-    portalZh: '飛入香菸赤紅火燼與青煙漩渦 → 破曉進入巴黎《蒙馬特的煎餅磨坊》',
+    portalZh: '飛入香菸赤紅火燼與青煙漩渦 → 踏上巴黎《一雙舊鞋》遠行起點',
     aspect: SKULL_ASPECT,
     skyMode: 0.65,
     fogNearHex: 0x221814,
@@ -1095,7 +1064,25 @@ export const PAINTING_SUITE: readonly PaintingSpec[] = [
     generate: generateSkullChapter,
   },
 
-  // ================= CHAPTER II: COLOR (Paris & Montmartre, 1886–1887) =================
+  // ================= CHAPTER II: COLOR (Paris & Montmartre, 1886–1888) =================
+  {
+    id: 'shoes',
+    chapterId: 'color',
+    roman: 'V',
+    shortZh: '一雙舊鞋',
+    titleZh: '一雙舊鞋',
+    titleEn: 'A Pair of Shoes',
+    placeZh: 'Chapter II · 巴黎與覺醒 (巴黎 Paris)',
+    year: '1886.09',
+    portalZh: '順著蜿蜒鞋帶迎向金色門檻光束 → 登上巴黎《蒙馬特的煎餅磨坊》',
+    aspect: SHOES_ASPECT,
+    skyMode: 0.8,
+    fogNearHex: 0x2e2116,
+    fogFarHex: 0x16110c,
+    moonUVD: [uFromPaint(0.62, SHOES_ASPECT), 0.72, 12600],
+    track: SHOES_TRACKS.standalone,
+    generate: generateShoesChapter,
+  },
   {
     id: 'galette',
     chapterId: 'color',

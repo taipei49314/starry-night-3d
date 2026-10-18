@@ -12,9 +12,9 @@ export type PaintingId =
   | 'potato'
   | 'weaver'
   | 'tower'
-  | 'shoes'
   | 'skull'
   // Chapter II — Color (Paris & Montmartre, 1886–1887)
+  | 'shoes'
   | 'galette'
   | 'paris'
   | 'seine'
@@ -45,8 +45,8 @@ export type PaintingId =
   | 'crows';
 
 export const ALL_PAINTING_IDS: readonly PaintingId[] = [
-  'potato', 'weaver', 'tower', 'shoes', 'skull',
-  'galette', 'paris', 'seine', 'plum', 'tanguy', 'selfportrait',
+  'potato', 'weaver', 'tower', 'skull',
+  'shoes', 'galette', 'paris', 'seine', 'plum', 'tanguy', 'selfportrait',
   'yellowhouse', 'sunflowers', 'harvest', 'sower', 'cafe', 'nightcafe', 'rhone', 'bedroom',
   'starry', 'irises', 'olive', 'wheat', 'roadcypress', 'almond',
   'cottages', 'church', 'gachet', 'daubigny', 'crows',
@@ -90,8 +90,19 @@ const _rec: StrokeRecord = {
   kappa: 0, q1: 0, q2: 0, q3: 0,
 };
 
+/**
+ * HOUSE and WINDOW start at 450 m (the Starry Night village). Companion-world architecture authored nearer than that is
+ * emitted as GROVE, the solid class whose range reaches 200 m, so it keeps its authored depth instead of being clamped
+ * onto one 450-458 m plane (behind any GROVE wall in front of it). Strokes already at 450 m or more keep their class,
+ * so windows there keep the WINDOW flicker and full density. The Starry Night never uses these helpers.
+ */
+function nearSolidClass(cls: StrokeClass, d: number): StrokeClass {
+  return (cls === StrokeClass.HOUSE || cls === StrokeClass.WINDOW) && d < 450 ? StrokeClass.GROVE : cls;
+}
+
 /** Push a stroke after clamping its depth safely inside CLASS_INFO[r.cls].dRange. */
 export function pushChapterStroke(sink: StrokeSink, r: StrokeRecord): void {
+  r.cls = nearSolidClass(r.cls, r.d);
   const [d0, d1] = CLASS_INFO[r.cls].dRange;
   r.d = clamp(r.d, d0 + 1, d1 - 1);
   sink.push(r);
@@ -121,11 +132,12 @@ export function emitCanvasStroke(
     q3?: number;
   },
 ): void {
-  const [d0, d1] = CLASS_INFO[cls].dRange;
+  const effCls = nearSolidClass(cls, d);
+  const [d0, d1] = CLASS_INFO[effCls].dRange;
   _rec.u = uFromPaint(uP, aspect);
   _rec.v = v;
   _rec.d = clamp(d, d0 + 2, d1 - 2);
-  _rec.cls = cls;
+  _rec.cls = effCls;
   _rec.flags = opts?.flags ?? StrokeFlag.NONE;
   _rec.du = L * Math.cos(ang);
   _rec.dv = L * Math.sin(ang);
@@ -165,7 +177,8 @@ export function emitSurfaceStroke(
   rng: Rng,
   opts?: { emissive?: number; kappa?: number; flags?: number },
 ): void {
-  const [d0, d1] = CLASS_INFO[cls].dRange;
+  const effCls = nearSolidClass(cls, d);
+  const [d0, d1] = CLASS_INFO[effCls].dRange;
   const dc = clamp(d, d0 + 8, d1 - 8);
   const u = uFromPaint(uP, aspect);
   canvasToWorld(u, v, dc, _c);
@@ -177,7 +190,7 @@ export function emitSurfaceStroke(
   const s = segmentToStroke(_a, _b);
   const dA = s.d * Math.exp(-0.5 * s.dlnd);
   const dB = s.d * Math.exp(0.5 * s.dlnd);
-  _rec.cls = cls;
+  _rec.cls = effCls;
   _rec.flags = opts?.flags ?? StrokeFlag.NONE;
   _rec.w = wh;
   _rec.colA = packSrgb(colA);
@@ -219,6 +232,7 @@ export function emitCustomStar(
   gain: number,
   rng: Rng,
   tintHex: number = PALETTE.lemon,
+  gapHex?: number,
 ): void {
   const cx = uFromPaint(uP, aspect) * CANVAS_ASPECT;
   const cy = v;
@@ -253,9 +267,15 @@ export function emitCustomStar(
   }
 
   // 2. Concentric halo rings stepping back in depth inside STAR_CORE [11,900..16,000]
-  const ringColors = [PALETTE.lemon, PALETTE.chrome, tintHex, PALETTE.blueGreen];
-  const gapColorA = mixHex(PALETTE.ultramarine, PALETTE.prussian, 0.35);
-  const gapColorB = mixHex(PALETTE.cobalt, PALETTE.ultramarine, 0.45);
+  const ringColors = gapHex !== undefined
+    ? [PALETTE.lemon, PALETTE.chrome, tintHex, mixHex(tintHex, gapHex, 0.35)]
+    : [PALETTE.lemon, PALETTE.chrome, tintHex, PALETTE.blueGreen];
+  const gapColorA = gapHex !== undefined
+    ? shadeHex(gapHex, 0.92)
+    : mixHex(PALETTE.ultramarine, PALETTE.prussian, 0.35);
+  const gapColorB = gapHex !== undefined
+    ? mixHex(gapHex, tintHex, 0.28)
+    : mixHex(PALETTE.cobalt, PALETTE.ultramarine, 0.45);
   const dRho = rhoCore * 0.58;
   for (let k = 0; k < rings; k++) {
     const rho = rhoCore * (1.05 + 0.58 * k);
@@ -328,7 +348,13 @@ export function buildCanvasQuadMesh(
   colorHex: number,
   name: string,
 ): Mesh {
-  const pts = corners.map(([uP, v, d]) => canvasToWorld(uFromPaint(uP, aspect), v, d));
+  // Place all 4 corners at a uniform backing depth behind the motif's foreground/architecture strokes
+  // so harmonic 1/d perspective interpolation across a 2-triangle quad never bows in front of strokes from E,
+  // while anamorphic ray projection preserves the exact 2D canvas footprint (uP, v) from E.
+  // (A slope-keeping 8x8 grid at the authored depths was tried and reverted: several worlds author strokes behind
+  // their quad corners, so it covered them at E, e.g. the lower Sunflowers heads. Off E these backings are flat.)
+  const dBack = Math.max(corners[0][2], corners[1][2], corners[2][2], corners[3][2], 680) + 160;
+  const pts = corners.map(([uP, v]) => canvasToWorld(uFromPaint(uP, aspect), v, dBack));
   const pos = new Float32Array([
     pts[0].x, pts[0].y, pts[0].z,
     pts[1].x, pts[1].y, pts[1].z,

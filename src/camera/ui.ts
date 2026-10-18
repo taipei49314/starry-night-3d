@@ -1,8 +1,8 @@
 // M8 DOM overlay (§4.8) + Van Gogh World System UI:
 // - Level 1: Single Painting World & Diegetic Portal Title Card
 // - Level 2: Theme Paths Bar (Nights, Roads, Dwellings, Flora, Single Loop)
-// - Level 3: 5 Grand Chapters (Earth -> Color -> Sun -> Cosmos -> Road, 10 Worlds)
-// - 3 Viewing Modes: Odyssey (10-Act Film) / Theme Path (Motif Chains) / Atlas (Interactive World Graph & Neighbor Portals)
+// - Level 3: 5 Grand Chapters (Earth -> Color -> Sun -> Cosmos -> Road, 30 Worlds)
+// - 3 Viewing Modes: Odyssey (30-Act Film) / Theme Path (Motif Chains) / Atlas (Interactive World Graph & Neighbor Portals)
 import { type PerspectiveCamera, Vector3 } from 'three';
 import { EYE, FORWARD } from '../shared/canvasSpace';
 import type { ChapterId, MotifId, PaintingId, ViewMode } from '../chapters/types';
@@ -216,21 +216,21 @@ export const SUITE_ITEMS: readonly SuiteItem[] = [
     id: 'tower', chapterId: 'earth', roman: 'III', shortZh: '舊教堂塔樓', tinyZh: 'III 舊塔樓',
     titleZh: '紐南的舊教堂塔樓', titleEn: 'The Old Church Tower at Nuenen',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)', year: '1885.05',
-    portalZh: '由教堂墓園泥土小徑低頭凝視 → 聚焦遠行起點《一雙舊鞋》',
+    portalZh: '穿過鐘樓暮光與盤旋寒鴉 → 踏入安特衛普學院暗室《叼菸骷髏》',
   },
   {
-    id: 'shoes', chapterId: 'earth', roman: 'IV', shortZh: '一雙舊鞋', tinyZh: 'IV 舊鞋',
-    titleZh: '一雙舊鞋', titleEn: 'A Pair of Shoes',
-    placeZh: 'Chapter I · 黑土與人 (Nuenen / Paris)', year: '1886.09',
-    portalZh: '順著蜿蜒鞋帶衝向暗室微光 → 凝視安特衛普《叼菸骷髏》',
-  },
-  {
-    id: 'skull', chapterId: 'earth', roman: 'V', shortZh: '叼菸骷髏', tinyZh: 'V 骷髏',
+    id: 'skull', chapterId: 'earth', roman: 'IV', shortZh: '叼菸骷髏', tinyZh: 'IV 骷髏',
     titleZh: '叼著點燃香菸的骷髏', titleEn: 'Skull of a Skeleton with Burning Cigarette',
     placeZh: 'Chapter I · 黑土與人 (安特衛普 Antwerp)', year: '1886.02',
-    portalZh: '飛入香菸赤紅火燼與青煙漩渦 → 破曉進入巴黎《蒙馬特的煎餅磨坊》',
+    portalZh: '飛入香菸赤紅火燼與青煙漩渦 → 踏上巴黎《一雙舊鞋》遠行起點',
   },
   // Chapter II — Color (Paris & Montmartre)
+  {
+    id: 'shoes', chapterId: 'color', roman: 'V', shortZh: '一雙舊鞋', tinyZh: 'V 舊鞋',
+    titleZh: '一雙舊鞋', titleEn: 'A Pair of Shoes',
+    placeZh: 'Chapter II · 巴黎與覺醒 (Paris)', year: '1886.09',
+    portalZh: '順著蜿蜒鞋帶迎向金色門檻光束 → 登上巴黎《蒙馬特的煎餅磨坊》',
+  },
   {
     id: 'galette', chapterId: 'color', roman: 'VI', shortZh: '煎餅磨坊', tinyZh: 'VI 磨坊',
     titleZh: '蒙馬特的煎餅磨坊', titleEn: 'Le Moulin de la Galette',

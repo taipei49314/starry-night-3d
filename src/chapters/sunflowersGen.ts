@@ -13,7 +13,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -60,9 +60,6 @@ function genSulfurWallBackdrop(sink: StrokeSink, rng: Rng): void {
       { q1: 0.12, q2: i & 3, q3: rng.next() },
     );
   }
-
-  // Solar Crown Sunflower Portal at (uP = 0.50, v = 0.72)
-  emitCustomStar(sink, SUNFLOWERS_ASPECT, 0.50, 0.72, 12600, 0.026, 8, 1.32, rng, CHROME_DEEP);
 }
 
 /** 2. Golden-Ochre Table Surface & Two-Toned Glazed Earthenware Vase (GROUND & HOUSE). */

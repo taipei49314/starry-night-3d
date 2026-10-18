@@ -1,5 +1,5 @@
-// Chapter I (Earth — 黑土與人): A Pair of Shoes (1886), aspect = 1.25.
-// 3D anamorphic still-life of two mud-caked, deeply creased peasant leather work boots resting on an earthen studio floor.
+// Chapter II (Color — 巴黎與覺醒): A Pair of Shoes (Paris, Autumn 1886), aspect = 1.25.
+// 3D anamorphic still-life of two mud-caked, deeply creased peasant leather work boots resting on a Parisian studio floor.
 // Heavy diagonal palette-knife strokes in burnt umber, raw sienna, olive-bronze, copper-rust, and warm golden-ochre
 // light streaming from the upper right portal (uP = 0.62, v = 0.72), with untied laces snaking forward like a road.
 import { Group, Vector3 } from 'three';
@@ -10,7 +10,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -60,9 +60,6 @@ function genStudioBackdrop(sink: StrokeSink, rng: Rng): void {
       { q1: 0.10, q2: i & 3, q3: rng.next() },
     );
   }
-
-  // Golden studio doorway light portal at (uP = 0.62, v = 0.72) heralding the journey to Paris
-  emitCustomStar(sink, SHOES_ASPECT, 0.62, 0.72, 12600, 0.024, 7, 1.25, rng, BURLAP_GOLD);
 }
 
 /** 2. Earthen studio floor planks & cast shadows beneath the boots (GROUND [155..520 m]). */

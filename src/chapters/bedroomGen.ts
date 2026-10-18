@@ -1,8 +1,7 @@
 // Chapter III: The Bedroom in Arles (Arles, Yellow House, Oct 1888 / Saint-Rémy 1889), aspect = 1.26.
-// 3D anamorphic interior: perspective ochre-and-olive floorboards (155-520 m), pale violet-blue plaster walls (210-590 m),
-// the scarlet-blanketed golden-oak bed on the right (185-490 m), two yellow cane chairs (235 m & 390 m), washstand table
-// with ceramic pitcher (445 m), framed portraits on the walls, and the half-open green shuttered window portal (520-555 m)
-// revealing the starry night sky outside.
+// 3D anamorphic interior: perspective ochre-and-olive floorboards (208-520 m), pale violet-blue plaster walls (215-590 m),
+// the scarlet-blanketed golden-oak bed on the right (208-485 m), two yellow cane chairs (245 m & 395 m), washstand table
+// with ceramic pitcher (445 m), framed portraits on the walls, and the half-open green shuttered window portal (506-555 m).
 import { Group, Vector3 } from 'three';
 import {
   PALETTE, StrokeClass, StrokeFlag,
@@ -11,7 +10,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -29,32 +28,27 @@ const FLOOR_SIENNA = 0xc68252;
 const FLOOR_OLIVE = 0x7c8652;
 const WOOD_DARK = 0x5c3a1e;
 
-/** Outer sky & stars visible through the half-open green window portal (uP in [0.35, 0.45], v in [0.48, 0.80]). */
+/** Outer sunlit Provençal garden & sky glow visible through the half-open green window portal (uP in [0.35, 0.45], v in [0.48, 0.80]). */
 function genWindowPortalSky(sink: StrokeSink, rng: Rng): void {
-  // Deep cobalt-ultramarine night sky behind the window frame + subtle lavender wall backing
+  // Warm sunlit yellow-green casement glow behind the window frame + subtle lavender wall backing
   for (let i = 0; i < 6500; i++) {
     const uP = rng.range(-0.08, 1.08);
     const v = rng.range(0.20, 1.04);
     const inPortal = uP > 0.30 && uP < 0.50 && v > 0.44 && v < 0.84;
     const d = rng.range(230000, 250000);
-    const cA = inPortal ? mixHex(P.prussian, P.cobalt, rng.range(0.2, 0.65)) : shadeHex(WALL_LAVENDER, rng.range(0.82, 1.05));
-    const cB = inPortal ? P.ultramarine : WALL_COBALT;
+    const cA = inPortal ? mixHex(SHUTTER_LIGHT, P.lemon, rng.range(0.35, 0.78)) : shadeHex(WALL_LAVENDER, rng.range(0.82, 1.05));
+    const cB = inPortal ? P.chrome : WALL_COBALT;
     emitCanvasStroke(sink, BEDROOM_ASPECT, StrokeClass.UNDERPAINT, uP, v, d, rng.range(0.045, 0.085), rng.range(-0.2, 0.2), rng.range(0.022, 0.038), cA, cB, rng, {
       flags: StrokeFlag.UNDERLAYER,
     });
   }
-
-  // Stars glimmering right inside the window gap (Portal to The Starry Night!)
-  emitCustomStar(sink, BEDROOM_ASPECT, 0.40, 0.72, 12600, 0.013, 6, 1.15, rng, P.lemon);
-  emitCustomStar(sink, BEDROOM_ASPECT, 0.38, 0.61, 13400, 0.010, 5, 0.95, rng, P.chrome);
-  emitCustomStar(sink, BEDROOM_ASPECT, 0.42, 0.54, 14100, 0.009, 4, 0.85, rng, P.zincWhite);
 
   // Impasto lavender-blue plaster strokes across the upper room envelope (HILL class 2,000-5,600 m for distant wall depth)
   const nWallFar = 14000;
   for (let i = 0; i < nWallFar; i++) {
     const uP = rng.range(-0.04, 1.04);
     const v = rng.range(0.32, 1.02);
-    if (uP > 0.34 && uP < 0.46 && v > 0.48 && v < 0.80) continue; // leave window portal open to the stars
+    if (uP > 0.34 && uP < 0.46 && v > 0.48 && v < 0.80) continue; // leave window portal open
     const d = rng.range(2200, 4800);
     const cA = shadeHex(rng.next() < 0.55 ? WALL_LAVENDER : WALL_LILAC, rng.range(0.88, 1.12));
     const cB = shadeHex(WALL_COBALT, rng.range(0.88, 1.08));
@@ -62,7 +56,7 @@ function genWindowPortalSky(sink: StrokeSink, rng: Rng): void {
   }
 }
 
-/** Perspective wooden floorboards (GROUND class [150..2,200 m]). */
+/** Perspective wooden floorboards (GROUND class [205..520 m]). */
 function genBedroomFloor(sink: StrokeSink, rng: Rng): void {
   const N = new Vector3(0, 1, 0.14).normalize();
   const T = new Vector3(0.15, 0.25, -0.95).normalize();
@@ -72,7 +66,7 @@ function genBedroomFloor(sink: StrokeSink, rng: Rng): void {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.15);
     const v = 0.0 + 0.36 * t;
-    const d = clamp(156 + 355 * t + rng.range(-6, 6), 154, 520);
+    const d = clamp(208 + 306 * t + rng.range(-5, 5), 204, 520);
     const cA = mixHex(FLOOR_SIENNA, P.ochre, rng.range(0.2, 0.7));
     const cB = mixHex(FLOOR_OLIVE, P.varnish, rng.range(0.2, 0.6));
     emitCanvasStroke(sink, BEDROOM_ASPECT, StrokeClass.GROUND, uP, v, d, rng.range(0.028, 0.052), rng.range(-0.15, 0.15), rng.range(0.012, 0.022), cA, cB, rng, {
@@ -86,7 +80,7 @@ function genBedroomFloor(sink: StrokeSink, rng: Rng): void {
     const uP = rng.range(-0.02, 1.02);
     const t = Math.pow(rng.next(), 1.1);
     const v = 0.002 + 0.35 * t;
-    const d = clamp(156 + 350 * t + rng.range(-5, 5), 155, 515);
+    const d = clamp(208 + 304 * t + rng.range(-4, 4), 205, 515);
     // Perspective angle converging toward vanishing point (0.42, 0.58)
     const dx = (0.42 - uP) * BEDROOM_ASPECT;
     const dy = 0.58 - v;
@@ -208,7 +202,7 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
       { emissive: isPillow ? 0.35 : 0.18 },
     );
   }
-  // 3b. Golden-oak headboard (d ~ 465 m), footboard (d ~ 195 m), and side rail (HOUSE class)
+  // 3b. Golden-oak headboard (d ~ 465 m), footboard (d ~ 214 m), and side rail (GROVE/HOUSE class)
   for (let i = 0; i < 6200; i++) {
     const part = rng.next();
     let uP: number, v: number, d: number;
@@ -217,7 +211,7 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
       uP = rng.range(0.60, 0.95);
       const arch = 0.04 * Math.sin(Math.PI * ((uP - 0.60) / 0.35));
       v = rng.range(0.06, 0.34 + arch);
-      d = rng.range(188, 212);
+      d = rng.range(208, 224);
     } else if (part < 0.78) {
       // Back headboard
       uP = rng.range(0.57, 0.91);
@@ -229,7 +223,7 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
       const t = rng.next();
       uP = 0.58 + 0.02 * (1 - t) + rng.range(-0.012, 0.012);
       v = 0.14 + 0.22 * t + rng.range(-0.03, 0.04);
-      d = 200 + 260 * t;
+      d = 210 + 250 * t;
     }
     const isPost = uP < 0.61 || uP > 0.91;
     const cA = shadeHex(mixHex(P.chrome, P.ochre, rng.range(0.25, 0.75)), rng.range(0.88, 1.12));
@@ -310,7 +304,7 @@ function buildBedroomUnderlays(mat: UnderlayMaterialFactory): Group {
   // Floor quad
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
-    [[-0.04, 0.0, 155], [1.04, 0.0, 155], [0.80, 0.36, 520], [0.16, 0.36, 520]],
+    [[-0.04, 0.0, 208], [1.04, 0.0, 208], [0.80, 0.36, 520], [0.16, 0.36, 520]],
     mat,
     0x6e4c30,
     'bedroom-floor',
@@ -318,7 +312,7 @@ function buildBedroomUnderlays(mat: UnderlayMaterialFactory): Group {
   // Left wall quad
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
-    [[-0.04, 0.16, 210], [0.18, 0.35, 525], [0.18, 0.98, 525], [-0.04, 0.98, 210]],
+    [[-0.04, 0.16, 215], [0.18, 0.35, 525], [0.18, 0.98, 525], [-0.04, 0.98, 215]],
     mat,
     0x415682,
     'bedroom-wall-left',
@@ -326,7 +320,7 @@ function buildBedroomUnderlays(mat: UnderlayMaterialFactory): Group {
   // Right wall quad
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
-    [[0.76, 0.35, 525], [1.04, 0.16, 210], [1.04, 0.98, 210], [0.76, 0.98, 525]],
+    [[0.76, 0.35, 525], [1.04, 0.16, 215], [1.04, 0.98, 215], [0.76, 0.98, 525]],
     mat,
     0x415682,
     'bedroom-wall-right',
@@ -334,7 +328,7 @@ function buildBedroomUnderlays(mat: UnderlayMaterialFactory): Group {
   // Scarlet bed core quad
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
-    [[0.58, 0.10, 195], [0.95, 0.10, 195], [0.92, 0.56, 470], [0.57, 0.56, 470]],
+    [[0.58, 0.10, 210], [0.95, 0.10, 210], [0.92, 0.56, 470], [0.57, 0.56, 470]],
     mat,
     0x7a1a12,
     'bedroom-bed',

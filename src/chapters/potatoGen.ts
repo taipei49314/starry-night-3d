@@ -64,8 +64,8 @@ function genCottageEnvelope(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // The Hanging Oil Lamp Portal at (uP = 0.50, v = 0.78) — the solitary source of light in the dark earth
-  emitCustomStar(sink, POTATO_ASPECT, 0.50, 0.78, 12200, 0.022, 8, 1.35, rng, LAMP_AMBER);
+  // The Hanging Oil Lamp Portal at (uP = 0.50, v = 0.78) — warm amber oil-lamp glow against peat-umber rafters
+  emitCustomStar(sink, POTATO_ASPECT, 0.50, 0.78, 12200, 0.016, 5, 1.05, rng, LAMP_AMBER, PEAT_UMBER);
 }
 
 /** 2. Earthen cottage floor, wooden table, steaming potato platter & oil lamp frame. */
