@@ -211,7 +211,7 @@ export function generateTowerChapter(
     );
   }
 
-  // 3. Low churchyard brick enclosure wall & wind-tossed churchyard trees (HOUSE & GROVE [360..820 m])
+  // 3. Low churchyard brick enclosure wall & wind-tossed churchyard trees (wall 520..590 m, trees 420..780 m)
   for (let i = 0; i < 2400; i++) {
     const isWall = i < 1100;
     if (isWall) {
@@ -813,7 +813,7 @@ export function generateSeineChapter(
     );
   }
 
-  // 5. Woman in white-pink dress with glowing red parasol on left embankment (CYPRESS [160..215 m]) + Moored Rowboat (GROVE [240..340 m])
+  // 5. Woman in white-pink dress with glowing red parasol on left embankment (CYPRESS [160..215 m]) + Moored Rowboat (GROVE [245..320 m])
   for (let i = 0; i < 1200; i++) {
     const uP = 0.22 + rng.range(-0.025, 0.025);
     const v = rng.range(0.24, 0.42);
