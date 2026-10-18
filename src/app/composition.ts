@@ -266,7 +266,7 @@ export async function boot(container: HTMLElement): Promise<void> {
   try {
     engine = createEngine(container, { tier: flags.tier });
   } catch (e) {
-    container.innerHTML = '<p class="fallback">This piece needs WebGL 2. Try a current desktop browser with hardware acceleration on.</p>';
+    container.innerHTML = '<p class="fallback">這件作品需要 WebGL 2。This piece needs WebGL 2. Try a current desktop browser with hardware acceleration on.</p>';
     throw e;
   }
   const u = createSharedUniforms();
@@ -749,7 +749,12 @@ export async function boot(container: HTMLElement): Promise<void> {
     // Idle lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 30 worlds
     const lookaheadSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
     const lookaheadId = nextPaintingId(primaryId, 1, lookaheadSeq);
-    if (!isHarnessPin && !secondaryId && !prewarmPending && frames >= 24 && !worldCache.has(lookaheadId)) {
+    // Not during the first-boot lay-in, inflation and tier benchmark (the first ~8 s after a track starts): a world
+    // build is still one long task, so it waits for the opening to finish. Broken worlds are never retried here.
+    if (
+      !isHarnessPin && !secondaryId && !prewarmPending && frames >= 24 && f.bootSeconds >= 8
+      && !worldCache.has(lookaheadId) && !brokenWorlds.has(lookaheadId)
+    ) {
       prewarmPending = true;
       const scheduleIdle =
         (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void }).requestIdleCallback

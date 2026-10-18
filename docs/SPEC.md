@@ -1248,11 +1248,12 @@ Conventions:
     - No reference image ships, and no on-screen text presents paint-order-as-chronology as fact.
 12. **Init time on weak CPUs.**
     - Analytic generation only: no per-stroke streamline integration, except the 32 jet filaments. Typed arrays; mulberry32.
-    - Idle lookahead pre-warming (`requestIdleCallback`) builds the upcoming act's world during idle frames while LRU eviction (`MAX_CACHED_WORLDS = 4`) safely disposes GPU buffers without touching shared ribbon geometry.
+    - If generation exceeds 250 ms, time-slice by class across frames during the first-boot lay-in, uploading each chunk once when complete (no partial re-uploads).
+    - Status (2026-10-18): not met yet. A world build is still one synchronous task. The lookahead pre-warm runs in an idle callback and is held back for the first ~8 s of a track, so it no longer lands in the lay-in; LRU eviction (`MAX_CACHED_WORLDS = 4`) disposes per-world buffers without touching the shared ribbon geometry.
 13. **Sandbox and single-file.**
     - No workers, blob URLs, pointer lock, fullscreen requirement, fetches or assets.
     - Storage only via try/catch, and only for the calm/tier preference.
-    - Build with `vite-plugin-singlefile`.
+    - Build with `vite-plugin-singlefile`. The bundle is expected under 1 MB; the hard limit is 16 MB. (2026-10-15 deploy: the web bundle's JS is about 0.98 MB; the single-file size is not tracked yet.)
 14. **Parallel drift.** `contracts.ts` is frozen before fan-out. Any change goes through the lead and requires a re-run of the self-test and paint-order assertions.
 
 ---
@@ -1321,7 +1322,8 @@ Conventions:
 - **Performance:** High holds 60 fps at 1080p through the whole loop (p95 frame time ≤ 16.7 ms). Low on Intel UHD holds ≥ 30 fps p95 with dynamic resolution, and every set piece is still recognisable on Low.
 - **Invariance demo:** in free mode at E, a warp sweep 0 → 1.6 changes no pixel beyond A2C dither; one metre to the side, the world visibly refolds.
 - **Hand-off:** every input hands off in ≤ 1 frame. Idle for 12 s rejoins smoothly. Space returns to the eye and the snap re-registers the painting.
-- **Build & CI Verification:** a single HTML file (`dist-single/index.html`) plus web bundle (`dist/`); zero network requests after load; GitHub Actions (`ci-pages.yml`) runs `scripts/verify-worlds.mjs` in headless Chromium (SwiftShader WebGL 2) to verify the default opening, all 30 worlds at $E$ (`selfTestMaxErr < 1e-4`, `paintOrderViolations === 0`), and the Odyssey clean hold at $E$, uploading all screenshots as `punctum-30-worlds-screenshots`.
+- **Build:** a single HTML file under 1 MB (hard limit 16 MB) plus the web bundle (`dist/`); no network requests after load; runs in a sandboxed iframe and in an Electron pane.
+- **CI verification:** GitHub Actions (`ci-pages.yml`) runs `scripts/verify-worlds.mjs` in headless Chromium (SwiftShader WebGL 2, which the tier regex treats as Low). It fails on page or console errors, a world whose generator threw, a self-test error ≥ 1e-4, a paint-order violation, a camera not registered at $E$, an unclean Odyssey hold (Act I and *The Starry Night* act), or a blank frame. It records, without judging them, off-$E$ frames and a high-tier set. Pixel-level comparison against golden frames at the §9.2 checkpoints is not in place yet, so the art itself still needs a human look at the uploaded `punctum-30-worlds-screenshots`.
 
 ---
 
@@ -1331,15 +1333,14 @@ Conventions:
 
 - **Default Opening (`/` or `?mode=theme&path=single`):**
   - Boots directly into standalone *The Starry Night* (`painting = 'starry'`, `pathId = 'single'`, `loopSeconds = 96`, 10 shots) with the 4-second radial lay-in (`uLayIn`) and impasto inflation (`uInflate`) enabled.
-  - The 30-painting strip is collapsed behind `🎨 30 幅畫作 ▾` so the opening screen stays uncluttered; at the end of the loop (`t ≥ 84 s` or after loop 1), the golden invitation pill `✦ 進入梵谷 30 個世界 · 五章三十幕旅程` appears.
+  - The 30-painting strip is collapsed behind `🎨 30 幅畫作 ▾` so the opening screen stays uncluttered; from `t ≥ 84 s` of the first loop on, the golden invitation pill `✦ 進入梵谷 30 個世界 · 五章三十幕旅程` is offered, but like the rest of the chrome it is hidden while the painting is registered at $E$ (`data-clean-eye="1"`).
 - **Multi-Act Odyssey (`?mode=odyssey`, `900 s` = 30 acts × `30 s`) & Thematic Paths (`compilePathTrack`):**
-  - Each 30-second act (`ACT_SECONDS = 30`) follows a 5-stage arc:
-    1. `τ ∈ [0.0, 2.0)`: Canvas Gaze at $E$ (with incoming snap ripple settle).
-    2. `τ ∈ [2.0, 6.0)`: Tear & Parallax Departure from $E$.
-    3. `τ ∈ [6.0, 20.5)`: Deep 3D World Exploration (in *The Starry Night*, waypoint 3 dives to `d = 38.5 km`, `lookAt = 44 km` inside the 40 km Great Vortex throat).
-    4. `τ ∈ [20.5, 25.0)`: Log-polar Homecoming to exact registration at $E$.
-    5. `τ ∈ [25.0, 26.8)`: **1.8-second Clean Reassembled Hold at $E$** (`uAlign = 1`, `primaryScatter = 0`, `primaryFade = 1`). While `uAlign > 0.72` (and the user hasn't moved the pointer within 2.4 s), `.pn-ui[data-clean-eye="1"]` fades out persistent UI chrome, suppresses 3D portal beacons, and fades golden portal vortex particles to `0`.
-    6. `τ ∈ [26.8, 30.0)`: **Dual-World 3D Brushstroke Cross-Dissolve** (`evalOdysseyMorph`) governed by the active `WORLD_GRAPH` edge's Motif Transition Grammar (`light`, `road`, `sky`, `flora`, `dwelling`, `gaze`).
+  - Each 30-second act (`ACT_SECONDS = 30`, timings from `makeChapterTracks(..., 30, 1.6, 21.0, 25.0)` and `evalOdysseyMorph`) follows a 5-stage arc. In free mode the act clock holds before 26.8 and never rewinds:
+    1. `τ ∈ [0.0, 1.6)`: Canvas lock at $E$ (with the incoming snap ripple settling).
+    2. `τ ∈ [1.6, 21.0)`: Flight through the painting's 3D world (in *The Starry Night* act, the deepest waypoint is `d = 38.5 km`, `lookAt = 44 km`, in front of the 40 km vortex throat, about 0.06 canvas units off its axis).
+    3. `τ ∈ [21.0, 25.0)`: Log-polar homecoming to exact registration at $E$. Return to the Eye (Space) flies to the act's pose at `τ = 20.5` and plays it to 25.0; during the hold or a dissolve it lands at $E$ of the painting on screen instead of rewinding.
+    4. `τ ∈ [25.0, 26.8)`: **1.8-second Clean Reassembled Hold at $E$** (`uAlign = 1`, `primaryScatter = 0`, `primaryFade = 1`). While `uAlign > 0.72` (and the user hasn't moved the pointer within 2.4 s), `.pn-ui[data-clean-eye="1"]` fades out persistent UI chrome, suppresses 3D portal beacons, and fades golden portal vortex particles to `0`.
+    5. `τ ∈ [26.8, 30.0)`: **Dual-World 3D Brushstroke Cross-Dissolve** (`evalOdysseyMorph`) governed by the active `WORLD_GRAPH` edge's Motif Transition Grammar (`light`, `road`, `sky`, `flora`, `dwelling`, `gaze`).
 
 ### 10.2 Five Grand Chapters & 30 Iconic Worlds (`DEFAULT_ODYSSEY_SEQUENCE`)
 
@@ -1353,10 +1354,14 @@ Conventions:
 
 ### 10.3 Shader & World-Builder Contracts for Companion Worlds
 
-- **Canvas-authored `SWIRL`/`RING`/`JET` guard (`src/strokes/glsl/stroke.vert.ts`):**
+- **Canvas-authored `VORTEX`/`JET` guard (`src/strokes/glsl/stroke.vert.ts`):**
   - *The Starry Night* encodes procedural `VORTEX`/`RING`/`JET` strokes with `a1 = (L, 0, 0, W)` (`a1.y == 0`), whereas companion worlds author explicit canvas endpoints `(du, dv, dlnd, W)` via `emitCanvasStroke` (`abs(a1.y) >= 1e-5`).
-  - The vertex shader only runs procedural `VORTEX`, `RING`, or `JET` re-projection when `abs(a1.y) <= 1e-7`; otherwise it preserves the stroke's exact canvas position `(u, v, d)` and applies gentle periodic band breathing so strokes never jump to Starry Night's vortex funnels or star locations.
+  - For `VORTEX` (SWIRL, EDDY) and `JET` (WIND_JET) the vertex shader runs the procedural Starry re-projection only when `abs(a1.y) <= 1e-7`; otherwise it keeps the stroke's authored canvas position `(u, v, d)`, so companion-world clouds, smoke and rain stay where they were drawn.
+  - `RING` (STAR_RING, MOON_RING) has no such guard: it is always re-projected onto the Starry star and moon geometry. Companion worlds must not emit those classes (none do; `emitCustomStar` uses STAR_CORE).
+  - The guard is a convention on `a1.y`, not a flag; a stroke-flag bit would be sturdier (open work).
 - **Linear-space fog (`src/chapters/suite.ts`):**
-  - Near-field fog color `fogNearHex` is computed by halving `spec.fogHex` in linear RGB (`scaleLinearHex(spec.fogHex, 0.5)`) rather than sRGB bit-shifting, preserving blue channel saturation across all 30 worlds.
+  - *The Starry Night*'s `fogNearHex` is `shadeHex(PALETTE.ultramarine, 0.5)`: half of ultramarine in linear light (about `#11204f`), the same value as the `createSharedUniforms` default, so the §4.3 near fog is unchanged by the World System. An earlier value halved the sRGB channels instead, which made every frame away from $E$ darker and less blue.
+  - Companion worlds carry their own hand-picked `fogNearHex` / `fogFarHex` values.
+- **Starry Night invariants the World System must keep:** near and far fog equal to the §4.3 colours; the `uSkyMode == 0` backdrop path unchanged; the 96 s, 10-shot track as the default opening; nothing that is not paint (beacon, portal motes, chrome, invitation pill) drawn while the painting is registered at $E$; no change to Starry strokes, shaders or generators without a frame comparison at the §9.2 checkpoints.
 - **Nocturnal vs. Daylight Portals:**
   - `emitCustomStar` halo horns are reserved exclusively for nocturnal/twilight worlds (`starry`, `rhone`, `cafe`, `roadcypress`, plus scene-matched warm `gapHex` halos in `potato`, `sower`, `nightcafe`, `olive`), never in daylight interiors, portraits, or still lifes.
