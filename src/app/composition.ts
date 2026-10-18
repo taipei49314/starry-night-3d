@@ -57,8 +57,8 @@ export function buildWorld(
 ): BuiltWorld {
   const spec = getPaintingSpec(paintingId);
   const layerUniforms = createLayerUniforms(u);
-  // Right-size initial StrokeBuffer capacity: Starry Night uses ~98k strokes, companion worlds use ~52k–68k strokes
-  const initialCapacity = paintingId === 'starry' ? 150_000 : 72_000;
+  // Right-size initial StrokeBuffer capacity: Starry Night uses ~178k strokes (181.6k budgetHigh), companion worlds use ~52k–72k strokes
+  const initialCapacity = paintingId === 'starry' ? 182_000 : 76_000;
   const buffer = new StrokeBuffer(initialCapacity);
   const materials = new Map<string, Material>();
   const mat: UnderlayMaterialFactory = (hex, opts) => {
@@ -513,6 +513,7 @@ export async function boot(container: HTMLElement): Promise<void> {
           break;
       }
     },
+    onTouchThrust: (dir) => director.setTouchThrust(dir),
     onSeek: (fraction) => {
       const targetT = fraction * director.activeTrack.loopSeconds;
       director.seekTo(targetT);
@@ -581,11 +582,15 @@ export async function boot(container: HTMLElement): Promise<void> {
   let last = performance.now();
   let frames = 0;
   let shotFrames = 0;
+  let prewarmPending = false;
 
   const debug = {
     engine,
     director,
     get world() { return world; },
+    get activeId() { return activeId; },
+    get pathId() { return pathId; },
+    get viewMode() { return viewMode; },
     uniforms: u,
     post,
     storm,
@@ -595,6 +600,34 @@ export async function boot(container: HTMLElement): Promise<void> {
     switchPainting: triggerTransition,
     selectModeAndPath,
     weaveAndPlay,
+    pinPainting: (id: PaintingId, tSec = 0) => {
+      const w = getOrBuildWorld(id);
+      activeId = id;
+      viewMode = 'theme';
+      pathId = 'single';
+      activeSequence = [id];
+      manualMorph = null;
+      snapHoldId = null;
+      snapHoldTimer = 0;
+      u.uScatter.value = 0;
+      u.uSnapTime.value = -1;
+      u.uScatterAtSnap.value = 0;
+      const spec = getPaintingSpec(id);
+      displayAspect = spec.aspect;
+      director.setTrack(spec.track, tSec, false);
+      director.update(0);
+      const self = runInvarianceSelfTest(w.buffer);
+      const violations = assertPaintOrder(w.buffer);
+      return {
+        id,
+        roman: spec.roman,
+        titleZh: spec.titleZh,
+        strokes: w.buffer.count,
+        selfTestOk: self.ok,
+        selfTestMaxErr: self.maxErr,
+        paintOrderViolations: violations.length,
+      };
+    },
     frames: () => frames,
   };
   (window as unknown as { __punctum: typeof debug }).__punctum = debug;
@@ -624,6 +657,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     let morphStirRadiusH = 0.18;
     let portalUV: [number, number] = [0.5, 0.5];
     let snapTriggered = false;
+    const calmScatterScale = f.calm ? 0.35 : 1.0;
 
     if (manualMorph) {
       manualMorph.t += dt;
@@ -635,15 +669,15 @@ export async function boot(container: HTMLElement): Promise<void> {
       const g = edge.grammar;
       primaryFade = 1 - smoothstep(0.05, 0.88, p);
       secondaryFade = smoothstep(0.05, 0.88, p);
-      primaryScatter = g.scatterPeakPrimary * smoothstep(0.0, 0.85, p);
-      secondaryScatter = g.scatterPeakSecondary * Math.pow(1 - smoothstep(0.10, 0.96, p), 1.65);
+      primaryScatter = g.scatterPeakPrimary * smoothstep(0.0, 0.85, p) * calmScatterScale;
+      secondaryScatter = g.scatterPeakSecondary * Math.pow(1 - smoothstep(0.10, 0.96, p), 1.65) * calmScatterScale;
       atmoMix = smoothstep(0.08, 0.92, p);
       const specA = getPaintingSpec(primaryId);
       const specB = getPaintingSpec(secondaryId);
       displayAspect = specA.aspect + (specB.aspect - specA.aspect) * atmoMix;
       const activeSpec = p >= 0.55 ? specB : specA;
       portalUV = [activeSpec.moonUVD[0], activeSpec.moonUVD[1]];
-      if (!flags.calm) {
+      if (!f.calm) {
         morphSmear = g.smearBoost * bell;
         morphBloom = g.bloomBoost * bell;
         morphDust = g.dustBoost * bell;
@@ -670,12 +704,12 @@ export async function boot(container: HTMLElement): Promise<void> {
       secondaryId = ms.secondaryId;
       primaryFade = ms.primaryFade;
       secondaryFade = ms.secondaryFade;
-      primaryScatter = ms.primaryScatter;
-      secondaryScatter = ms.secondaryScatter;
+      primaryScatter = ms.primaryScatter * calmScatterScale;
+      secondaryScatter = ms.secondaryScatter * calmScatterScale;
       atmoMix = ms.atmoMix;
       displayAspect = ms.displayAspect;
       portalUV = ms.portalUV;
-      if (ms.secondaryId && !flags.calm) {
+      if (ms.secondaryId && !f.calm) {
         morphSmear = ms.smearBoost;
         morphBloom = ms.bloomBoost;
         morphDust = ms.dustBoost;
@@ -702,11 +736,21 @@ export async function boot(container: HTMLElement): Promise<void> {
     world = getOrBuildWorld(primaryId);
     const secondaryWorld = secondaryId ? getOrBuildWorld(secondaryId) : null;
 
-    // Lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 30 worlds
+    // Idle lookahead pre-warming of the next Act's painting + LRU eviction so VRAM stays bounded across all 30 worlds
     const lookaheadSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
     const lookaheadId = nextPaintingId(primaryId, 1, lookaheadSeq);
-    if (!isHarnessPin && !secondaryId && frames >= 36 && frames % 36 === 0 && !worldCache.has(lookaheadId)) {
-      getOrBuildWorld(lookaheadId);
+    if (!isHarnessPin && !secondaryId && !prewarmPending && frames >= 24 && !worldCache.has(lookaheadId)) {
+      prewarmPending = true;
+      const scheduleIdle =
+        (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void }).requestIdleCallback
+        ?? ((cb: () => void) => window.setTimeout(cb, 120));
+      scheduleIdle(() => {
+        prewarmPending = false;
+        if (!worldCache.has(lookaheadId)) {
+          getOrBuildWorld(lookaheadId);
+          evictExcessWorlds(primaryId, secondaryId, lookaheadId);
+        }
+      }, { timeout: 1500 });
     }
     evictExcessWorlds(primaryId, secondaryId, lookaheadId);
 
@@ -747,7 +791,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     const portalProximity = secondaryId !== null ? 1.0 : rawPortalProximity * eyeFade;
 
     masterPortalVortex.setPortalState(
-      isHarnessPin || portalProximity <= 0.01 ? 0 : (0.28 + 0.92 * portalProximity) * eyeFade,
+      isHarnessPin || portalProximity <= 0.01 ? 0 : (0.28 + 0.92 * portalProximity) * eyeFade * (f.calm ? 0.35 : 1.0),
       portalEdge.motif,
     );
 
@@ -860,6 +904,13 @@ export async function boot(container: HTMLElement): Promise<void> {
     }
     overlay?.draw(engine.camera);
     frames++;
+    if (frames === 1) {
+      const loader = document.getElementById('loading-overlay');
+      if (loader) {
+        loader.setAttribute('data-ready', '1');
+        window.setTimeout(() => loader.remove(), 500);
+      }
+    }
     if (frames === 3) (window as unknown as { __ready: boolean }).__ready = true;
     requestAnimationFrame(frame);
   };

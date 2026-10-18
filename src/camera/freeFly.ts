@@ -41,6 +41,8 @@ export class PilotInput {
   warpK = 1;
   /** active stir pointer position (client px) or null */
   stirAt: { x: number; y: number } | null = null;
+  /** on-screen touch flight thrust (-1 backward, 0 idle, +1 forward) */
+  touchThrust = 0;
 
   private readonly ptrs = new Map<number, Ptr>();
   private pinchDist = 0;
@@ -69,12 +71,18 @@ export class PilotInput {
     on('wheel', (e) => this.wheel(e), { passive: false });
     onW('keydown', (e) => this.keyDown(e));
     onW('keyup', (e) => this.keys.delete(e.code));
-    onW('blur', () => { this.keys.clear(); this.ptrs.clear(); this.stirAt = null; });
+    onW('blur', () => { this.keys.clear(); this.ptrs.clear(); this.stirAt = null; this.touchThrust = 0; });
   }
 
-  /** True while nothing is held: no keys, no pointers. */
+  /** True while nothing is held: no keys, no pointers, no touch thrust. */
   get idle(): boolean {
-    return this.keys.size === 0 && this.ptrs.size === 0;
+    return this.keys.size === 0 && this.ptrs.size === 0 && this.touchThrust === 0;
+  }
+
+  setTouchThrust(dir: number): void {
+    this.touchThrust = Math.max(-1, Math.min(1, dir));
+    this.cb.onActivity();
+    if (this.touchThrust !== 0) this.cb.onHandOff();
   }
 
   consumeLook(): [number, number] {
@@ -290,8 +298,8 @@ export class FreeFly {
       if (vR.lengthSq() < 1e-8) vR.set(1, 0, 0);
       vR.normalize();
       const K = input.keys;
-      if (K.has('KeyW') || K.has('ArrowUp')) vDes.add(vF);
-      if (K.has('KeyS') || K.has('ArrowDown')) vDes.sub(vF);
+      if (K.has('KeyW') || K.has('ArrowUp') || input.touchThrust > 0) vDes.add(vF);
+      if (K.has('KeyS') || K.has('ArrowDown') || input.touchThrust < 0) vDes.sub(vF);
       if (K.has('KeyD') || K.has('ArrowRight')) vDes.add(vR);
       if (K.has('KeyA') || K.has('ArrowLeft')) vDes.sub(vR);
       if (K.has('KeyE')) vDes.add(Y);

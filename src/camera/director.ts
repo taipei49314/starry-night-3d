@@ -216,6 +216,9 @@ export class Director {
   triggerStorm(): void {
     this.stormToggled = true;
   }
+  setTouchThrust(dir: number): void {
+    this.input?.setTouchThrust(dir);
+  }
   setWarpK(k: number): void {
     const clamped = Math.round(Math.max(0, Math.min(1.6, k)) * 10) / 10;
     this.manualWarpK = clamped;

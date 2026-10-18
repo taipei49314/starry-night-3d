@@ -242,13 +242,13 @@ class CompanionTrack implements ChapterTrack {
     out.galleryLightDeg = 32;
     out.exposure = 1;
     out.bloom = this.baseBloom + 0.18 * smoothstep(this.tHold + 4, this.tHome - 4, tc) * (1 - smoothstep(this.tHome - 2, snapAt, tc));
-    const smPeak = calm ? 0.12 : 0.28;
-    out.smear = smPeak * smoothstep(this.tHold + 1, this.tHold + 5, tc) * (1 - smoothstep(stormStart - 1.5, this.tHome, tc));
-    out.storm = tc >= stormStart && tc < snapAt
+    out.smear = calm ? 0 : 0.28 * smoothstep(this.tHold + 1, this.tHold + 5, tc) * (1 - smoothstep(stormStart - 1.5, this.tHome, tc));
+    out.storm = !calm && tc >= stormStart && tc < snapAt
       ? smoothstep(stormStart, stormPeak, tc) * (1 - smoothstep(stormPeak, snapAt - 0.15, tc))
       : 0;
     out.fade = 0;
-    out.dust = 0.55 * smoothstep(5, 80, camDistFromE) * (1 - smoothstep(this.tHome + 0.5, snapAt, tc));
+    const dustScale = calm ? 0.25 : 0.55;
+    out.dust = dustScale * smoothstep(5, 80, camDistFromE) * (1 - smoothstep(this.tHome + 0.5, snapAt, tc));
     return out;
   }
 }
