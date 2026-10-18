@@ -140,10 +140,9 @@ export function emitCanvasStroke(
   _rec.emissive = opts?.emissive ?? 0;
   _rec.seed = rng.next();
   _rec.kappa = opts?.kappa ?? rng.range(-0.22, 0.22);
-  const isSkyBand = effCls === StrokeClass.SKY_BAND;
-  _rec.q1 = opts?.q1 ?? (isSkyBand ? 0.22 : 0);
-  _rec.q2 = opts?.q2 ?? (isSkyBand ? Math.floor(_rec.seed * 4) : 0);
-  _rec.q3 = opts?.q3 ?? (isSkyBand ? (_rec.seed * 17.37) % 1 : 0);
+  _rec.q1 = opts?.q1 ?? 0;
+  _rec.q2 = opts?.q2 ?? 0;
+  _rec.q3 = opts?.q3 ?? 0;
   sink.push(_rec);
 }
 

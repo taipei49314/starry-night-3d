@@ -93,8 +93,8 @@ const CSS = `
 .pn-ui[data-clean-eye="1"] .pn-tl,
 .pn-ui[data-clean-eye="1"] .pn-neighbors,
 .pn-ui[data-clean-eye="1"] .pn-card,
-.pn-ui[data-clean-eye="1"] .pn-beacon{opacity:0 !important;pointer-events:none !important}
-.pn-ui[data-clean-eye="1"] .pn-enter-odyssey{bottom:16px}
+.pn-ui[data-clean-eye="1"] .pn-beacon,
+.pn-ui[data-clean-eye="1"] .pn-enter-odyssey{opacity:0 !important;pointer-events:none !important}
 .pn-tl-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;font-size:11.5px;letter-spacing:.02em;flex-wrap:wrap}
 .pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44%}
 .pn-tl-controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
@@ -1239,9 +1239,10 @@ export class DirectorUI {
         this.cardPortal.textContent = `✦ ${item.portalZh}`;
         this.card.style.opacity = '1';
         if (this.cardTimer !== null) window.clearTimeout(this.cardTimer);
+        // Long enough to outlast the opening hold at E, where clean-eye hides the card, so it is seen as the camera departs.
         this.cardTimer = window.setTimeout(() => {
           this.card.style.opacity = '0';
-        }, 3800);
+        }, 7000);
       }
     }
   }
