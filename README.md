@@ -46,7 +46,7 @@ Every edge in `WORLD_GRAPH` carries one of six motifs, each driving its own **3D
 - **6 Motif Transition Musical Bridges (`src/audio/soundscape.ts`)**: Synthesizes motif-specific harmonic bridges and continuous next-world drone pre-echoes across all 30 worlds, with automatic background-tab suspension and gesture-gated Web Audio unlock.
 - **Zero-Allocation Hot Paths, Idle Pre-Warming & Bounded 30-World VRAM Cache**:
   - Reusable `StrokeRecord` Scratch (`emitCanvasStroke` / `emitSurfaceStroke`) eliminates ~1.95M temporary heap allocations across the 30 worlds.
-  - Right-sized `StrokeBuffer` initial capacity (`182,000` for *The Starry Night*, `76,000` for companion worlds) reduces companion world TypedArray memory footprint by **64%**.
+  - Right-sized `StrokeBuffer` initial capacity (`182,000` for *The Starry Night*, `76,000` for companion worlds); worlds that outgrow it (several companion worlds do) grow the buffer once.
   - Lookahead world pre-warming in an idle callback (`requestIdleCallback`), held back for the first ~8 s of a track so it never lands in the opening; a world build is still one synchronous task (time-slicing it is open work), O(1) `PAINTING_SPEC_MAP` & `SUITE_ITEM_MAP` lookups, memoized `compilePathTrack`, pre-parsed linear RGB atmosphere cache (`_atmoCache`), and safe GPU geometry/material disposal on LRU world eviction (`MAX_CACHED_WORLDS = 4`).
 
 ### Three Viewing Modes (`ViewMode`)
@@ -87,7 +87,7 @@ Any input hands control to you; after 12 s idle the camera rejoins the current a
 | Alt-drag or right-drag | stir the sky |
 | Shift + wheel | depth warp: at E the image does not change; step aside and the world refolds |
 | Space | fly back to the painter's eye $E$ in the current act and re-register the painting |
-| `P` or `⏸ 暫停` button | pause / resume the camera timeline and flights (the brushstrokes keep their gentle motion) |
+| `P` or `⏸ 暫停` button | pause / resume the camera timeline and its automatic flights (return-to-eye, idle rejoin); you can still fly yourself, and the brushstrokes keep their gentle motion |
 | `Enter` or click 3D Portal Beacon | leap through the active painting's 3D Spatial Portal when the beacon is visible |
 | `[` / `]` or `PageUp` / `PageDown` | switch to previous / next painting in the active sequence via 6-Motif 3D Brushstroke Cross-Dissolve |
 | `O` | toggle 5-Chapter 30-Act Odyssey (`∞ 五章三十幕`) vs. single-painting loop (`◎ 單幅沉浸循環`) |

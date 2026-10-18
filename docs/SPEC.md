@@ -20,7 +20,7 @@ These are dropped:
 
 **Name:** PUNCTUM: The Starry Night & The Van Gogh World System, 250 km Deep (5 Chapters · 30 Iconic Worlds).
 
-**Logline.** From one exact point, up to **181,600** sculpted brushstrokes (`~178,000` in *The Starry Night*; `52,000–72,000` in each of the 29 companion worlds) scattered across 250 km line up into the painting. Step away and the painting tears open. Opening the application launches directly into the signature **96-second, 10-shot standalone *The Starry Night*** (`mode = 'theme'`, `pathId = 'single'`), where in one continuous take the camera:
+**Logline.** From one exact point, about **181,400** sculpted brushstrokes in *The Starry Night* (budget 181,600; roughly 47,000–130,000 in each of the 29 companion worlds, per the CI `verification-report.json`) scattered across 250 km line up into the painting. Step away and the painting tears open. Opening the application launches directly into the signature **96-second, 10-shot standalone *The Starry Night*** (`mode = 'theme'`, `pathId = 'single'`), where in one continuous take the camera:
 1. climbs a 145 m black-flame cypress;
 2. rides its tip as it turns into wind;
 3. punches through Venus into a tunnel of counter-rotating halo rings;
@@ -1183,7 +1183,7 @@ Conventions:
 | WINDOW | 400 | 1 | 1 | lit windows (`AnimKind.FLICKER`) |
 | CHURCH | 3,600 | 0.8 | 0.5 | nave, octagonal shaft & spire (`600–760 m`) |
 | CYPRESS | 19,500 | 0.6 | 0.3 | 18,000 flame strokes + 1,500 `StrokeFlag.UNDERLAYER` core fill |
-| **Total (`starry`)** | **181,600 budget (`~178,000` generated)** | **≈ 118k** | **≈ 72k** | Companion worlds: `52,000–72,000` strokes |
+| **Total (`starry`)** | **181,600 budget (about 181,400 generated, CI report 2026-10-18)** | **≈ 118k** | **≈ 72k** | Companion worlds: roughly 47,000–130,000 strokes |
 
 ### 7.3 Tier table
 

@@ -57,7 +57,7 @@ export function buildWorld(
 ): BuiltWorld {
   const spec = getPaintingSpec(paintingId);
   const layerUniforms = createLayerUniforms(u);
-  // Right-size initial StrokeBuffer capacity: Starry Night uses ~178k strokes (181.6k budgetHigh), companion worlds use ~52k–72k strokes
+  // Right-size initial StrokeBuffer capacity: Starry Night uses ~181k strokes (181.6k budgetHigh), companion worlds use ~47k–130k strokes (the buffer doubles when a world outgrows the start capacity)
   const initialCapacity = paintingId === 'starry' ? 182_000 : 76_000;
   const buffer = new StrokeBuffer(initialCapacity);
   const materials = new Map<string, Material>();
