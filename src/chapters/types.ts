@@ -91,12 +91,13 @@ const _rec: StrokeRecord = {
 };
 
 /**
- * HOUSE and WINDOW start at 450 m (the Starry Night village). Nearer companion-world architecture is emitted as
- * GROVE, the solid class whose range reaches 200 m, so it keeps its authored depth instead of being clamped onto
- * one 450-458 m plane (behind any GROVE wall in front of it). The Starry Night never uses these helpers.
+ * HOUSE and WINDOW start at 450 m (the Starry Night village). Companion-world architecture authored nearer than that is
+ * emitted as GROVE, the solid class whose range reaches 200 m, so it keeps its authored depth instead of being clamped
+ * onto one 450-458 m plane (behind any GROVE wall in front of it). Strokes already at 450 m or more keep their class,
+ * so windows there keep the WINDOW flicker and full density. The Starry Night never uses these helpers.
  */
 function nearSolidClass(cls: StrokeClass, d: number): StrokeClass {
-  return (cls === StrokeClass.HOUSE || cls === StrokeClass.WINDOW) && d < 458 ? StrokeClass.GROVE : cls;
+  return (cls === StrokeClass.HOUSE || cls === StrokeClass.WINDOW) && d < 450 ? StrokeClass.GROVE : cls;
 }
 
 /** Push a stroke after clamping its depth safely inside CLASS_INFO[r.cls].dRange. */

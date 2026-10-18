@@ -1358,10 +1358,11 @@ export class DirectorUI {
         this.cardPortal.textContent = `✦ ${item.portalZh}`;
         this.card.style.opacity = '1';
         if (this.cardTimer !== null) window.clearTimeout(this.cardTimer);
-        // Long enough to outlast the opening hold at E, where clean-eye hides the card, so it is seen as the camera departs.
+        // Long enough to outlast the opening hold at E (6 s in the Starry loop), where clean-eye hides the card, so it
+        // is still seen for a few seconds as the camera departs.
         this.cardTimer = window.setTimeout(() => {
           this.card.style.opacity = '0';
-        }, 7000);
+        }, 9500);
       }
     }
   }
