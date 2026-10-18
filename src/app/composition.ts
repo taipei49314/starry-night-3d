@@ -285,6 +285,8 @@ export async function boot(container: HTMLElement): Promise<void> {
 
   const MAX_CACHED_WORLDS = 4;
   const worldCache = new Map<PaintingId, BuiltWorld>();
+  // Ids whose generator threw: never rebuilt every frame, only stood in for by a cached world.
+  const brokenWorlds = new Set<PaintingId>();
   const getOrBuildWorld = (id: PaintingId): BuiltWorld => {
     let w = worldCache.get(id);
     if (w) {
@@ -293,10 +295,15 @@ export async function boot(container: HTMLElement): Promise<void> {
       worldCache.set(id, w);
       return w;
     }
+    if (brokenWorlds.has(id)) {
+      const standIn = worldCache.values().next().value as BuiltWorld | undefined;
+      if (standIn) return standIn;
+    }
     const tb = performance.now();
     try {
       w = buildWorld(u, engine.quality, flags.seed, id);
     } catch (err) {
+      brokenWorlds.add(id);
       console.error(`[punctum:${id}] scene generator failed; falling back so render loop stays alive`, err);
       const fallback = worldCache.values().next().value as BuiltWorld | undefined;
       if (fallback) return fallback;
@@ -629,6 +636,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       };
     },
     frames: () => frames,
+    brokenWorlds: () => [...brokenWorlds],
   };
   (window as unknown as { __punctum: typeof debug }).__punctum = debug;
 
@@ -722,9 +730,11 @@ export async function boot(container: HTMLElement): Promise<void> {
         snapHoldTimer = 1.6;
         snapTriggered = true;
       }
-      if (ms.activeId !== activeId && viewMode !== 'atlas') {
+      if (ms.activeId !== activeId) {
+        // Always track the painting on screen, so a pick made from the Atlas dissolves out of the right world;
+        // only the UI refresh waits, so the Atlas detail the visitor is reading does not change under them.
         activeId = ms.activeId;
-        syncUi(true);
+        if (viewMode !== 'atlas') syncUi(true);
       }
     } else {
       primaryId = activeId;

@@ -1,4 +1,4 @@
-// Van Gogh World Graph (Level 2 Theme Paths, Level 3 Five Grand Chapters, 15 Worlds, 6 Motif Backbones & Portal Graph).
+// Van Gogh World Graph (Level 2 Theme Paths, Level 3 Five Grand Chapters, 30 Worlds, 6 Motif Backbones & Portal Graph).
 import type { ChapterId, MotifId, PaintingId } from './types';
 
 export interface ChapterSpec {
@@ -20,7 +20,7 @@ export const CHAPTER_SPECS: readonly ChapterSpec[] = [
     nameEn: 'Earth',
     nameZh: '黑土與人',
     periodZh: '荷蘭時期 · Nuenen',
-    years: '1883–1886',
+    years: '1884–1886',
     colorHex: '#c8964e',
     brushDnaZh: '暗褐煤灰調色盤 · 厚重刮刀筆觸 · 單一油燈明暗對比 (Chiaroscuro)',
     storyRoleZh: '建立宇宙的「根」：後來所有的光與星空，都是從這片黑土、舊鞋與勞動中長出來的。',
@@ -153,7 +153,7 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     portalOut: { motif: 'dwelling', descZh: '飛入中央懸掛油燈的暖金火芯 → 走入隔壁農舍《織布工》木機框' },
     neighbors: [
       { to: 'weaver', motif: 'dwelling', reasonZh: '由農舍餐桌走入隔壁紐南織布工坊的橡木織布機與窗光' },
-      { to: 'shoes', motif: 'road', reasonZh: '油燈微光落向地面，照亮沾滿黑土、準備遠行的農夫舊鞋' },
+      { to: 'shoes', motif: 'road', reasonZh: '離開紐南的黑土農舍，走向他在巴黎畫下的那雙穿舊的皮鞋' },
       { to: 'cafe', motif: 'light', reasonZh: '農舍油燈跨時空共鳴亞爾露天咖啡座瓦斯燈' },
     ],
   },
@@ -466,7 +466,7 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     portalIn: { motif: 'flora', descZh: '由橄欖樹林穿入金色麥浪與雙株絲柏之間' },
     portalOut: { motif: 'road', descZh: '順著麥田邊緣小徑步入暮色 → 仰望《有絲柏與星辰的道路》' },
     neighbors: [
-      { to: 'roadcypress', motif: 'flora', reasonZh: '白晝麥田邊的墨綠絲柏，在離開聖雷米的最後一夜化為直指星月的高聳雙生絲柏' },
+      { to: 'roadcypress', motif: 'flora', reasonZh: '白晝麥田邊的墨綠絲柏，在離開聖雷米的最後一夜化為直指星月的那一株高聳絲柏' },
       { to: 'almond', motif: 'sky', reasonZh: '松石綠晴空與白雲漩渦化為春日盛開的潔白杏花' },
       { to: 'crows', motif: 'flora', reasonZh: '聖雷米陽光麥浪轉入奧維爾暴風雨前的狂風麥海' },
     ],
@@ -475,9 +475,9 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     id: 'roadcypress',
     chapterId: 'cosmos',
     moodZh: '告別 · 朝聖 · 星月交輝',
-    lightTypeZh: '新月、太白金星與雙株火焰絲柏夜光',
+    lightTypeZh: '新月、太白金星與一株火焰絲柏夜光',
     motifs: ['road', 'flora', 'sky', 'light'],
-    portalIn: { motif: 'road', descZh: '由麥田小徑步入新月與金星夾峙的雙株高聳絲柏夜路' },
+    portalIn: { motif: 'road', descZh: '由麥田小徑步入新月與金星夾峙的高聳絲柏夜路' },
     portalOut: { motif: 'flora', descZh: '穿過絲柏尖端與新月光環 → 迎來象徵新生的春日《盛開的杏花》' },
     neighbors: [
       { to: 'almond', motif: 'sky', reasonZh: '穿過普羅旺斯最後的夜路與星月，迎來慶賀姪子誕生的松石藍春空與潔白杏花' },
@@ -567,7 +567,7 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     portalOut: { motif: 'road', descZh: '穿過迎面驚飛的黑鴉群 → 落回最初的黑土與《食薯者》油燈' },
     neighbors: [
       { to: 'potato', motif: 'flora', reasonZh: '所有風暴與星旋最終落回黑土，重返《食薯者》溫暖油燈' },
-      { to: 'shoes', motif: 'road', reasonZh: '麥田三岔路的紅土小徑，連回第一章踏上旅途的《一雙舊鞋》' },
+      { to: 'shoes', motif: 'road', reasonZh: '麥田三岔路的紅土小徑，連回第二章巴黎時期踏上旅途的《一雙舊鞋》' },
       { to: 'starry', motif: 'sky', reasonZh: '暴風雨烏雲再度翻湧為聖雷米 250 公里星夜渦流' },
     ],
   },

@@ -1,19 +1,6 @@
-// Multi-Punctum Suite & Van Gogh World System Registry (5 Grand Chapters, 15 Iconic Worlds, 1885–1890):
-//   Chapter I   (Earth · Nuenen):    1. The Potato Eaters (1885)
-//                                    2. A Pair of Shoes (1886)
-//   Chapter II  (Color · Paris):     3. Boulevard de Clichy (1887)
-//                                    4. Self-Portrait with Straw Hat (1887)
-//   Chapter III (Sun · Arles):       5. Sunflowers (1888)
-//                                    6. Café Terrace at Night (1888)
-//                                    7. Starry Night Over the Rhône (1888)
-//                                    8. The Bedroom in Arles (1888)
-//   Chapter IV  (Cosmos · St-Rémy):  9. The Starry Night (1889)
-//                                   10. Irises (1889)
-//                                   11. Wheat Field with Cypresses (1889)
-//                                   12. Almond Blossom (1890)
-//   Chapter V   (Road · Auvers):    13. The Church at Auvers (1890)
-//                                   14. Portrait of Dr. Gachet (1890)
-//                                   15. Wheatfield with Crows (1890)
+// Multi-Punctum Suite & Van Gogh World System Registry (5 Grand Chapters, 30 Iconic Worlds, 1884–1890).
+// The world order is ALL_PAINTING_IDS in ./types.ts (= the Odyssey sequence); chapters and years are CHAPTER_SPECS in
+// ./worldGraph.ts. Each world's metadata, standalone track and Odyssey act are in PAINTING_SUITE below.
 // Includes standalone tracks AND the Dynamic Path Compiler `compilePathTrack(sequence)` that weaves ANY
 // sequence of worlds (Mode A Odyssey, Mode C Theme Paths, or custom chains) into a seamless one-take 3D journey.
 import { Group, Vector3 } from 'three';
@@ -706,7 +693,7 @@ const OLIVE_TRACKS = makeChapterTracks(
 // 28. Chapter IV (Cosmos): Road with Cypress and Star -> Portal: Crescent Moon & Evening Star
 const ROADCYPRESS_TRACKS = makeChapterTracks(
   ROADCYPRESS_ASPECT, 'Ch.IV 絲柏與星辰之路',
-  ['聖雷米告別夜曲直幅畫框', '蜿蜒夜路、旅人與黃色馬車', '直插雲霄的雙株墨綠火焰絲柏', '穿過新月與金星光環任意門 → 盛開杏花'],
+  ['聖雷米告別夜曲直幅畫框', '蜿蜒夜路、旅人與黃色馬車', '直插雲霄的墨綠火焰絲柏', '穿過新月與金星光環任意門 → 盛開杏花'],
   [
     { pos: pt(ROADCYPRESS_ASPECT, 0.46, 0.14, 175), lookAt: pt(ROADCYPRESS_ASPECT, 0.48, 0.42, 480),   fov: 43, roll: -2.0 },
     { pos: pt(ROADCYPRESS_ASPECT, 0.42, 0.32, 225), lookAt: pt(ROADCYPRESS_ASPECT, 0.48, 0.62, 520),   fov: 46, roll: 2.0 },

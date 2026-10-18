@@ -293,8 +293,17 @@ export class Director {
     let homeEnd: number;
     if (actSec && this.track.loopSeconds > actSec) {
       const actStart = Math.floor(this.loopTime / actSec) * actSec;
-      homeStart = actStart + 20.5;
-      homeEnd = actStart + 25.0;
+      const tau = this.loopTime - actStart;
+      if (tau >= 26.8) {
+        // already dissolving: land on the incoming act's opening hold at E instead of rewinding to the outgoing painting
+        homeStart = homeEnd = wrap(actStart + actSec, this.track.loopSeconds);
+      } else if (tau >= 25.0) {
+        // already in the clean hold at E
+        homeStart = homeEnd = this.loopTime;
+      } else {
+        homeStart = actStart + 20.5;
+        homeEnd = actStart + 25.0;
+      }
     } else {
       homeStart = Math.max(0, this.track.loopSeconds - 8);
       homeEnd = this.track.loopSeconds;
@@ -365,10 +374,13 @@ export class Director {
         if (!this._paused) {
           const actSec = this.track.actSeconds;
           if (actSec && loopLen > actSec) {
-            // In multi-act mode, keep loopTime within the current act's non-dissolve window [actStart, actStart + 25.0]
-            // so the painting never dissolves into the next world while the user is free-exploring or inspecting at E.
+            // In multi-act mode, hold loopTime before the dissolve (tau 26.8) so the painting never dissolves into the
+            // next world while the user is free-exploring or inspecting at E. Never rewind: a dissolve already under
+            // way when the user takes over finishes into the next act, which is then held the same way.
             const actStart = Math.floor(this.loopTime / actSec) * actSec;
-            this.loopTime = Math.min(actStart + 25.0, this.loopTime + dt);
+            const tau = this.loopTime - actStart;
+            if (tau < 26.8) this.loopTime = Math.min(actStart + Math.max(25.0, tau), this.loopTime + dt);
+            else this.advanceLoop(dt);
           } else {
             this.advanceLoop(dt);
           }
@@ -386,7 +398,7 @@ export class Director {
       }
       case 'rejoin': {
         const F = this.flight!;
-        F.t = Math.min(F.dur, F.t + dt);
+        F.t = Math.min(F.dur, F.t + (this._paused ? 0 : dt));
         const s = ease.inOutSine(F.t / F.dur);
         const tt = F.isStatic ? F.targetT : wrap(F.targetT + F.t, loopLen);
         this.loopTime = tt;
@@ -415,7 +427,7 @@ export class Director {
           this.advanceLoop(dt);
         }
         if (F.phase === 1) {
-          F.t = Math.min(F.dur, F.t + dt);
+          F.t = Math.min(F.dur, F.t + (this._paused ? 0 : dt));
           if (this.track.actSeconds && loopLen > this.track.actSeconds) this.loopTime = hStart;
           const s = ease.inOutSine(F.t / F.dur);
           this.track.pose(hStart, this.target);
@@ -428,7 +440,7 @@ export class Director {
           if (this.input) this.input.warpK = F.fromWarp + (1 - F.fromWarp) * s;
           if (F.t >= F.dur) { F.phase = 2; F.t = 0; this.manualWarpK = 1; this.input?.resetWarp(); }
         } else {
-          F.t += dt;
+          if (!this._paused) F.t += dt;
           const tt = Math.min(hEnd, hStart + F.t);
           if (this.track.actSeconds && loopLen > this.track.actSeconds) this.loopTime = tt;
           this.track.pose(tt, this.target);
@@ -604,7 +616,8 @@ export class Director {
     const dist = this.pos.distanceTo(EYE);
     const actSec = this.track.actSeconds;
     if (actSec && this.track.loopSeconds > actSec) {
-      // Multi-act mode: scope rejoin to the current act's [actStart, actStart + 22.0] window so C / idle never jumps to Act I
+      // Multi-act mode: scope rejoin to the current act's [actStart, actStart + 20.0] window so C / idle never jumps to
+      // Act I, and a flight of up to 5 s still lands by tau 25.0, before the dissolve starts at 26.8.
       const actStart = Math.floor(this.loopTime / actSec) * actSec;
       let targetT = actStart;
       let bestCost = 0;
@@ -615,7 +628,7 @@ export class Director {
         const lc = Math.log10(Math.max(dc, 10));
         const P = newPose();
         bestCost = Infinity;
-        for (let k = 0; k <= 220; k++) {
+        for (let k = 0; k <= 200; k++) {
           const sampleT = actStart + k * 0.1;
           this.track.pose(sampleT, P);
           const sx = P.p.x - EYE.x, sy = P.p.y - EYE.y, sz = P.p.z - EYE.z;
