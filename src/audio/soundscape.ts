@@ -312,7 +312,7 @@ export class SoundscapeEngine {
   private syncMasterGain(): void {
     if (!this.ctx || !this.masterGain) return;
     const target = this._enabled && !document.hidden && this.ctx.state === 'running' ? 0.78 : 0.0001;
-    this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, target > 0.1 ? 0.22 : 0.12);
+    this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, target > 0.1 ? 0.8 : 0.12); // ~2.4 s fade-in, quick fade-out
   }
 
   /** Toggle soundscape on/off (called from UI pill button or keyboard shortcut `V`). */
@@ -481,7 +481,7 @@ export class SoundscapeEngine {
     if (ctx.state === 'running') {
       this._unlocked = true;
       if (this._enabled) {
-        masterGain.gain.setTargetAtTime(0.78, ctx.currentTime, 0.35);
+        masterGain.gain.setTargetAtTime(0.78, ctx.currentTime, 0.8);
       }
       this.notify();
     }

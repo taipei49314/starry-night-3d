@@ -152,7 +152,7 @@ void main() {
   }
 
   // ---- 3. stir the sky (h-units about uStir.xy)
-  if ((CLASS_SKY[cls] > 0.5 || cls == CLS_STAR_CORE) && uStir.z > 0.0) {
+  if (CLASS_SKY[cls] > 0.5 && uStir.z > 0.0) {
     vec2 q = uvToH(uv) - uStir.xy;
     float ang = 1.2 * uStir.z * exp(-dot(q, q) / max(uStir.w * uStir.w, 1e-8));
     mat2 R = rot2(ang);
