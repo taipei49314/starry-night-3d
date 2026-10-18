@@ -56,11 +56,38 @@ function startStaticServer(rootDir) {
   });
 }
 
-/** Save a screenshot and fail if it is too small to hold a painted frame. */
+/** Renderer state for diagnosing a bad frame. */
+const renderState = (page) => page.evaluate(() => {
+  const e = window.__punctum.engine;
+  const gl = e.renderer?.getContext?.();
+  return { tier: e.quality?.tier, renderScale: e.renderScale, contextLost: gl ? gl.isContextLost() : null };
+});
+
+/** Let the render loop run n more frames (a long synchronous world build can leave the next frame or two stale). */
+const settle = (page, n) => page.evaluate((count) => new Promise((resolve) => {
+  let k = 0;
+  const step = () => (++k >= count ? resolve() : requestAnimationFrame(step));
+  requestAnimationFrame(step);
+}), n);
+
+/**
+ * Save a screenshot and fail if it is too small to hold a painted frame. A blank first try is retried once after
+ * 20 more frames and logged, so a transient frame (for example while render targets are resized) is told apart
+ * from a world that really renders nothing.
+ */
+const retriedShots = [];
 async function shoot(page, fileName) {
-  const buf = await page.screenshot({ path: path.join(OUT_DIR, fileName) });
+  let buf = await page.screenshot({ path: path.join(OUT_DIR, fileName) });
   if (buf.length < MIN_PNG_BYTES) {
-    throw new Error(`${fileName} is ${buf.length} bytes (< ${MIN_PNG_BYTES}): the frame looks blank or flat`);
+    const before = await renderState(page);
+    await settle(page, 20);
+    buf = await page.screenshot({ path: path.join(OUT_DIR, fileName) });
+    const after = await renderState(page);
+    retriedShots.push({ fileName, retryBytes: buf.length, before, after });
+    console.warn(`[verify-worlds] ${fileName} was blank on the first try; retried after 20 frames: ${buf.length} B`, { before, after });
+    if (buf.length < MIN_PNG_BYTES) {
+      throw new Error(`${fileName} is ${buf.length} bytes (< ${MIN_PNG_BYTES}) after a retry: the frame looks blank or flat (${JSON.stringify(after)})`);
+    }
   }
   return buf.length;
 }
@@ -201,10 +228,13 @@ async function main() {
       const id = suiteIds[i];
       const info = await page.evaluate(async (paintId) => {
         const res = window.__punctum.pinPainting(paintId, 0);
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        for (let k = 0; k < 4; k++) await new Promise((r) => requestAnimationFrame(r));
+        const e = window.__punctum.engine;
         return {
           ...res,
           align: window.__punctum.uniforms.uAlign.value,
+          tier: e.quality?.tier,
+          renderScale: e.renderScale,
         };
       }, id);
 
@@ -276,6 +306,7 @@ async function main() {
       timestamp: new Date().toISOString(),
       openingState,
       odysseyHolds,
+      retriedShots,
       totalWorldsVerified: worldReports.length,
       worlds: worldReports,
     };
