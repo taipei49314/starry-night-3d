@@ -78,22 +78,28 @@ void main() {
 
   // ---- 2. animate in canvas space (all periods divide 96 s)
   if (kind == ANIM_VORTEX) {
-    float q1h = floor(a3.y * 0.5);
-    int vi = clamp(int(q1h), 0, N_VORT - 1);
-    float arm = a3.y - 2.0 * q1h;
-    float sig = fract(a3.z - uTime / 24.0);
-    vec2 tH; float dlS;
-    armPoint(vi, arm, sig, a3.w, uv, d, tH, dlS);
-    d *= 1.0 + 0.02 * (seed - 0.5);
-    if (under) d *= 1.01;                       // funnel shell sits just behind the arms
-    // a stroke streams through every radius: keep it sized for where it is now, r(sig) / r(sigma0)
-    // (exactly 1 at t = 0, where sig == fract(sigma0), so the canvas pose is unchanged)
-    float vScale = clamp(exp(log(VORT_GEO[vi].y / VORT_GEO[vi].x) * (sig - fract(a3.z))), 0.4, 2.5);
-    W *= vScale;
-    float tl = max(length(tH), 1e-9);
-    dH = tH / tl * (a1.x * vScale);
-    dlnd = dlS * (a1.x * vScale) / tl;
-    alphaMul *= smoothstep(0.0, 0.06, sig) * smoothstep(1.0, 0.94, sig);
+    if (abs(a1.y) > 1e-7) {
+      // Canvas-placed eddy stroke (companion worlds: church, crows, skull): swirl tangentially along its stroke vector
+      float k = 0.35 * sin(SN_TAU * uTime / 12.0 + SN_TAU * seed);
+      uv += vec2(a1.x / CANVAS_ASPECT, a1.y) * k;
+    } else {
+      float q1h = floor(a3.y * 0.5);
+      int vi = clamp(int(q1h), 0, N_VORT - 1);
+      float arm = a3.y - 2.0 * q1h;
+      float sig = fract(a3.z - uTime / 24.0);
+      vec2 tH; float dlS;
+      armPoint(vi, arm, sig, a3.w, uv, d, tH, dlS);
+      d *= 1.0 + 0.02 * (seed - 0.5);
+      if (under) d *= 1.01;                       // funnel shell sits just behind the arms
+      // a stroke streams through every radius: keep it sized for where it is now, r(sig) / r(sigma0)
+      // (exactly 1 at t = 0, where sig == fract(sigma0), so the canvas pose is unchanged)
+      float vScale = clamp(exp(log(VORT_GEO[vi].y / VORT_GEO[vi].x) * (sig - fract(a3.z))), 0.4, 2.5);
+      W *= vScale;
+      float tl = max(length(tH), 1e-9);
+      dH = tH / tl * (a1.x * vScale);
+      dlnd = dlS * (a1.x * vScale) / tl;
+      alphaMul *= smoothstep(0.0, 0.06, sig) * smoothstep(1.0, 0.94, sig);
+    }
   } else if (kind == ANIM_RING) {
     int si = clamp(int(a3.y + 0.5), 0, MOON_INDEX);
     int ki = int(a3.z + 0.5);
@@ -120,26 +126,33 @@ void main() {
     uv += vec2(a1.x / CANVAS_ASPECT, a1.y) * k;
   } else if (kind == ANIM_CYPRESS) {
     uv.x += 0.004 * sin(SN_TAU * uTime / 6.0 + 5.0 * a0.y + SN_TAU * seed) * clamp(a0.y, 0.0, 1.0);
+    if (a3.w != 0.0) uv.y += a3.w * sin(SN_TAU * uTime / 1.5 + SN_TAU * a3.z);
   } else if (kind == ANIM_JET) {
-    float sig = fract(a3.y + uTime / 8.0);
-    vec2 tH;
-    jetPoint(sig, a3.z, uv, d, tH);
-    d *= 1.0 + a3.w;
-    float tl = max(length(tH), 1e-9);
-    dH = tH / tl * a1.x;
-    dlnd = log(JET_D1 / JET_D0) * a1.x / tl;
-    // colour ramp along sigma: cypress green -> cerulean -> zinc white; the record colours tint it 35 %
-    vec3 ramp = sig < 0.5 ? mix(PAL_CYPRESS_GREEN, PAL_CERULEAN, sig * 2.0) : mix(PAL_CERULEAN, PAL_ZINC_WHITE, sig * 2.0 - 1.0);
-    cA = mix(ramp, cA, 0.35);
-    cB = mix(ramp, cB, 0.35);
-    emissive *= sig;                             // a2.z = emissive at the Venus end (0 -> 1.1 along sigma)
-    alphaMul *= smoothstep(0.0, 0.05, sig) * smoothstep(1.0, 0.95, sig);
+    if (abs(a1.y) > 1e-7) {
+      // Canvas-placed rain / wind filament (e.g. Hiroshige Bridge in the Rain): slide along stroke tangent
+      float rainPhase = fract(seed + uTime / 2.0) - 0.5;
+      uv += vec2(a1.x / CANVAS_ASPECT, a1.y) * (rainPhase * 0.85);
+    } else {
+      float sig = fract(a3.y + uTime / 8.0);
+      vec2 tH;
+      jetPoint(sig, a3.z, uv, d, tH);
+      d *= 1.0 + a3.w;
+      float tl = max(length(tH), 1e-9);
+      dH = tH / tl * a1.x;
+      dlnd = log(JET_D1 / JET_D0) * a1.x / tl;
+      // colour ramp along sigma: cypress green -> cerulean -> zinc white; the record colours tint it 35 %
+      vec3 ramp = sig < 0.5 ? mix(PAL_CYPRESS_GREEN, PAL_CERULEAN, sig * 2.0) : mix(PAL_CERULEAN, PAL_ZINC_WHITE, sig * 2.0 - 1.0);
+      cA = mix(ramp, cA, 0.35);
+      cB = mix(ramp, cB, 0.35);
+      emissive *= sig;                             // a2.z = emissive at the Venus end (0 -> 1.1 along sigma)
+      alphaMul *= smoothstep(0.0, 0.05, sig) * smoothstep(1.0, 0.95, sig);
+    }
   } else if (kind == ANIM_FLICKER) {
     emissive *= 0.85 + 0.15 * sin(SN_TAU * uTime / 4.0 + 6.283 * seed);
   }
 
   // ---- 3. stir the sky (h-units about uStir.xy)
-  if (CLASS_SKY[cls] > 0.5 && uStir.z > 0.0) {
+  if ((CLASS_SKY[cls] > 0.5 || cls == CLS_STAR_CORE) && uStir.z > 0.0) {
     vec2 q = uvToH(uv) - uStir.xy;
     float ang = 1.2 * uStir.z * exp(-dot(q, q) / max(uStir.w * uStir.w, 1e-8));
     mat2 R = rot2(ang);
@@ -250,8 +263,8 @@ void main() {
   vec2 nearG = kind == ANIM_VORTEX ? (under ? vec2(4.0, 10.0) : vec2(2.5, 6.0)) : vec2(0.8, 2.5);
   alphaMul *= (minFoot ? 1.0 : smoothstep(1.5, 4.0, Lpx)) * upper * smoothstep(nearG.x, nearG.y, dist / max(Lw, 1e-9));
   // extended sky (SKY_GEN_EXT): dissolve toward the generated extent's edge so wide shots never see its rectangle
-  // the wind jet is a 3D-only motif: from the painter's eye it would read as a scratch across the canvas
-  if (kind == ANIM_JET) alphaMul *= 1.0 - uAlign;
+  // the wind jet is a 3D-only motif in Starry Night: from the painter's eye it would read as a scratch across the canvas
+  if (kind == ANIM_JET && abs(a1.y) <= 1e-7) alphaMul *= 1.0 - uAlign;
   if (cls == CLS_UNDERPAINT || cls == CLS_SKY_BAND) {
     // left, right and top edges only: the bottom of the extent sits behind the hills and must stay solid
     vec2 m2 = min(a0.xy - SKY_GEN_EXT.xy, SKY_GEN_EXT.zw - a0.xy);

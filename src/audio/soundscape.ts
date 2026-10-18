@@ -230,6 +230,7 @@ export class SoundscapeEngine {
 
   private _enabled = true;
   private _unlocked = false;
+  private lastAutoUnlockMs = -1000;
   private chimeTimer = 1.2;
   private stirTimer = 0;
   private crowTimer = 1.8;
@@ -245,21 +246,55 @@ export class SoundscapeEngine {
     this._enabled = opts?.initialEnabled ?? (saved !== '0');
     this.onStateChange = opts?.onStateChange;
 
-    // Unlock Web Audio automatically on the first user gesture anywhere in the window
+    // Unlock Web Audio automatically on the first valid user-activation gesture
+    // (Note: wheel and touchstart are not valid Web Audio user-activation events in modern browsers)
     const unlock = () => {
-      if (!this._enabled) return;
+      if (!this._enabled || document.hidden) return;
+      const wasUnlocked = this.active;
       this.ensureContext();
-      if (this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume().then(() => {
+      if (!wasUnlocked) this.lastAutoUnlockMs = performance.now();
+      if (this.ctx) {
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume().then(() => {
+            this._unlocked = true;
+            this.syncMasterGain();
+            this.notify();
+          }).catch(() => { /* ignore until next gesture */ });
+        } else if (this.ctx.state === 'running') {
           this._unlocked = true;
+          this.syncMasterGain();
           this.notify();
-        }).catch(() => { /* ignore until next gesture */ });
+        }
       }
     };
     window.addEventListener('pointerdown', unlock, { passive: true });
+    window.addEventListener('pointerup', unlock, { passive: true });
+    window.addEventListener('click', unlock, { passive: true });
     window.addEventListener('keydown', unlock, { passive: true });
-    window.addEventListener('wheel', unlock, { passive: true });
-    window.addEventListener('touchstart', unlock, { passive: true });
+    window.addEventListener('touchend', unlock, { passive: true });
+
+    const onVisibility = () => {
+      if (!this.ctx) return;
+      if (document.hidden) {
+        if (this.masterGain) {
+          this.masterGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.08);
+        }
+        if (this.ctx.state === 'running') {
+          this.ctx.suspend().then(() => this.notify()).catch(() => {});
+        }
+      } else if (this._enabled && this._unlocked && this.ctx.state === 'suspended') {
+        this.ctx.resume().then(() => {
+          this.syncMasterGain();
+          this.notify();
+        }).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', () => {
+      if (this.ctx && this.ctx.state === 'running') {
+        this.ctx.suspend().catch(() => {});
+      }
+    });
   }
 
   get enabled(): boolean {
@@ -267,15 +302,27 @@ export class SoundscapeEngine {
   }
 
   get active(): boolean {
-    return this._enabled && this._unlocked && this.ctx?.state === 'running';
+    return this._enabled && this._unlocked && this.ctx?.state === 'running' && !document.hidden;
   }
 
   private notify(): void {
     this.onStateChange?.(this._enabled, this.active);
   }
 
+  private syncMasterGain(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const target = this._enabled && !document.hidden && this.ctx.state === 'running' ? 0.78 : 0.0001;
+    this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, target > 0.1 ? 0.22 : 0.12);
+  }
+
   /** Toggle soundscape on/off (called from UI pill button or keyboard shortcut `V`). */
   toggle(): boolean {
+    // If enabled but still waiting for browser gesture unlock (or unlocked on this exact pointerdown), activate rather than mute
+    if (this._enabled && (!this.active || performance.now() - this.lastAutoUnlockMs < 350)) {
+      this.lastAutoUnlockMs = -1000;
+      this.setEnabled(true);
+      return this._enabled;
+    }
     this.setEnabled(!this._enabled);
     return this._enabled;
   }
@@ -286,16 +333,20 @@ export class SoundscapeEngine {
     if (on) {
       this.ensureContext();
       if (this.ctx) {
-        this.ctx.resume().then(() => {
+        if (this.ctx.state === 'running') {
           this._unlocked = true;
-          if (this.masterGain && this.ctx) {
-            this.masterGain.gain.setTargetAtTime(0.78, this.ctx.currentTime, 0.25);
-          }
+          this.syncMasterGain();
           this.notify();
-        }).catch(() => { this.notify(); });
+        } else if (!document.hidden) {
+          this.ctx.resume().then(() => {
+            this._unlocked = true;
+            this.syncMasterGain();
+            this.notify();
+          }).catch(() => { this.notify(); });
+        }
       }
     } else if (this.ctx && this.masterGain) {
-      this.masterGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.15);
+      this.syncMasterGain();
     }
     this.notify();
   }
@@ -307,6 +358,13 @@ export class SoundscapeEngine {
     if (!AC) return;
     const ctx = new AC();
     this.ctx = ctx;
+    ctx.onstatechange = () => {
+      if (ctx.state === 'running' && this._enabled && !document.hidden) {
+        this._unlocked = true;
+        this.syncMasterGain();
+      }
+      this.notify();
+    };
 
     // Master compressor + master gain
     const comp = ctx.createDynamicsCompressor();

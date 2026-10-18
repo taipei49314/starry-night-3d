@@ -152,7 +152,7 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     portalIn: { motif: 'dwelling', descZh: '由夜色降落農舍木桌與油燈微光' },
     portalOut: { motif: 'dwelling', descZh: '飛入中央懸掛油燈的暖金火芯 → 走入隔壁農舍《織布工》木機框' },
     neighbors: [
-      { to: 'weaver', motif: 'dwelling', reasonZh: '由農舍餐桌走入隔壁紐넨織布工坊的橡木織布機與窗光' },
+      { to: 'weaver', motif: 'dwelling', reasonZh: '由農舍餐桌走入隔壁紐南織布工坊的橡木織布機與窗光' },
       { to: 'shoes', motif: 'road', reasonZh: '油燈微光落向地面，照亮沾滿黑土、準備遠行的農夫舊鞋' },
       { to: 'cafe', motif: 'light', reasonZh: '農舍油燈跨時空共鳴亞爾露天咖啡座瓦斯燈' },
     ],
@@ -164,10 +164,10 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     lightTypeZh: '農舍小窗斜射晨光與亞麻布反光',
     motifs: ['dwelling', 'light', 'gaze'],
     portalIn: { motif: 'dwelling', descZh: '由農舍油燈穿入巨大橡木織布機的立體橫樑' },
-    portalOut: { motif: 'light', descZh: '穿過右側農舍明窗光束 → 望見暮色中的《紐넨的舊教堂塔樓》' },
+    portalOut: { motif: 'light', descZh: '穿過右側農舍明窗光束 → 望見暮色中的《紐南的舊教堂塔樓》' },
     neighbors: [
-      { to: 'tower', motif: 'light', reasonZh: '望向織布機旁的農舍小窗外，暮色中矗立著紐넨舊教堂塔樓' },
-      { to: 'potato', motif: 'dwelling', reasonZh: '同屬紐넨農村勞動者的室內生命寫照' },
+      { to: 'tower', motif: 'light', reasonZh: '望向織布機旁的農舍小窗外，暮色中矗立著紐南舊教堂塔樓' },
+      { to: 'potato', motif: 'dwelling', reasonZh: '同屬紐南農村勞動者的室內生命寫照' },
       { to: 'bedroom', motif: 'dwelling', reasonZh: '橡木織布機的厚實木構與亞爾臥室木床遙相呼應' },
     ],
   },
@@ -180,8 +180,8 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     portalIn: { motif: 'light', descZh: '由織布工坊窗框飛出，仰望風中屹立的舊教堂鐘樓' },
     portalOut: { motif: 'road', descZh: '由教堂墓園小徑低頭望向泥土 → 聚焦《一雙舊鞋》' },
     neighbors: [
-      { to: 'shoes', motif: 'road', reasonZh: '走過紐넨舊教堂墓園的泥土小徑，低頭看見踏遍大地的《一雙舊鞋》' },
-      { to: 'church', motif: 'dwelling', reasonZh: '荷蘭紐넨舊塔樓與終章《奧維的教堂》形成頭尾雙塔呼應' },
+      { to: 'shoes', motif: 'road', reasonZh: '走過紐南舊教堂墓園的泥土小徑，低頭看見踏遍大地的《一雙舊鞋》' },
+      { to: 'church', motif: 'dwelling', reasonZh: '荷蘭紐南舊塔樓與終章《奧維的教堂》形成頭尾雙塔呼應' },
       { to: 'crows', motif: 'sky', reasonZh: '繞塔盤旋的寒鴉預示了最終章《麥田群鴉》的風暴黑鴉' },
     ],
   },
@@ -194,7 +194,7 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     portalIn: { motif: 'road', descZh: '由舊塔樓泥土小徑降落斑駁舊皮鞋與鬆開鞋帶' },
     portalOut: { motif: 'gaze', descZh: '順著蜿蜒鞋帶衝向暗室微光 → 凝視安特衛普《叼菸骷髏》的幽默與無常' },
     neighbors: [
-      { to: 'skull', motif: 'gaze', reasonZh: '踏出紐넨鄉間前往安特衛普學院，在暗室微光中面對生與死的幽默凝視' },
+      { to: 'skull', motif: 'gaze', reasonZh: '踏出紐南鄉間前往安特衛普學院，在暗室微光中面對生與死的幽默凝視' },
       { to: 'paris', motif: 'road', reasonZh: '穿上沾滿黑土的舊鞋走出北方暗室，踏上色彩甦醒的巴黎大道' },
       { to: 'crows', motif: 'road', reasonZh: '最初遠行的雙腳，與最終章奧維爾麥田的分岔紅土小徑首尾呼應' },
     ],
@@ -226,7 +226,7 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     neighbors: [
       { to: 'paris', motif: 'road', reasonZh: '從蒙馬特山丘的煎餅磨坊走下斜坡，便是車水馬龍的克利希林蔭大道' },
       { to: 'seine', motif: 'sky', reasonZh: '蒙馬特高地的秋日晴空延伸至塞納河畔的波光與鐵橋' },
-      { to: 'tower', motif: 'dwelling', reasonZh: '巴黎木造風車塔與故鄉紐넨舊教堂塔樓跨時空守望' },
+      { to: 'tower', motif: 'dwelling', reasonZh: '巴黎木造風車塔與故鄉紐南舊教堂塔樓跨時空守望' },
     ],
   },
   paris: {
@@ -525,7 +525,7 @@ export const WORLD_GRAPH: Record<PaintingId, WorldGraphNode> = {
     portalOut: { motif: 'gaze', descZh: '穿過彩繪玻璃幽光與群青天際 → 對視奧維爾知己《嘉舍醫師畫像》' },
     neighbors: [
       { to: 'gachet', motif: 'gaze', reasonZh: '教堂的群青天空化為嘉舍醫師背後的螺旋藍調與溫柔守護' },
-      { to: 'tower', motif: 'dwelling', reasonZh: '奧維爾哥德教堂與第一章《紐넨的舊教堂塔樓》跨越五年歲月遙相呼應' },
+      { to: 'tower', motif: 'dwelling', reasonZh: '奧維爾哥德教堂與第一章《紐南的舊教堂塔樓》跨越五年歲月遙相呼應' },
       { to: 'crows', motif: 'sky', reasonZh: '飛越鐘樓尖頂暗藍風暴，展開奧維爾麥田群鴉超寬視野' },
     ],
   },
@@ -618,7 +618,7 @@ export const THEME_PATHS: readonly ThemePathSpec[] = [
     nameZh: '居所與聖殿 · Looms, Rooms & Sanctuaries (10幕)',
     nameEn: 'Looms, Rooms & Sanctuaries',
     motif: 'dwelling',
-    descZh: '沿「⌂ 居所」旅行：食薯者餐桌 → 紐넨織布機 → 舊教堂塔樓 → 亞爾黃色小屋 → 向日葵 → 露天咖啡座 → 午夜咖啡館 → 亞爾臥室 → 奧維爾茅草屋 → 奧維爾教堂',
+    descZh: '沿「⌂ 居所」旅行：食薯者餐桌 → 紐南織布機 → 舊教堂塔樓 → 亞爾黃色小屋 → 向日葵 → 露天咖啡座 → 午夜咖啡館 → 亞爾臥室 → 奧維爾茅草屋 → 奧維爾教堂',
     sequence: ['potato', 'weaver', 'tower', 'yellowhouse', 'sunflowers', 'cafe', 'nightcafe', 'bedroom', 'cottages', 'church'],
   },
   {
@@ -750,6 +750,39 @@ export function resolveTransitionEdge(fromId: PaintingId, toId: PaintingId): {
   };
 }
 
+const PAINTING_TITLE_ZH: Readonly<Record<PaintingId, string>> = {
+  potato: '食薯者',
+  weaver: '織布工',
+  tower: '紐南的舊教堂塔樓',
+  shoes: '一雙舊鞋',
+  skull: '叼著點燃香菸的骷髏',
+  galette: '蒙馬特的煎餅磨坊',
+  paris: '克利希大道',
+  seine: '阿尼耶爾的塞納河與橋',
+  plum: '雨中大橋（仿廣重）',
+  tanguy: '唐吉老爹肖像',
+  selfportrait: '戴草帽的自畫像',
+  yellowhouse: '黃色小屋',
+  sunflowers: '向日葵',
+  harvest: '克勞平原的豐收',
+  sower: '夕陽下的播種者',
+  cafe: '夜間露天咖啡座',
+  nightcafe: '夜間咖啡館',
+  rhone: '隆河上的星夜',
+  bedroom: '在亞爾的臥室',
+  starry: '星夜',
+  irises: '鳶尾花',
+  olive: '橄欖樹與黃色天空及太陽',
+  wheat: '有絲柏的麥田',
+  roadcypress: '有絲柏與星辰的道路',
+  almond: '盛開的杏花',
+  cottages: '奧維的茅草屋',
+  church: '奧維爾的教堂',
+  gachet: '嘉舍醫師畫像',
+  daubigny: '多比尼的花園',
+  crows: '麥田群鴉',
+};
+
 /**
  * Dynamically weaves a multi-act journey through `WORLD_GRAPH` starting at `startId`,
  * prioritizing edges that match `preferredMotif` (if given) and avoiding immediate revisits.
@@ -779,12 +812,13 @@ export function weaveGraphPath(
   }
 
   const mSpec = MOTIF_SPECS[mainMotif];
+  const startTitle = PAINTING_TITLE_ZH[startId] ?? startId;
   return {
     id: 'woven',
     nameZh: `智能圖譜編織 · ${mSpec.icon} ${mSpec.nameZh} (${seq.length}幕)`,
     nameEn: `Woven Graph Path · ${mSpec.nameEn} (${seq.length} Acts)`,
     motif: mainMotif,
-    descZh: `由當前畫作《${startId}》出發，沿世界圖譜「${mSpec.icon} ${mSpec.nameZh}」與相鄰任意門即時編織的 ${seq.length} 幕連貫旅程`,
+    descZh: `由當前畫作《${startTitle}》出發，沿世界圖譜「${mSpec.icon} ${mSpec.nameZh}」與相鄰任意門即時編織的 ${seq.length} 幕連貫旅程`,
     sequence: seq,
   };
 }

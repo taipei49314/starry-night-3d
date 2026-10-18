@@ -136,21 +136,41 @@ function padPerDepth(L: number, W: number, kappa: number, under: boolean): numbe
 
 function chunkBounds(data: Float32Array, idx: number[], cls: StrokeClass, rule: 'morton' | 'vortex' | 'ring'): { center: Vector3; radius: number; dMax: number } {
   const anim = CLASS_INFO[cls].anim;
-  const stirPad = CLASS_INFO[cls].sky ? STIR_PAD_H * TWO_T : 0; // world pad per metre of depth
+  const stirPad = (CLASS_INFO[cls].sky || cls === StrokeClass.STAR_CORE) ? STIR_PAD_H * TWO_T : 0; // world pad per metre of depth
   const acc = new SphereAcc();
   let dMax = 0;
   const F = FLOATS_PER_STROKE;
 
+  const addCanvasStrokeBound = (o: number, extraMotionFactor: number) => {
+    const u = data[o], v = data[o + 1], d = data[o + 2];
+    const du = data[o + 4], dv = data[o + 5], dlnd = data[o + 6], W = data[o + 7];
+    const kappa = data[o + 12];
+    const under = (Math.floor(Math.round(data[o + 3]) / 32) & StrokeFlag.UNDERLAYER) !== 0;
+    const eh = Math.exp(0.5 * dlnd);
+    canvasToWorld(u - (0.5 * du) / CANVAS_ASPECT, v - 0.5 * dv, d / eh, vA);
+    canvasToWorld(u + (0.5 * du) / CANVAS_ASPECT, v + 0.5 * dv, d * eh, vB);
+    const Lw = vA.distanceTo(vB);
+    const dm = d * Math.exp(0.5 * Math.abs(dlnd));
+    dMax = Math.max(dMax, dm);
+    let r = Lw * (0.5 + STRETCH_LW + 0.25 * Math.abs(kappa) + extraMotionFactor) + 0.5 * W * MAX_WIDTH_COMP * (under ? 3 : 1) * TWO_T * dm;
+    r += stirPad * dm;
+    acc.add(0.5 * (vA.x + vB.x), 0.5 * (vA.y + vB.y), 0.5 * (vA.z + vB.z), r);
+  };
+
   if (anim === AnimKind.VORTEX || rule === 'vortex') {
-    // Strokes stream across the whole funnel: bound the funnel surface (all angles, across offset 0.2 r).
+    // Parametric strokes stream across the whole funnel; canvas-placed EDDY strokes (|dv| > 1e-7) bound at their canvas coordinates.
     let pad = 0;
     const vis = new Set<number>();
     for (const i of idx) {
       const o = i * F;
-      const under = (Math.floor(Math.round(data[o + 3]) / 32) & StrokeFlag.UNDERLAYER) !== 0;
-      // the shader scales VORTEX L and W by r(sigma) / r(sigma0), clamped to [0.4, 2.5]
-      pad = Math.max(pad, padPerDepth(VORTEX_SCALE_MAX * data[o + 4], VORTEX_SCALE_MAX * data[o + 7], data[o + 12], under));
-      vis.add(Math.floor(data[o + 13] / 2));
+      if (Math.abs(data[o + 5]) > 1e-7) {
+        addCanvasStrokeBound(o, 0.35);
+      } else {
+        const under = (Math.floor(Math.round(data[o + 3]) / 32) & StrokeFlag.UNDERLAYER) !== 0;
+        // the shader scales VORTEX L and W by r(sigma) / r(sigma0), clamped to [0.4, 2.5]
+        pad = Math.max(pad, padPerDepth(VORTEX_SCALE_MAX * data[o + 4], VORTEX_SCALE_MAX * data[o + 7], data[o + 12], under));
+        vis.add(Math.floor(data[o + 13] / 2));
+      }
     }
     for (const vi of vis) {
       const V = VORTICES[Math.max(0, Math.min(VORTICES.length - 1, vi))];
@@ -195,26 +215,34 @@ function chunkBounds(data: Float32Array, idx: number[], cls: StrokeClass, rule: 
     }
   } else if (anim === AnimKind.JET) {
     let pad = 0, qMin = Infinity, qMax = -Infinity, jMin = Infinity, jMax = -Infinity;
+    let hasParametric = false;
     for (const i of idx) {
       const o = i * F;
-      const under = (Math.floor(Math.round(data[o + 3]) / 32) & StrokeFlag.UNDERLAYER) !== 0;
-      pad = Math.max(pad, padPerDepth(data[o + 4], data[o + 7], data[o + 12], under));
-      qMin = Math.min(qMin, data[o + 14]); qMax = Math.max(qMax, data[o + 14]);
-      jMin = Math.min(jMin, data[o + 15]); jMax = Math.max(jMax, data[o + 15]);
-    }
-    for (let j = 0; j <= 48; j++) {
-      const sg = j / 48;
-      for (const off of [qMin, qMax]) {
-        const jp = jetPoint(sg, off);
-        for (const f of [1 + jMin, 1 + jMax]) {
-          const d = jp.d * f;
-          dMax = Math.max(dMax, d);
-          canvasToWorld(jp.u, jp.v, d, vA);
-          acc.add(vA.x, vA.y, vA.z, (pad + stirPad) * d + 0.03 * d * TWO_T);
-        }
+      if (Math.abs(data[o + 5]) > 1e-7) {
+        addCanvasStrokeBound(o, 0.5);
+      } else {
+        hasParametric = true;
+        const under = (Math.floor(Math.round(data[o + 3]) / 32) & StrokeFlag.UNDERLAYER) !== 0;
+        pad = Math.max(pad, padPerDepth(data[o + 4], data[o + 7], data[o + 12], under));
+        qMin = Math.min(qMin, data[o + 14]); qMax = Math.max(qMax, data[o + 14]);
+        jMin = Math.min(jMin, data[o + 15]); jMax = Math.max(jMax, data[o + 15]);
       }
     }
-    dMax = Math.max(dMax, JET_D1);
+    if (hasParametric) {
+      for (let j = 0; j <= 48; j++) {
+        const sg = j / 48;
+        for (const off of [qMin, qMax]) {
+          const jp = jetPoint(sg, off);
+          for (const f of [1 + jMin, 1 + jMax]) {
+            const d = jp.d * f;
+            dMax = Math.max(dMax, d);
+            canvasToWorld(jp.u, jp.v, d, vA);
+            acc.add(vA.x, vA.y, vA.z, (pad + stirPad) * d + 0.03 * d * TWO_T);
+          }
+        }
+      }
+      dMax = Math.max(dMax, JET_D1);
+    }
   } else {
     for (const i of idx) {
       const o = i * F;
@@ -231,7 +259,7 @@ function chunkBounds(data: Float32Array, idx: number[], cls: StrokeClass, rule: 
       let r = Lw * (0.5 + STRETCH_LW + 0.25 * Math.abs(kappa)) + 0.5 * W * MAX_WIDTH_COMP * (under ? 3 : 1) * TWO_T * dm;
       r += stirPad * dm;
       if (anim === AnimKind.BAND) r += 0.5 * Math.abs(data[o + 13]) * Lw;
-      if (anim === AnimKind.CYPRESS) r += Math.max(2, 0.004 * 2 * CANVAS_ASPECT * T_HALF * dm);
+      if (anim === AnimKind.CYPRESS) r += Math.max(2, (0.004 + Math.abs(data[o + 15])) * 2 * CANVAS_ASPECT * T_HALF * dm);
       acc.add(0.5 * (vA.x + vB.x), 0.5 * (vA.y + vB.y), 0.5 * (vA.z + vB.z), r);
     }
   }
@@ -370,7 +398,13 @@ export function buildStrokeLayer(buf: StrokeBuffer, u: SharedUniforms, q: Qualit
       for (const ch of chunks) ch.mesh.frustumCulled = on;
     },
     dispose() {
-      for (const ch of chunks) ch.mesh.geometry.dispose();
+      for (const ch of chunks) {
+        const geo = ch.mesh.geometry as InstancedBufferGeometry;
+        // Detach sharedRibbon index & position attributes before disposing so shared GPU VBOs remain intact for other worlds
+        geo.setIndex(null);
+        geo.deleteAttribute('position');
+        geo.dispose();
+      }
       material.dispose();
     },
   };

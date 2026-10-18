@@ -10,14 +10,14 @@ import {
   CHAPTER_SPECS, MOTIF_SPECS, THEME_PATHS, WORLD_GRAPH, getChapterSpec,
 } from '../chapters/worldGraph';
 
-export const HINT_TEXT = '拖曳探索 3D 筆觸 · Space 歸位凝視點 · [ ] 切換畫作 · U 開啟梵谷宇宙星圖';
+export const HINT_TEXT = '拖曳探索 3D 筆觸 · Space 歸位凝視點 E · P 暫停 · F 自由探索 · G 筆觸暴風 · [ ] 切換畫作 · O 單幅/史詩 · U 宇宙星圖';
 
 const STYLE_ID = 'pn-director-ui-style';
 const CSS = `
 .pn-ui{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20;overflow:hidden;
   font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;color:#e8edf0;-webkit-user-select:none;user-select:none}
-.pn-hint{position:absolute;left:50%;bottom:82px;transform:translateX(-50%);max-width:calc(100% - 32px);box-sizing:border-box;
-  padding:6px 14px;border-radius:999px;background:rgba(5,10,24,.62);box-shadow:0 0 0 1px rgba(232,237,240,.12);
+.pn-hint{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);max-width:calc(100% - 32px);box-sizing:border-box;
+  padding:6px 14px;border-radius:999px;background:rgba(5,10,24,.68);box-shadow:0 0 0 1px rgba(242,194,48,.22);
   letter-spacing:.03em;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.8);
   opacity:0;transition:opacity .25s linear}
 .pn-hud{position:absolute;left:10px;top:86px;max-width:calc(100% - 20px);box-sizing:border-box;padding:6px 9px;border-radius:6px;
@@ -25,12 +25,19 @@ const CSS = `
   font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;white-space:pre-wrap;word-break:break-word;display:none}
 .pn-hud b{color:#f2c230;font-weight:600}
 .pn-ring{position:absolute;left:0;top:0;border-radius:50%;border:1.5px solid #f2c230;box-sizing:border-box;
-  box-shadow:0 0 6px rgba(242,194,48,.55),inset 0 0 4px rgba(242,194,48,.35);display:none;will-change:transform}
-.pn-ring::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px 0 0 -1.5px;border-radius:50%;background:#f2c230}
+  box-shadow:0 0 8px rgba(242,194,48,.6),inset 0 0 4px rgba(242,194,48,.35);display:none;will-change:transform;
+  pointer-events:auto;cursor:pointer;transition:box-shadow .18s ease,border-color .18s ease}
+.pn-ring:hover{border-color:#fff;box-shadow:0 0 16px rgba(242,194,48,.95),inset 0 0 8px rgba(242,194,48,.65)}
+.pn-ring::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#f2c230}
 .pn-suite{position:absolute;left:50%;top:10px;transform:translateX(-50%);pointer-events:auto;display:flex;align-items:center;gap:2px;
   padding:4px 6px;border-radius:999px;background:rgba(5,10,24,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.14);max-width:calc(100% - 14px)}
-.pn-suite-scroll{display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;max-width:min(66vw,920px);scroll-behavior:smooth}
+  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.14);max-width:calc(100% - 14px);
+  transition:opacity .35s ease}
+.pn-suite-nav{appearance:none;border:0;background:rgba(232,237,240,.06);color:rgba(232,237,240,.75);width:20px;height:22px;border-radius:999px;
+  font:600 12px/1 system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:background .16s ease,color .16s ease}
+.pn-suite-nav:hover{background:rgba(242,194,48,.22);color:#f5e27a}
+.pn-suite-scroll{display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;max-width:min(62vw,880px);scroll-behavior:smooth}
 .pn-suite-scroll::-webkit-scrollbar{display:none}
 .pn-suite-btn{appearance:none;border:0;background:transparent;color:rgba(232,237,240,.78);padding:4px 8px;border-radius:999px;
   font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.01em;cursor:pointer;
@@ -47,32 +54,55 @@ const CSS = `
 .pn-odyssey-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.16);box-shadow:inset 0 0 0 1px rgba(242,194,48,.45)}
 .pn-pathbar{position:absolute;left:50%;top:46px;transform:translateX(-50%);pointer-events:auto;display:none;align-items:center;gap:4px;
   padding:3px 7px;border-radius:999px;background:rgba(5,10,24,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 1px rgba(242,194,48,.22);max-width:calc(100% - 16px);overflow-x:auto}
+  box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 1px rgba(242,194,48,.22);max-width:calc(100% - 16px);overflow-x:auto;
+  transition:opacity .35s ease}
 .pn-path-btn{appearance:none;border:0;background:transparent;color:rgba(232,237,240,.75);padding:3px 9px;border-radius:999px;
   font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;white-space:nowrap;
   transition:background .16s ease,color .16s ease}
 .pn-path-btn:hover{color:#fff;background:rgba(232,237,240,.1)}
 .pn-path-btn[data-active="1"]{color:#f5e27a;background:rgba(242,194,48,.2);box-shadow:inset 0 0 0 1px rgba(242,194,48,.48)}
-.pn-neighbors{position:absolute;right:14px;bottom:76px;pointer-events:auto;display:flex;flex-direction:column;gap:4px;
+.pn-neighbors{position:absolute;right:14px;bottom:84px;pointer-events:auto;display:none;flex-direction:column;gap:4px;
   padding:7px 10px;border-radius:12px;background:rgba(5,10,24,.68);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
-  box-shadow:0 4px 18px rgba(0,0,0,.42),0 0 0 1px rgba(232,237,240,.12);max-width:255px}
+  box-shadow:0 4px 18px rgba(0,0,0,.42),0 0 0 1px rgba(232,237,240,.12);max-width:255px;transition:opacity .35s ease}
 .pn-nb-head{font-size:10px;letter-spacing:.08em;color:rgba(242,194,48,.88);display:flex;justify-content:space-between;align-items:center}
 .pn-nb-list{display:flex;flex-wrap:wrap;gap:4px}
 .pn-nb-btn{appearance:none;border:0;background:rgba(232,237,240,.08);color:#e8edf0;padding:3px 8px;border-radius:999px;
   font:500 10.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;
   transition:background .16s ease,color .16s ease,box-shadow .16s ease;text-align:left}
 .pn-nb-btn:hover{color:#f5e27a;background:rgba(242,194,48,.18);box-shadow:inset 0 0 0 1px rgba(242,194,48,.45)}
-.pn-card{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);text-align:center;pointer-events:none;
+.pn-card{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);text-align:center;pointer-events:none;
   padding:10px 22px 11px;border-radius:14px;background:rgba(5,10,24,.68);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   box-shadow:0 8px 28px rgba(0,0,0,.48),0 0 0 1px rgba(242,194,48,.24);opacity:0;transition:opacity .45s ease;max-width:calc(100% - 28px)}
 .pn-card-sub{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#f2c230;margin-bottom:3px;opacity:.92}
 .pn-card-title{font-size:15px;font-weight:600;letter-spacing:.04em;color:#f4f7f9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
 .pn-card-portal{font-size:11.5px;color:rgba(245,226,122,.86);margin-top:4px;letter-spacing:.02em}
-.pn-tl{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(860px,calc(100% - 20px));box-sizing:border-box;
-  padding:7px 14px 8px;border-radius:14px;background:rgba(5,10,24,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.13);pointer-events:auto;display:none}
-.pn-tl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11.5px;letter-spacing:.02em}
-.pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76%}
+.pn-enter-odyssey{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);pointer-events:auto;display:none;
+  align-items:center;gap:8px;padding:8px 20px;border-radius:999px;border:0;
+  background:rgba(5,10,24,.84);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 6px 26px rgba(0,0,0,.55),0 0 18px rgba(242,194,48,.38),inset 0 0 0 1.2px rgba(242,194,48,.72);
+  color:#f5e27a;font:600 13px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.04em;
+  cursor:pointer;white-space:nowrap;transition:transform .18s ease,background .18s ease,box-shadow .18s ease,bottom .3s ease;z-index:25}
+.pn-enter-odyssey:hover{background:rgba(242,194,48,.24);color:#fff;transform:translateX(-50%) scale(1.03);
+  box-shadow:0 8px 30px rgba(0,0,0,.65),0 0 24px rgba(242,194,48,.75),inset 0 0 0 1.5px #fff}
+.pn-tl{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(900px,calc(100% - 20px));box-sizing:border-box;
+  padding:7px 14px 8px;border-radius:14px;background:rgba(5,10,24,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.13);pointer-events:auto;display:none;
+  transition:opacity .35s ease}
+.pn-ui[data-clean-eye="1"] .pn-suite,
+.pn-ui[data-clean-eye="1"] .pn-pathbar,
+.pn-ui[data-clean-eye="1"] .pn-tl,
+.pn-ui[data-clean-eye="1"] .pn-neighbors,
+.pn-ui[data-clean-eye="1"] .pn-card,
+.pn-ui[data-clean-eye="1"] .pn-beacon{opacity:0 !important;pointer-events:none !important}
+.pn-ui[data-clean-eye="1"] .pn-enter-odyssey{bottom:16px}
+.pn-tl-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;font-size:11.5px;letter-spacing:.02em;flex-wrap:wrap}
+.pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44%}
+.pn-tl-controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pn-ctl-btn{appearance:none;border:0;background:rgba(232,237,240,.08);color:rgba(232,237,240,.84);padding:2px 8px;border-radius:999px;
+  font:500 10.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;white-space:nowrap;
+  transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+.pn-ctl-btn:hover{color:#fff;background:rgba(232,237,240,.16)}
+.pn-ctl-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.20);box-shadow:inset 0 0 0 1px rgba(242,194,48,.48)}
 .pn-tl-time{color:rgba(232,237,240,.72);font:11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;flex-shrink:0}
 .pn-tl-track{position:relative;height:7px;border-radius:999px;background:rgba(232,237,240,.15);cursor:pointer;touch-action:none}
 .pn-tl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#c8964e,#7eb8da,#f2c230,#5eb2bc,#d85e24);width:0%}
@@ -82,7 +112,7 @@ const CSS = `
 .pn-tl-acts{display:grid;margin-top:4px;font-size:9.5px;color:rgba(232,237,240,.58)}
 .pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 1px;cursor:pointer;transition:color .15s ease}
 .pn-tl-act:hover{color:#fff}
-.pn-tl-act[data-active="1"]{color:#f5e27a;font-weight:600}
+.pn-tl-act[data-active="1"]{color:#f5e27a;font-weight:600;overflow:visible;position:relative;z-index:2}
 .pn-atlas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,calc(100% - 24px));max-height:calc(100% - 104px);
   box-sizing:border-box;padding:15px 18px;border-radius:18px;background:rgba(5,10,24,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   box-shadow:0 16px 48px rgba(0,0,0,.68),0 0 0 1px rgba(242,194,48,.32);pointer-events:auto;display:none;overflow-y:auto;z-index:30}
@@ -119,8 +149,8 @@ const CSS = `
   box-shadow:0 0 8px #f2c230;flex-shrink:0}
 .pn-focusable:focus{outline:none}
 .pn-focusable:focus-visible{outline:2px solid #f2c230;outline-offset:-3px}
-@media (max-width:720px){.pn-neighbors{display:none}}
-@media (prefers-reduced-motion:reduce){.pn-hint,.pn-card{transition:none}}
+@media (max-width:720px){.pn-neighbors{display:none}.pn-tl-shot{max-width:100%}}
+@media (prefers-reduced-motion:reduce){.pn-hint,.pn-card,.pn-suite,.pn-pathbar,.pn-tl,.pn-neighbors{transition:none}}
 `;
 
 export interface RingState { x: number; y: number; r: number; visible: boolean; opacity: number }
@@ -132,6 +162,11 @@ export interface PortalBeaconState {
   label: string;
   targetId: PaintingId;
 }
+export type UiAction = 'pause' | 'freelock' | 'return' | 'storm' | 'warp' | 'singleToggle';
+export interface ShotMarkerInfo {
+  name: string;
+  dur: number;
+}
 export interface UiState {
   hud: boolean;
   /** director line shown under the integrator's HUD text */
@@ -142,6 +177,12 @@ export interface UiState {
   loopTime?: number;
   loopSeconds?: number;
   shotName?: string;
+  shotIndex?: number;
+  mode?: string;
+  paused?: boolean;
+  freeLocked?: boolean;
+  warpK?: number;
+  align?: number;
 }
 
 export interface SuiteItem {
@@ -169,11 +210,11 @@ export const SUITE_ITEMS: readonly SuiteItem[] = [
     id: 'weaver', chapterId: 'earth', roman: 'II', shortZh: '織布工', tinyZh: 'II 織布工',
     titleZh: '織布工', titleEn: 'The Weaver',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)', year: '1884.05',
-    portalZh: '穿過右側農舍明窗光束 → 望見暮色中的《紐넨的舊教堂塔樓》',
+    portalZh: '穿過右側農舍明窗光束 → 望見暮色中的《紐南的舊教堂塔樓》',
   },
   {
     id: 'tower', chapterId: 'earth', roman: 'III', shortZh: '舊教堂塔樓', tinyZh: 'III 舊塔樓',
-    titleZh: '紐넨的舊教堂塔樓', titleEn: 'The Old Church Tower at Nuenen',
+    titleZh: '紐南的舊教堂塔樓', titleEn: 'The Old Church Tower at Nuenen',
     placeZh: 'Chapter I · 黑土與人 (荷蘭 Nuenen)', year: '1885.05',
     portalZh: '由教堂墓園泥土小徑低頭凝視 → 聚焦遠行起點《一雙舊鞋》',
   },
@@ -386,6 +427,13 @@ export class DirectorUI {
   private readonly cardPortal: HTMLDivElement;
   private readonly tlRoot: HTMLDivElement;
   private readonly tlShot: HTMLSpanElement;
+  private readonly tlControls: HTMLDivElement;
+  private readonly playPauseBtn: HTMLButtonElement;
+  private readonly modeToggleBtn: HTMLButtonElement;
+  private readonly eyeBtn: HTMLButtonElement;
+  private readonly stormBtn: HTMLButtonElement;
+  private readonly warpBtn: HTMLButtonElement;
+  private readonly singleLoopBtn: HTMLButtonElement;
   private readonly tlTime: HTMLSpanElement;
   private readonly tlTrack: HTMLDivElement;
   private readonly tlFill: HTMLDivElement;
@@ -393,22 +441,43 @@ export class DirectorUI {
   private tlMarks: HTMLDivElement[] = [];
   private readonly tlActsRow: HTMLDivElement;
   private readonly tlActEls = new Map<PaintingId, HTMLDivElement>();
+  private tlShotEls: HTMLDivElement[] = [];
   private readonly beaconBtn: HTMLButtonElement;
   private readonly beaconLbl: HTMLSpanElement;
+  private readonly odysseyInviteBtn: HTMLButtonElement;
   private beaconTargetId: PaintingId = 'weaver';
   private cardTimer: number | null = null;
   private hudText = '';
-  private last = { hud: false, hint: -1, hudLine: '', ring: '', beacon: '', rect: '', tlPct: -1, tlShot: '', tlTime: '' };
+  private lastUiActivityMs = 0;
+  private completedFirstSingleLoop = false;
+  private last = {
+    hud: false,
+    hint: -1,
+    hudLine: '',
+    ring: '',
+    beacon: '',
+    rect: '',
+    tlPct: -1,
+    tlShot: '',
+    tlTime: '',
+    ctlKey: '',
+    shotIdx: -1,
+    cleanEye: '',
+    inviteVis: false,
+  };
   private onSelectPainting: ((id: PaintingId) => void) | null = null;
   private onSelectMode: ((mode: ViewMode, pathId?: string) => void) | null = null;
   private onWeavePath: ((startId: PaintingId, motif?: MotifId) => void) | null = null;
   private onToggleSound: (() => void) | null = null;
   private onSeek: ((fraction: number) => void) | null = null;
+  private onSelectShot: ((shotIndex: number) => void) | null = null;
+  private onAction: ((action: UiAction) => void) | null = null;
   private scrubbing = false;
-  private currentActive: PaintingId = 'potato';
-  private currentMode: ViewMode = 'odyssey';
-  private currentPathId = 'odyssey';
-  private currentSequence: readonly PaintingId[] = SUITE_ITEMS.map((x) => x.id);
+  private currentActive: PaintingId = 'starry';
+  private currentMode: ViewMode = 'theme';
+  private currentPathId = 'single';
+  private currentSequence: readonly PaintingId[] = ['starry'];
+  private currentShots: readonly ShotMarkerInfo[] = [];
 
   constructor(private readonly input: HTMLElement) {
     const doc = input.ownerDocument;
@@ -423,12 +492,57 @@ export class DirectorUI {
     this.root = doc.createElement('div');
     this.root.className = 'pn-ui';
 
-    // Top-center 30-World / 5-Chapter Suite Bar with smooth horizontal scroll strip + pinned mode controls
+    const markUiActivity = () => {
+      this.lastUiActivityMs = performance.now();
+      if (this.root.dataset.cleanEye === '1') {
+        this.root.dataset.cleanEye = '0';
+        this.last.cleanEye = '0';
+      }
+    };
+    const win = doc.defaultView ?? window;
+    win.addEventListener('pointermove', markUiActivity, { passive: true });
+    win.addEventListener('pointerdown', markUiActivity, { passive: true });
+    win.addEventListener('keydown', markUiActivity, { passive: true });
+    win.addEventListener('wheel', markUiActivity, { passive: true });
+    win.addEventListener('touchstart', markUiActivity, { passive: true });
+
+    // Top-center 30-World / 5-Chapter Suite Bar with smooth horizontal scroll strip + nav buttons + pinned mode controls
     this.suiteBar = doc.createElement('div');
     this.suiteBar.className = 'pn-suite';
     this.suiteBar.style.display = 'none';
+
+    const scrollLeftBtn = doc.createElement('button');
+    scrollLeftBtn.type = 'button';
+    scrollLeftBtn.className = 'pn-suite-nav';
+    scrollLeftBtn.textContent = '‹';
+    scrollLeftBtn.title = '向左捲動畫作列表';
+    scrollLeftBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.suiteScroll.scrollBy({ left: -260, behavior: 'smooth' });
+      this.input.focus();
+    });
+
+    const scrollRightBtn = doc.createElement('button');
+    scrollRightBtn.type = 'button';
+    scrollRightBtn.className = 'pn-suite-nav';
+    scrollRightBtn.textContent = '›';
+    scrollRightBtn.title = '向右捲動畫作列表';
+    scrollRightBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.suiteScroll.scrollBy({ left: 260, behavior: 'smooth' });
+      this.input.focus();
+    });
+
     this.suiteScroll = doc.createElement('div');
     this.suiteScroll.className = 'pn-suite-scroll';
+    this.suiteScroll.addEventListener('wheel', (e) => {
+      e.stopPropagation();
+      if (Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
+        e.preventDefault();
+        this.suiteScroll.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+
     for (const item of SUITE_ITEMS) {
       const ch = getChapterSpec(item.chapterId);
       const btn = doc.createElement('button');
@@ -441,7 +555,7 @@ export class DirectorUI {
       lbl.textContent = `${item.roman}·${item.shortZh}`;
       btn.append(dot, lbl);
       btn.title = `${ch.roman} (${ch.nameZh}) · ${item.titleZh} (${item.titleEn}, ${item.year})\n任意門：${item.portalZh}`;
-      btn.dataset.active = item.id === 'potato' ? '1' : '0';
+      btn.dataset.active = item.id === 'starry' ? '1' : '0';
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onSelectPainting?.(item.id);
@@ -457,8 +571,8 @@ export class DirectorUI {
     this.odysseyBtn.type = 'button';
     this.odysseyBtn.className = 'pn-odyssey-btn';
     this.odysseyBtn.textContent = '∞ 五章三十幕';
-    this.odysseyBtn.title = '模式 A：五大章 30 幕完整長篇 Odyssey (快捷鍵 O)';
-    this.odysseyBtn.dataset.on = '1';
+    this.odysseyBtn.title = '模式 A：五大章 30 幕完整長篇 Odyssey (快捷鍵 O 切換單幅/史詩)';
+    this.odysseyBtn.dataset.on = '0';
     this.odysseyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onSelectMode?.('odyssey', 'odyssey');
@@ -473,7 +587,7 @@ export class DirectorUI {
     this.themeBtn.dataset.on = '0';
     this.themeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const nextPath = this.currentPathId === 'odyssey' ? 'nights' : this.currentPathId;
+      const nextPath = this.currentPathId === 'odyssey' || this.currentPathId === 'single' ? 'nights' : this.currentPathId;
       this.onSelectMode?.('theme', nextPath);
       this.input.focus();
     });
@@ -497,15 +611,15 @@ export class DirectorUI {
     this.soundBtn = doc.createElement('button');
     this.soundBtn.type = 'button';
     this.soundBtn.className = 'pn-odyssey-btn';
-    this.soundBtn.textContent = '♪ 聲景：開';
+    this.soundBtn.textContent = '♪ 點擊開啟聲景';
     this.soundBtn.title = '切換程序化空間聲景 / 靜音 (快捷鍵 V)';
-    this.soundBtn.dataset.on = '1';
+    this.soundBtn.dataset.on = '0';
     this.soundBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onToggleSound?.();
       this.input.focus();
     });
-    this.suiteBar.append(this.suiteScroll, sep, this.odysseyBtn, this.themeBtn, this.atlasBtn, this.soundBtn);
+    this.suiteBar.append(scrollLeftBtn, this.suiteScroll, scrollRightBtn, sep, this.odysseyBtn, this.themeBtn, this.atlasBtn, this.soundBtn);
 
     // Secondary Theme Path selector bar (Mode C)
     this.pathBar = doc.createElement('div');
@@ -513,11 +627,11 @@ export class DirectorUI {
     const pathOptions: Array<{ id: string; label: string; title: string }> = [
       { id: 'nights', label: '✦ 光與夜之路 (10幕)', title: '荷蘭油燈 → 香菸火燼 → 夕陽播種者 → 夜間咖啡座 → 午夜咖啡館 → 隆河星波 → 聖雷米星夜 → 橄欖樹烈日 → 絲柏夜路 → 麥田風暴' },
       { id: 'roads', label: '⟁ 道路與橋樑 (10幕)', title: '一雙舊鞋 → 蒙馬特磨坊 → 克利希大道 → 塞納河鐵橋 → 廣重雨中大橋 → 亞爾街角 → 隆河堤岸 → 絲柏夜路 → 奧維爾教堂 → 麥田三岔路' },
-      { id: 'dwellings', label: '⌂ 居所與聖殿 (10幕)', title: '食薯者餐桌 → 紐넨織布機 → 舊教堂塔樓 → 亞爾黃色小屋 → 向日葵 → 露天咖啡座 → 午夜咖啡館 → 亞爾臥室 → 奧維爾茅草屋 → 奧維爾教堂' },
+      { id: 'dwellings', label: '⌂ 居所與聖殿 (10幕)', title: '食薯者餐桌 → 紐南織布機 → 舊教堂塔樓 → 亞爾黃色小屋 → 向日葵 → 露天咖啡座 → 午夜咖啡館 → 亞爾臥室 → 奧維爾茅草屋 → 奧維爾教堂' },
       { id: 'flora', label: '❀ 黑土繁花與麥浪 (10幕)', title: '食薯者馬鈴薯 → 向日葵 → 克勞豐收平原 → 播種者 → 鳶尾花 → 橄欖樹林 → 絲柏麥浪 → 盛開杏花 → 多比尼花園 → 麥田群鴉' },
       { id: 'gaze', label: '❖ 凝視與靈魂 (8幕)', title: '食薯者農民 → 安特衛普叼菸骷髏 → 唐吉老爹與浮世繪 → 戴草帽的自畫像 → 午夜咖啡館 → 亞爾臥室百葉窗 → 嘉舍醫師 → 星夜渦流' },
       { id: 'woven', label: '✨ 智能編織 (6幕)', title: '從當前畫作與母題出發，沿世界圖譜任意門自動編織 6 幕連貫旅程' },
-      { id: 'single', label: '◎ 單幅沉浸循環 (1幕)', title: '鎖定當前畫作進行單幅 3D 空間深度巡禮' },
+      { id: 'single', label: '◎ 單幅沉浸循環 (1幕)', title: '鎖定當前畫作進行單幅多鏡頭完整 3D 空間巡禮 (快捷鍵 O)' },
     ];
     for (const po of pathOptions) {
       const b = doc.createElement('button');
@@ -632,6 +746,7 @@ export class DirectorUI {
         nb.addEventListener('click', (e) => {
           e.stopPropagation();
           this.onSelectPainting?.(it.id);
+          this.input.focus();
         });
         this.atlasNodes.set(it.id, nb);
         col.appendChild(nb);
@@ -643,16 +758,51 @@ export class DirectorUI {
     this.atlasDetail.className = 'pn-atlas-detail';
     this.atlasModal.append(atlasTop, motifsBar, chGrid, this.atlasDetail);
 
-    // Bottom Scrubber Timeline Bar
+    // Bottom Scrubber Timeline Bar + Interactive Action Dock
     this.tlRoot = doc.createElement('div');
     this.tlRoot.className = 'pn-tl';
     const tlHead = doc.createElement('div');
     tlHead.className = 'pn-tl-head';
     this.tlShot = doc.createElement('span');
     this.tlShot.className = 'pn-tl-shot';
+
+    this.tlControls = doc.createElement('div');
+    this.tlControls.className = 'pn-tl-controls';
+
+    const makeCtl = (label: string, title: string, act: UiAction): HTMLButtonElement => {
+      const b = doc.createElement('button');
+      b.type = 'button';
+      b.className = 'pn-ctl-btn';
+      b.textContent = label;
+      b.title = title;
+      b.dataset.on = '0';
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onAction?.(act);
+        this.input.focus();
+      });
+      return b;
+    };
+
+    this.playPauseBtn = makeCtl('⏸ 暫停', '暫停 / 繼續運鏡時間軸 (快捷鍵 P)', 'pause');
+    this.modeToggleBtn = makeCtl('🕊️ 自由探索', '鎖定自由探索模式 / 返回電影運鏡 (快捷鍵 F / C，WASD+拖曳飛行，右鍵/Alt攪動星空)', 'freelock');
+    this.eyeBtn = makeCtl('👁️ 歸位 E', '沿對數螺線飛回畫家唯一凝視點 E (快捷鍵 Space)', 'return');
+    this.stormBtn = makeCtl('🌪️ 暴風', '觸發 3D 筆觸暴風漩渦解構與彈簧重組 (快捷鍵 G)', 'storm');
+    this.warpBtn = makeCtl('🔭 景深 1.0×', '切換 250 km 非線性景深壓縮/深空延展 (或按住 Shift + 滾輪)', 'warp');
+    this.singleLoopBtn = makeCtl('◎ 單幅巡禮', '在「單幅多鏡頭深度巡禮 (如星夜 96s 十鏡頭)」與「五章三十幕史詩」間切換 (快捷鍵 O)', 'singleToggle');
+
+    this.tlControls.append(
+      this.playPauseBtn,
+      this.modeToggleBtn,
+      this.eyeBtn,
+      this.stormBtn,
+      this.warpBtn,
+      this.singleLoopBtn,
+    );
+
     this.tlTime = doc.createElement('span');
     this.tlTime.className = 'pn-tl-time';
-    tlHead.append(this.tlShot, this.tlTime);
+    tlHead.append(this.tlShot, this.tlControls, this.tlTime);
 
     this.tlTrack = doc.createElement('div');
     this.tlTrack.className = 'pn-tl-track';
@@ -691,7 +841,7 @@ export class DirectorUI {
     this.tlActsRow = doc.createElement('div');
     this.tlActsRow.className = 'pn-tl-acts';
     this.tlRoot.append(tlHead, this.tlTrack, this.tlActsRow);
-    this.rebuildTimelineSequence(this.currentSequence);
+    this.rebuildTimelineSequence(this.currentSequence, this.currentShots);
 
     // Museum Chapter Title Card with Diegetic Portal description
     this.card = doc.createElement('div');
@@ -716,7 +866,12 @@ export class DirectorUI {
     this.hud.append(this.hudExtern, doc.createElement('br'), this.hudLine);
     this.ring = doc.createElement('div');
     this.ring.className = 'pn-ring';
-    this.ring.setAttribute('aria-hidden', 'true');
+    this.ring.title = '凝視點 E — 點擊或按 Space 飛回畫家視角';
+    this.ring.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onAction?.('return');
+      this.input.focus();
+    });
 
     // In-Scene 3D Spatial Portal Beacon (projected onto the active painting's 3D portal)
     this.beaconBtn = doc.createElement('button');
@@ -732,6 +887,18 @@ export class DirectorUI {
       this.input.focus();
     });
 
+    // End-of-loop invitation pill to enter the 30-World Odyssey after watching standalone Starry Night
+    this.odysseyInviteBtn = doc.createElement('button');
+    this.odysseyInviteBtn.type = 'button';
+    this.odysseyInviteBtn.className = 'pn-enter-odyssey';
+    this.odysseyInviteBtn.textContent = '✦ 進入梵谷 30 個世界 · 五章三十幕旅程';
+    this.odysseyInviteBtn.title = '開啟五大章 30 幅梵谷立體世界長篇旅程 (快捷鍵 O)';
+    this.odysseyInviteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onSelectMode?.('odyssey', 'odyssey');
+      this.input.focus();
+    });
+
     this.root.append(
       this.ring,
       this.beaconBtn,
@@ -740,6 +907,7 @@ export class DirectorUI {
       this.neighborsBox,
       this.atlasModal,
       this.card,
+      this.odysseyInviteBtn,
       this.tlRoot,
       this.hint,
       this.hud,
@@ -759,17 +927,51 @@ export class DirectorUI {
     }
   }
 
-  private rebuildTimelineSequence(seq: readonly PaintingId[]): void {
+  private rebuildTimelineSequence(seq: readonly PaintingId[], shots: readonly ShotMarkerInfo[] = []): void {
     const doc = this.input.ownerDocument;
     for (const m of this.tlMarks) m.remove();
     this.tlMarks = [];
     this.tlActsRow.innerHTML = '';
     this.tlActEls.clear();
+    this.tlShotEls = [];
 
     if (seq.length <= 1) {
-      this.tlActsRow.style.display = 'none';
+      if (shots.length <= 1) {
+        this.tlActsRow.style.display = 'none';
+        return;
+      }
+      // Single-painting mode: render proportional clickable camera shot segments!
+      const totalDur = shots.reduce((acc, s) => acc + s.dur, 0) || 1;
+      this.tlActsRow.style.display = 'grid';
+      this.tlActsRow.style.gridTemplateColumns = shots.map((s) => `${Math.max(1, s.dur)}fr`).join(' ');
+      let accDur = 0;
+      for (let i = 0; i < shots.length; i++) {
+        if (i > 0) {
+          const m = doc.createElement('div');
+          m.className = 'pn-tl-mark';
+          m.style.left = `${(accDur * 100) / totalDur}%`;
+          this.tlMarks.push(m);
+          this.tlTrack.appendChild(m);
+        }
+        accDur += shots[i].dur;
+        const a = doc.createElement('div');
+        a.className = 'pn-tl-act';
+        const cleanName = shots[i].name.replace(/^Shot\s*\d+\s*·\s*/i, '');
+        a.textContent = `${i + 1}·${cleanName}`;
+        a.title = `點擊跳至鏡頭 ${i + 1}：${shots[i].name} (${shots[i].dur}s，快捷鍵 ${(i + 1) % 10})`;
+        a.dataset.active = i === 0 ? '1' : '0';
+        const shotIdx = i;
+        a.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.onSelectShot?.(shotIdx);
+          this.input.focus();
+        });
+        this.tlShotEls.push(a);
+        this.tlActsRow.appendChild(a);
+      }
       return;
     }
+
     this.tlActsRow.style.display = 'grid';
     this.tlActsRow.style.gridTemplateColumns = `repeat(${seq.length}, 1fr)`;
     for (let k = 1; k < seq.length; k++) {
@@ -784,10 +986,11 @@ export class DirectorUI {
       if (!item) continue;
       const a = doc.createElement('div');
       a.className = 'pn-tl-act';
-      a.textContent = seq.length > 16 ? item.roman : item.tinyZh;
-      if (seq.length > 16) a.style.fontSize = '7.5px';
+      const isActive = id === this.currentActive;
+      a.textContent = seq.length > 16 ? (isActive ? `${item.roman}·${item.shortZh}` : item.roman) : item.tinyZh;
+      if (seq.length > 16) a.style.fontSize = isActive ? '9px' : '7.5px';
       a.title = `${item.roman} · ${item.placeZh} · 《${item.titleZh}》 (${item.year})`;
-      a.dataset.active = id === this.currentActive ? '1' : '0';
+      a.dataset.active = isActive ? '1' : '0';
       a.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onSelectPainting?.(item.id);
@@ -843,6 +1046,21 @@ export class DirectorUI {
     r4.style.flexWrap = 'wrap';
     r4.style.alignItems = 'center';
     r4.style.gap = '6px';
+
+    const enterBtn = doc.createElement('button');
+    enterBtn.type = 'button';
+    enterBtn.className = 'pn-nb-btn';
+    enterBtn.style.background = 'rgba(242,194,48,.22)';
+    enterBtn.style.color = '#f5e27a';
+    enterBtn.style.boxShadow = 'inset 0 0 0 1px rgba(242,194,48,.55)';
+    enterBtn.textContent = `✦ 進入《${item.titleZh}》3D 世界`;
+    enterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onSelectPainting?.(active);
+      this.input.focus();
+    });
+    r4.appendChild(enterBtn);
+
     const lbl = doc.createElement('b');
     lbl.textContent = '推薦跨畫任意門躍遷：';
     r4.appendChild(lbl);
@@ -857,6 +1075,7 @@ export class DirectorUI {
       eb.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onSelectPainting?.(edge.to);
+        this.input.focus();
       });
       r4.appendChild(eb);
     }
@@ -884,37 +1103,52 @@ export class DirectorUI {
     mode: ViewMode;
     pathId: string;
     sequence: readonly PaintingId[];
+    shots?: readonly ShotMarkerInfo[];
     soundEnabled?: boolean;
+    soundActive?: boolean;
     showBar?: boolean;
     onSelect: (id: PaintingId) => void;
     onSelectMode: (mode: ViewMode, pathId?: string) => void;
     onWeavePath?: (startId: PaintingId, motif?: MotifId) => void;
     onToggleSound?: () => void;
     onSeek?: (fraction: number) => void;
+    onSelectShot?: (shotIndex: number) => void;
+    onAction?: (action: UiAction) => void;
   }): void {
     this.onSelectPainting = opts.onSelect;
     this.onSelectMode = opts.onSelectMode;
     this.onWeavePath = opts.onWeavePath ?? null;
     this.onToggleSound = opts.onToggleSound ?? null;
     this.onSeek = opts.onSeek ?? null;
+    this.onSelectShot = opts.onSelectShot ?? null;
+    this.onAction = opts.onAction ?? null;
     const show = opts.showBar !== false;
     this.suiteBar.style.display = show ? 'flex' : 'none';
     this.tlRoot.style.display = show ? 'block' : 'none';
-    this.neighborsBox.style.display = show ? 'flex' : 'none';
-    this.setSoundState(opts.soundEnabled ?? true);
+    this.neighborsBox.style.display = 'none';
+    this.setSoundState(opts.soundEnabled ?? true, opts.soundActive ?? false);
     this.setWorldState({
       active: opts.active,
       mode: opts.mode,
       pathId: opts.pathId,
       sequence: opts.sequence,
+      shots: opts.shots,
       showCard: true,
     });
   }
 
-  /** Update the soundscape pill button label and highlight state. */
-  setSoundState(enabled: boolean): void {
-    this.soundBtn.dataset.on = enabled ? '1' : '0';
-    this.soundBtn.textContent = enabled ? '♪ 聲景：開' : '♪ 聲景：靜音';
+  /** Update the soundscape pill button label and highlight state (distinguishing enabled+pending unlock vs active). */
+  setSoundState(enabled: boolean, active = false): void {
+    if (!enabled) {
+      this.soundBtn.dataset.on = '0';
+      this.soundBtn.textContent = '♪ 聲景：靜音';
+    } else if (!active) {
+      this.soundBtn.dataset.on = '0';
+      this.soundBtn.textContent = '♪ 點擊開啟聲景';
+    } else {
+      this.soundBtn.dataset.on = '1';
+      this.soundBtn.textContent = '♪ 聲景：開';
+    }
   }
 
   /** Update active painting, viewing mode (Odyssey / Theme / Atlas), active sequence, and optionally flash title card. */
@@ -923,6 +1157,7 @@ export class DirectorUI {
     mode: ViewMode;
     pathId: string;
     sequence: readonly PaintingId[];
+    shots?: readonly ShotMarkerInfo[];
     pathTitleZh?: string;
     showCard?: boolean;
   }): void {
@@ -930,12 +1165,19 @@ export class DirectorUI {
     this.currentMode = opts.mode;
     this.currentPathId = opts.pathId;
 
+    const nextShots = opts.shots ?? this.currentShots;
+    const shotsChanged =
+      nextShots.length !== this.currentShots.length
+      || nextShots.some((s, idx) => s.name !== this.currentShots[idx]?.name || s.dur !== this.currentShots[idx]?.dur);
     const seqChanged =
       opts.sequence.length !== this.currentSequence.length
-      || opts.sequence.some((id, idx) => id !== this.currentSequence[idx]);
+      || opts.sequence.some((id, idx) => id !== this.currentSequence[idx])
+      || (opts.sequence.length <= 1 && shotsChanged);
+
+    this.currentShots = nextShots;
     if (seqChanged) {
       this.currentSequence = [...opts.sequence];
-      this.rebuildTimelineSequence(this.currentSequence);
+      this.rebuildTimelineSequence(this.currentSequence, this.currentShots);
     }
 
     for (const [id, btn] of this.chapterBtns) {
@@ -948,19 +1190,32 @@ export class DirectorUI {
       this.suiteScroll.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
     }
     for (const [id, el] of this.tlActEls) {
-      el.dataset.active = id === opts.active ? '1' : '0';
+      const isAct = id === opts.active;
+      el.dataset.active = isAct ? '1' : '0';
+      if (this.currentSequence.length > 16) {
+        const it = SUITE_ITEM_MAP.get(id);
+        if (it) {
+          el.textContent = isAct ? `${it.roman}·${it.shortZh}` : it.roman;
+          el.style.fontSize = isAct ? '9px' : '7.5px';
+        }
+      }
     }
     for (const [id, nodeBtn] of this.atlasNodes) {
       nodeBtn.dataset.active = id === opts.active ? '1' : '0';
     }
 
+    const isSingle = opts.pathId === 'single';
     this.odysseyBtn.dataset.on = opts.mode === 'odyssey' ? '1' : '0';
-    this.themeBtn.dataset.on = opts.mode === 'theme' ? '1' : '0';
+    this.themeBtn.dataset.on = opts.mode === 'theme' && !isSingle ? '1' : '0';
     this.atlasBtn.dataset.on = opts.mode === 'atlas' ? '1' : '0';
 
+    this.singleLoopBtn.dataset.on = isSingle ? '1' : '0';
+    this.singleLoopBtn.textContent = isSingle ? '◎ 單幅循環中' : '◎ 單幅巡禮';
+
     const showBar = this.suiteBar.style.display !== 'none';
-    this.pathBar.style.display = showBar && opts.mode === 'theme' ? 'flex' : 'none';
+    this.pathBar.style.display = showBar && opts.mode === 'theme' && !isSingle ? 'flex' : 'none';
     this.atlasModal.style.display = showBar && opts.mode === 'atlas' ? 'block' : 'none';
+    this.neighborsBox.style.display = showBar && opts.mode === 'theme' && !isSingle ? 'flex' : 'none';
 
     for (const [pid, b] of this.pathBtns) {
       b.dataset.active = pid === opts.pathId ? '1' : '0';
@@ -1060,6 +1315,55 @@ export class DirectorUI {
         this.last.tlTime = timeStr;
         this.tlTime.textContent = timeStr;
       }
+    }
+    if (s.shotIndex !== undefined && s.shotIndex !== this.last.shotIdx && this.tlShotEls.length > 0) {
+      this.last.shotIdx = s.shotIndex;
+      for (let i = 0; i < this.tlShotEls.length; i++) {
+        this.tlShotEls[i].dataset.active = i === s.shotIndex ? '1' : '0';
+      }
+    }
+    const showBar = this.suiteBar.style.display !== 'none';
+    const isSingle = this.currentPathId === 'single';
+    if (showBar && s.loopTime !== undefined && s.loopSeconds !== undefined && s.loopSeconds > 0 && isSingle) {
+      if (s.loopTime >= s.loopSeconds - 10) {
+        this.completedFirstSingleLoop = true;
+      }
+    }
+    const showInvite =
+      showBar
+      && isSingle
+      && this.currentMode !== 'atlas'
+      && (this.completedFirstSingleLoop || (s.loopTime !== undefined && s.loopSeconds !== undefined && s.loopTime >= s.loopSeconds - 12));
+    if (showInvite !== this.last.inviteVis) {
+      this.last.inviteVis = showInvite;
+      this.odysseyInviteBtn.style.display = showInvite ? 'flex' : 'none';
+    }
+
+    const userRecentlyActive = performance.now() - this.lastUiActivityMs < 2400;
+    const cleanEye = (s.align ?? 0) > 0.72 && this.currentMode !== 'atlas' && !s.paused && !userRecentlyActive ? '1' : '0';
+    if (cleanEye !== this.last.cleanEye) {
+      this.last.cleanEye = cleanEye;
+      this.root.dataset.cleanEye = cleanEye;
+    }
+
+    const ctlKey = `${s.mode ?? ''}|${s.paused ? 1 : 0}|${s.freeLocked ? 1 : 0}|${(s.warpK ?? 1).toFixed(1)}`;
+    if (ctlKey !== this.last.ctlKey) {
+      this.last.ctlKey = ctlKey;
+      const paused = !!s.paused;
+      this.playPauseBtn.dataset.on = paused ? '1' : '0';
+      this.playPauseBtn.textContent = paused ? '▶ 繼續' : '⏸ 暫停';
+
+      const inFree = s.mode === 'free';
+      this.modeToggleBtn.dataset.on = inFree ? '1' : '0';
+      this.modeToggleBtn.textContent = s.freeLocked ? '🔒 自由飛行中' : inFree ? '🕊️ 自由探索中' : '🕊️ 自由探索';
+      if (showBar && this.currentMode !== 'atlas') {
+        this.neighborsBox.style.display = inFree || (this.currentMode === 'theme' && !isSingle) ? 'flex' : 'none';
+      }
+
+      const wk = s.warpK ?? 1;
+      const warped = Math.abs(wk - 1) > 0.04;
+      this.warpBtn.dataset.on = warped ? '1' : '0';
+      this.warpBtn.textContent = wk === 0 ? '🔭 平面 0.0×' : `🔭 景深 ${wk.toFixed(1)}×`;
     }
     const g = s.ring;
     const ringKey = g.visible ? `${g.x.toFixed(1)}|${g.y.toFixed(1)}|${g.r.toFixed(1)}|${g.opacity.toFixed(2)}` : 'off';
