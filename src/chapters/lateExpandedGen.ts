@@ -315,7 +315,7 @@ export function generateRoadCypressChapter(
   ));
   underlays.add(buildCanvasQuadMesh(
     ROADCYPRESS_ASPECT,
-    [[0.44, 0.20, 196], [0.52, 0.20, 196], [0.495, 0.94, 200], [0.465, 0.94, 200]],
+    [[0.44, 0.20, 196], [0.52, 0.20, 196], [0.505, 0.94, 200], [0.48, 0.94, 200]], // inside the swaying foliage at every height
     mat, CYPRESS_FLAME, 'roadcypress-cypress-core',
   ));
   timings.total = Math.round((performance.now() - t0) * 10) / 10;
