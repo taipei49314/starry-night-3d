@@ -302,9 +302,9 @@ function buildStrokeShellGeometry(
   return geo;
 }
 
-function nyCrossX(uy: number, uz: number, _nx: number, nz: number): number { return uy * nz; }
+function nyCrossX(uy: number, _uz: number, _nx: number, nz: number): number { return uy * nz; }
 function nyCrossY(uz: number, ux: number, nx: number, nz: number): number { return uz * nx - ux * nz; }
-function nyCrossZ(ux: number, uy: number, nx: number, _nz: number): number { return -uy * nx; }
+function nyCrossZ(_ux: number, uy: number, nx: number, _nz: number): number { return -uy * nx; }
 
 /** Build a contoured hat brim + crown geometry with organic wavy brim curvature. */
 function buildContouredHatGeometry(brimRadius: number, crownRadius: number, crownHeight: number): BufferGeometry {
