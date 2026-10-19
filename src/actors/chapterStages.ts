@@ -65,6 +65,7 @@ export class ChapterStageSystem {
 
   constructor() {
     this.root.name = 'chapterStageSystem';
+    this.root.visible = false;
     this.root.add(
       this.actor.root,
       this.stageGroups.earth,
@@ -109,19 +110,16 @@ export class ChapterStageSystem {
     return mesh;
   }
 
-  // 1. Nuenen Cottage Corner (1885): dark timber floor, cottage corner walls, rafters, hanging oil lamp, rustic table
+  // 1. Nuenen Cottage Corner (1885): dark timber floor, rafters, hanging oil lamp, rustic table
   private buildNuenenStage(g: Group): void {
     const floorMat = this.mat(0x1c140d, 0.92, 0.06, false, 0x332417, 0.65);
     const beamMat = this.mat(0x281c12, 0.88, 0.08, false, 0x45301e, 0.68);
-    const wallMat = this.mat(0x221911, 0.90, 0.08, false, 0x3d2c1d, 0.72);
     const tableMat = this.mat(0x3b2919, 0.80, 0.12, false, 0x63452a, 0.62);
     const brassMat = this.mat(0xd49b3c, 0.38, 0.35, false, 0xf5cc64, 0.35);
     const flameMat = this.mat(0xffe69e, 0.12, 0.92, false, 0xffb84d, 0.20);
 
-    const floorGeo = this.geo(new BoxGeometry(7.8, 0.08, 9.2));
-    const wallGeo = this.geo(new BoxGeometry(0.20, 3.9, 8.8));
-    const ceilingGeo = this.geo(new BoxGeometry(7.8, 0.14, 8.8));
-    const beamGeo = this.geo(new BoxGeometry(7.4, 0.20, 0.24));
+    const floorGeo = this.geo(new BoxGeometry(9.6, 0.08, 9.2));
+    const beamGeo = this.geo(new BoxGeometry(8.8, 0.18, 0.22));
     const tableTopGeo = this.geo(new CylinderGeometry(0.88, 0.88, 0.06, 20));
     const tableLegGeo = this.geo(new CylinderGeometry(0.045, 0.038, 0.76, 10));
     const platterGeo = this.geo(new CylinderGeometry(0.26, 0.22, 0.04, 16));
@@ -129,12 +127,9 @@ export class ChapterStageSystem {
     const lampShadeGeo = this.geo(new CylinderGeometry(0.11, 0.25, 0.13, 18));
     const lampBulbGeo = this.geo(new SphereGeometry(0.072, 14, 12));
 
-    this.addPart(g, floorGeo, floorMat, -0.2, -1.62, 5.2);
-    this.addPart(g, ceilingGeo, beamMat, -0.2, 2.02, 5.2);
-    this.addPart(g, wallGeo, wallMat, -2.35, 0.2, 5.0);
-    this.addPart(g, wallGeo, wallMat, 2.65, 0.2, 5.0);
-    this.addPart(g, beamGeo, beamMat, -0.2, 1.78, 4.4);
-    this.addPart(g, beamGeo, beamMat, -0.2, 1.78, 6.4);
+    this.addPart(g, floorGeo, floorMat, 0.0, -1.62, 5.2);
+    this.addPart(g, beamGeo, beamMat, 0.0, 1.88, 4.4);
+    this.addPart(g, beamGeo, beamMat, 0.0, 1.88, 6.4);
     // Contoured table & steaming potato platter silhouette ahead under the hanging oil lamp
     this.addPart(g, tableTopGeo, tableMat, 0.0, -0.82, 6.5);
     this.addPart(g, tableLegGeo, beamMat, -0.52, -1.22, 6.1);

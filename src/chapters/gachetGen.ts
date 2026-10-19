@@ -295,9 +295,9 @@ function buildGachetUnderlays(mat: UnderlayMaterialFactory): Group {
   g.name = 'underlays:gachet';
   g.add(buildCanvasQuadMesh(
     GACHET_ASPECT,
-    [[-0.04, 0.0, 165], [1.04, 0.0, 165], [0.96, 0.86, 540], [0.04, 0.86, 540]],
+    [[-0.08, -0.02, 590], [1.08, -0.02, 590], [1.08, 1.04, 590], [-0.08, 1.04, 590]],
     mat,
-    0x1c2f5e,
+    0x1e3c73,
     'gachet-backing',
   ));
   return g;

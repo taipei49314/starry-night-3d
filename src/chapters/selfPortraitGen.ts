@@ -240,9 +240,9 @@ function buildSelfPortraitUnderlays(mat: UnderlayMaterialFactory): Group {
   g.name = 'underlays:selfportrait';
   g.add(buildCanvasQuadMesh(
     SELFPORTRAIT_ASPECT,
-    [[0.12, 0.0, 175], [0.88, 0.0, 175], [0.82, 0.84, 540], [0.18, 0.84, 540]],
+    [[-0.08, -0.02, 590], [1.08, -0.02, 590], [1.08, 1.04, 590], [-0.08, 1.04, 590]],
     mat,
-    0x1e325c,
+    0x33536e,
     'selfportrait-backing',
   ));
   return g;

@@ -16,7 +16,6 @@ import {
 } from 'three';
 import { EYE, FORWARD, RIGHT, UP } from '../shared/canvasSpace';
 import type { ChapterId } from '../chapters/types';
-import { GLSL_PRELUDE } from '../shared/glsl/flow.glsl';
 
 const actorVert = /* glsl */ `
 #include <common>
@@ -39,7 +38,6 @@ void main() {
 const actorFrag = /* glsl */ `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-${GLSL_PRELUDE}
 uniform vec3 uBaseColor;
 uniform vec3 uAccentColor;
 uniform vec3 uKeyDir;
@@ -54,6 +52,10 @@ varying vec3 vActNormal;
 varying vec3 vActLocal;
 varying vec2 vActUv;
 
+float ign(vec2 px) {
+  return fract(52.9829189 * fract(dot(px, vec2(0.06711056, 0.00583715))));
+}
+
 void main() {
   if (uActorOpacity <= 0.002) discard;
 
@@ -62,10 +64,12 @@ void main() {
   if (dot(N, V) < 0.0) N = -N;
   vec3 L = normalize(uKeyDir);
 
-  // Directional painterly impasto / charcoal bristle ridges in local + world coordinates
-  float bristle = sin(vActUv.x * 42.0 + vnoise3(vActLocal * 18.0) * 3.5);
-  float strokeTex = vnoise3(vec3(vActLocal.x * 22.0, vActLocal.y * 9.0, vActLocal.z * 22.0));
-  float charcoalGrain = vnoise3(vActWorld * 16.0 + vActLocal * 12.0);
+  // Fast analytical impasto bristle ridges & directional charcoal weave (zero 3D hash loops)
+  float waveA = sin(vActLocal.x * 28.0 + vActLocal.z * 22.0 + sin(vActLocal.y * 16.0) * 1.9);
+  float waveB = cos(vActLocal.y * 24.0 - vActLocal.x * 18.0 + vActUv.x * 20.0);
+  float strokeTex = 0.5 + 0.28 * waveA + 0.22 * waveB;
+  float bristle = sin(vActUv.x * 42.0 + waveA * 2.4 + vActUv.y * 12.0);
+  float charcoalGrain = 0.5 + 0.30 * sin(vActWorld.x * 19.0 + vActWorld.y * 23.0) * cos(vActWorld.z * 17.0 + waveB);
 
   // Perturb normal slightly with bristle relief so light catches impasto ridges like oil paint / charcoal
   vec3 T = normalize(cross(N, vec3(0.0, 1.0, 0.15)));
@@ -126,7 +130,7 @@ export function makeRealisticStageMaterial(
 ): ShaderMaterial {
   const baseLin = hexToLinearVec3(hex);
   const accentLin = hexToLinearVec3(opts?.accentHex ?? hex);
-  return new ShaderMaterial({
+  const mat = new ShaderMaterial({
     name: `actor#${hex.toString(16).padStart(6, '0')}`,
     uniforms: {
       uBaseColor: { value: baseLin },
@@ -146,6 +150,8 @@ export function makeRealisticStageMaterial(
     depthWrite: true,
     depthTest: true,
   });
+  mat.customProgramCacheKey = () => 'punctum-actor-stage-v2';
+  return mat;
 }
 
 interface LoftRing {
