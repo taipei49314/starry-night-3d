@@ -53,6 +53,10 @@ export interface DirectorFrameEx extends DirectorFrame {
   paused?: boolean;
   /** True while free-explore mode is locked against idle auto-rejoin. */
   freeLocked?: boolean;
+  /** True while the viewer is actively extending a natural contemplation window in Witness Mode. */
+  witnessDwelling?: boolean;
+  /** True when the current beat/tau is inside a natural contemplation window where Hold-to-Dwell can slow camera time. */
+  canDwell?: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -72,10 +76,11 @@ const smooth = (e0: number, e1: number, x: number) => {
 const wrap = (t: number, period = LOOP_SECONDS) => ((t % period) + period) % period;
 
 const tv1 = new Vector3(), tv2 = new Vector3(), tv3 = new Vector3();
-const tq1 = new Quaternion();
+const tq1 = new Quaternion(), tqYaw = new Quaternion(), tqPitch = new Quaternion();
 const mLook = new Matrix4();
 const qRoll = new Quaternion();
 const ZERO = new Vector3();
+const AXIS_X = new Vector3(1, 0, 0);
 const AXIS_Y = new Vector3(0, 1, 0);
 const AXIS_Z = new Vector3(0, 0, 1);
 /** Camera quaternion looking along unit `d` with aviation roll (deg, + = bank right). */
@@ -112,6 +117,13 @@ export class Director {
   private _mode: DirectorMode = 'cinematic';
   private _calm: boolean;
   private _paused = false;
+  private _witnessMode = false;
+  private _dwellHeld = false;
+  private _canDwellWindow = false;
+  private witnessYaw = 0;
+  private witnessPitch = 0;
+  private witnessYawT = 0;
+  private witnessPitchT = 0;
   private manualWarpK = 1;
   private hud = false;
   private loopTime: number;
@@ -189,6 +201,10 @@ export class Director {
   get calm(): boolean { return this._calm; }
   get paused(): boolean { return this._paused; }
   get freeLocked(): boolean { return this.freeLock; }
+  get witnessMode(): boolean { return this._witnessMode; }
+  get dwellHeld(): boolean { return this._dwellHeld; }
+  get canDwellWindow(): boolean { return this._canDwellWindow; }
+  get effectiveDwell(): boolean { return this._witnessMode && this._dwellHeld && this._canDwellWindow; }
   get warpK(): number { return this.input ? this.input.warpK : this.manualWarpK; }
   get hudVisible(): boolean { return this.hud; }
   get canvasAspect(): number { return this.aspectAt(this.loopTime); }
@@ -200,6 +216,20 @@ export class Director {
 
   setCalm(on: boolean): void { this._calm = on; }
   setPaused(on: boolean): void { this._paused = on; }
+  setWitnessMode(on: boolean): void {
+    this._witnessMode = on;
+    if (!on) {
+      this._dwellHeld = false;
+      this._canDwellWindow = false;
+      this.witnessYaw = this.witnessPitch = this.witnessYawT = this.witnessPitchT = 0;
+    }
+  }
+  setDwellHeld(on: boolean): void {
+    this._dwellHeld = on;
+  }
+  setCanDwellWindow(on: boolean): void {
+    this._canDwellWindow = on;
+  }
   togglePause(): boolean {
     this._paused = !this._paused;
     return this._paused;
@@ -209,11 +239,12 @@ export class Director {
       this.resumeCinematic();
       return false;
     }
-    this.handOff();
+    this.handOff(true);
     this.freeLock = true;
     return true;
   }
   triggerStorm(): void {
+    if (this._witnessMode) return;
     this.stormToggled = true;
   }
   setTouchThrust(dir: number): void {
@@ -363,10 +394,11 @@ export class Director {
     let analyticVel = false;
     switch (this._mode) {
       case 'cinematic': {
-        if (!cut && !this._paused) this.advanceLoop(dt);
+        const dwellTimeScale = this.effectiveDwell ? 0.16 : 1.0;
+        if (!cut && !this._paused) this.advanceLoop(dt * dwellTimeScale);
         this.cinematicPose(this.loopTime, dt, cut);
         if (this._paused) this.vel.set(0, 0, 0);
-        else this.track.velocity(this.loopTime, this.vel);
+        else this.track.velocity(this.loopTime, this.vel).multiplyScalar(dwellTimeScale);
         analyticVel = true;
         this.track.env(this.loopTime, this.pos.distanceTo(EYE), this._calm, this.env);
         if (!this.firstBoot && this.loopTime < 2) this.env.impastoGain = 1 + 0.15 * Math.sin((Math.PI * this.loopTime) / 2);
@@ -509,6 +541,8 @@ export class Director {
       canvasAspect: cAspect,
       paused: this._paused,
       freeLocked: this.freeLock,
+      witnessDwelling: this.effectiveDwell,
+      canDwell: this._canDwellWindow,
     };
     this.renderUi(frame);
     return frame;
@@ -544,6 +578,38 @@ export class Director {
     this.rollOut = roll;
     this.pos.copy(P.p);
     poseQuaternion(P.d, roll, this.quat);
+
+    // In Witness Mode, pointer drag turns the witness's head gently (+/- 16 deg yaw, +/- 10 deg pitch)
+    // without breaking off the path into an unconstrained drone, and relaxes smoothly to 0 near E.
+    if (this._witnessMode && this.input) {
+      const [dx, dy] = this.input.consumeLook();
+      this.input.consumePinch();
+      if (cut) {
+        this.witnessYaw = this.witnessPitch = this.witnessYawT = this.witnessPitchT = 0;
+      } else if (dt > 0) {
+        const hPx = Math.max(320, this.inputEl.clientHeight || 720);
+        this.witnessYawT = Math.max(-16 * DEG, Math.min(16 * DEG, this.witnessYawT - (dx / hPx) * 1.15));
+        this.witnessPitchT = Math.max(-10 * DEG, Math.min(10 * DEG, this.witnessPitchT - (dy / hPx) * 0.85));
+        if (this.input.idle) {
+          const decay = Math.exp(-dt / 2.2);
+          this.witnessYawT *= decay;
+          this.witnessPitchT *= decay;
+        }
+        const damp = 1 - Math.exp(-dt / 0.14);
+        this.witnessYaw += (this.witnessYawT - this.witnessYaw) * damp;
+        this.witnessPitch += (this.witnessPitchT - this.witnessPitch) * damp;
+      }
+      const distFromE = P.p.distanceTo(EYE);
+      const lookScale = smooth(2.0, 12.0, distFromE);
+      const yaw = this.witnessYaw * lookScale;
+      const pitch = this.witnessPitch * lookScale;
+      if (Math.abs(yaw) > 1e-4 || Math.abs(pitch) > 1e-4) {
+        tqYaw.setFromAxisAngle(AXIS_Y, yaw);
+        tqPitch.setFromAxisAngle(AXIS_X, pitch);
+        this.quat.premultiply(tqYaw).multiply(tqPitch);
+      }
+    }
+
     this.fov = P.fov;
   }
 
@@ -578,9 +644,10 @@ export class Director {
     if (this.fadePhase === 1) { const v = this.fadeValue(); this.fadePhase = 2; this.fadeT = (1 - v) * FADE_DOWN; }
   }
 
-  private handOff(): void {
+  private handOff(force = false): void {
     this.interacted = true;
     this.lastActivity = this.bootSeconds;
+    if (this._witnessMode && !force) return;
     this.cancelPendingJump();
     if (this._mode === 'free') return;
     this.pilot.takeOver(this.pos, this.quat, this.fov, this.vel);
@@ -598,7 +665,7 @@ export class Director {
       case 'resume': this.resumeCinematic(); break;
       case 'restart': this.jumpToShot(actBaseShot); break;
       case 'shot': this.jumpToShot(isMultiAct ? actBaseShot + Math.min(3, c.index) : c.index); break;
-      case 'storm': this.stormToggled = true; break;
+      case 'storm': if (!this._witnessMode) this.stormToggled = true; break;
       case 'calm': this.setCalm(!this._calm); break;
       case 'hud': this.hud = !this.hud; break;
       case 'pause': this.togglePause(); break;
@@ -764,6 +831,9 @@ export class Director {
       freeLocked: this.freeLock,
       warpK: f.warpK,
       align: f.align,
+      witnessMode: this._witnessMode,
+      dwellHeld: this._dwellHeld,
+      canDwell: this._canDwellWindow,
     });
   }
 }

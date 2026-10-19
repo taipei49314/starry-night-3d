@@ -60,7 +60,7 @@ export function isPaintingId(s: string | undefined | null): s is PaintingId {
 
 export type ChapterId = 'earth' | 'color' | 'sun' | 'cosmos' | 'road';
 export type MotifId = 'light' | 'road' | 'sky' | 'flora' | 'dwelling' | 'gaze';
-export type ViewMode = 'odyssey' | 'theme' | 'atlas';
+export type ViewMode = 'odyssey' | 'theme' | 'atlas' | 'witness';
 
 export const K_D = 2 * T_HALF;
 const TAU = Math.PI * 2;

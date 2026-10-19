@@ -1,16 +1,18 @@
 // M8 DOM overlay (§4.8) + Van Gogh World System UI:
+// - Flagship Witness Mode ("陪他走過一生"): 5 Biographical Chapters, 4 Non-Painting Interludes, Letters to Theo & Jo van Gogh-Bonger Epilogue
 // - Level 1: Single Painting World & Diegetic Portal Title Card
 // - Level 2: Theme Paths Bar (Nights, Roads, Dwellings, Flora, Single Loop)
 // - Level 3: 5 Grand Chapters (Earth -> Color -> Sun -> Cosmos -> Road, 30 Worlds)
-// - 3 Viewing Modes: Odyssey (30-Act Film) / Theme Path (Motif Chains) / Atlas (Interactive World Graph & Neighbor Portals)
+// - Viewing Modes: Witness (5-Chapter Life Journey) / Odyssey (30-Act Film) / Theme Path (Motif Chains) / Atlas (Interactive World Graph)
 import { type PerspectiveCamera, Vector3 } from 'three';
 import { EYE, FORWARD } from '../shared/canvasSpace';
 import type { ChapterId, MotifId, PaintingId, ViewMode } from '../chapters/types';
 import {
   CHAPTER_SPECS, MOTIF_SPECS, THEME_PATHS, WORLD_GRAPH, getChapterSpec,
 } from '../chapters/worldGraph';
+import { RECONSTRUCTION_DISCLAIMER_ZH, type EpistolaryTrace } from '../chapters/letters';
 
-export const HINT_TEXT = '拖曳探索 3D 筆觸 · Space 歸位凝視點 E · P 暫停 · F 自由探索 · G 筆觸暴風 · [ ] 切換畫作 · O 單幅/史詩 · U 宇宙星圖';
+export const HINT_TEXT = 'J 陪他走過一生（五章見證） · 按住駐足延長凝視 · Space 歸位凝視點 E · P 暫停 · [ ] 切換畫作 · O 單幅/史詩 · U 宇宙星圖';
 
 const STYLE_ID = 'pn-director-ui-style';
 const CSS = `
@@ -52,6 +54,8 @@ const CSS = `
   white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease;flex-shrink:0}
 .pn-odyssey-btn:hover{color:#fff;background:rgba(232,237,240,.14)}
 .pn-odyssey-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.16);box-shadow:inset 0 0 0 1px rgba(242,194,48,.45)}
+.pn-witness-btn{background:rgba(242,194,48,.14);color:#f5e27a;box-shadow:inset 0 0 0 1px rgba(242,194,48,.38);font-weight:600}
+.pn-witness-btn[data-on="1"]{background:rgba(242,194,48,.28);color:#fff;box-shadow:0 0 14px rgba(242,194,48,.45),inset 0 0 0 1.2px #f5e27a}
 .pn-pathbar{position:absolute;left:50%;top:46px;transform:translateX(-50%);pointer-events:auto;display:none;align-items:center;gap:4px;
   padding:3px 7px;border-radius:999px;background:rgba(5,10,24,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 1px rgba(242,194,48,.22);max-width:calc(100% - 16px);overflow-x:auto;
@@ -76,6 +80,21 @@ const CSS = `
 .pn-card-sub{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#f2c230;margin-bottom:3px;opacity:.92}
 .pn-card-title{font-size:15px;font-weight:600;letter-spacing:.04em;color:#f4f7f9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
 .pn-card-portal{font-size:11.5px;color:rgba(245,226,122,.86);margin-top:4px;letter-spacing:.02em}
+.pn-letter{position:absolute;left:50%;bottom:106px;transform:translateX(-50%);width:min(680px,calc(100% - 32px));box-sizing:border-box;
+  padding:14px 20px 15px;border-radius:14px;background:rgba(18,14,10,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 10px 34px rgba(0,0,0,.62),0 0 0 1px rgba(232,198,128,.32),inset 0 0 28px rgba(212,168,92,.08);
+  color:#f4ecdc;pointer-events:none;display:none;opacity:0;transition:opacity .45s ease;z-index:26}
+.pn-letter[data-kind="interlude"],.pn-letter[data-kind="epilogue"]{bottom:50%;transform:translate(-50%,50%);
+  background:rgba(16,13,10,.88);box-shadow:0 14px 44px rgba(0,0,0,.74),0 0 0 1px rgba(236,202,132,.42),inset 0 0 36px rgba(212,168,92,.12)}
+.pn-letter-beat{font-size:11px;letter-spacing:.10em;color:#e8c268;margin-bottom:4px;font-weight:600}
+.pn-letter-head{font-size:11px;color:rgba(244,236,220,.78);margin-bottom:8px;border-bottom:1px solid rgba(232,198,128,.18);padding-bottom:5px;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.pn-letter-src{color:#d8b46a;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.5px}
+.pn-letter-quote{font-size:14px;line-height:1.65;color:#fbf6ec;letter-spacing:.02em;margin-bottom:6px;text-shadow:0 1px 2px rgba(0,0,0,.85)}
+.pn-letter-orig{font-size:11.5px;line-height:1.45;color:rgba(244,236,220,.68);font-style:italic;margin-bottom:7px;
+  font-family:Georgia,"Times New Roman",serif}
+.pn-letter-note{font-size:11.5px;line-height:1.5;color:rgba(236,214,162,.88)}
+.pn-letter-recon{margin-top:8px;padding-top:6px;border-top:1px dashed rgba(232,198,128,.20);font-size:10px;line-height:1.4;color:rgba(232,222,202,.62)}
 .pn-enter-odyssey{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);pointer-events:auto;display:none;
   align-items:center;gap:8px;padding:8px 20px;border-radius:999px;border:0;
   background:rgba(5,10,24,.84);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
@@ -100,9 +119,10 @@ const CSS = `
 .pn-tl-controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .pn-ctl-btn{appearance:none;border:0;background:rgba(232,237,240,.08);color:rgba(232,237,240,.84);padding:2px 8px;border-radius:999px;
   font:500 10.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;white-space:nowrap;
-  transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+  transition:background .15s ease,color .15s ease,box-shadow .15s ease,opacity .15s ease}
 .pn-ctl-btn:hover{color:#fff;background:rgba(232,237,240,.16)}
 .pn-ctl-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.20);box-shadow:inset 0 0 0 1px rgba(242,194,48,.48)}
+.pn-ctl-btn[data-ready="1"]{box-shadow:inset 0 0 0 1px rgba(242,194,48,.42);color:#f5e27a}
 .pn-tl-time{color:rgba(232,237,240,.72);font:11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;flex-shrink:0}
 .pn-tl-track{position:relative;height:7px;border-radius:999px;background:rgba(232,237,240,.15);cursor:pointer;touch-action:none}
 .pn-tl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#c8964e,#7eb8da,#f2c230,#5eb2bc,#d85e24);width:0%}
@@ -170,7 +190,7 @@ const CSS = `
   .pn-pathbar{top:76px}
   .pn-touch-pad{display:flex}
 }
-@media (prefers-reduced-motion:reduce){.pn-hint,.pn-card,.pn-suite,.pn-pathbar,.pn-tl,.pn-neighbors,.pn-touch-pad{transition:none}}
+@media (prefers-reduced-motion:reduce){.pn-hint,.pn-card,.pn-letter,.pn-suite,.pn-pathbar,.pn-tl,.pn-neighbors,.pn-touch-pad{transition:none}}
 `;
 
 export interface RingState { x: number; y: number; r: number; visible: boolean; opacity: number }
@@ -182,7 +202,7 @@ export interface PortalBeaconState {
   label: string;
   targetId: PaintingId;
 }
-export type UiAction = 'pause' | 'freelock' | 'return' | 'storm' | 'warp' | 'singleToggle';
+export type UiAction = 'pause' | 'freelock' | 'return' | 'storm' | 'warp' | 'singleToggle' | 'dwellToggle';
 export interface ShotMarkerInfo {
   name: string;
   dur: number;
@@ -203,6 +223,18 @@ export interface UiState {
   freeLocked?: boolean;
   warpK?: number;
   align?: number;
+  witnessMode?: boolean;
+  dwellHeld?: boolean;
+  canDwell?: boolean;
+}
+export interface WitnessOverlayState {
+  active: boolean;
+  beatTitleZh: string;
+  beatSubtitleZh: string;
+  kind: 'painting' | 'interlude' | 'epilogue';
+  letter: EpistolaryTrace | null;
+  letterAlpha: number;
+  showReconstructionNote: boolean;
 }
 
 export interface SuiteItem {
@@ -428,8 +460,9 @@ export class DirectorUI {
   private readonly suiteBar: HTMLDivElement;
   private readonly suiteScroll: HTMLDivElement;
   private readonly chapterBtns = new Map<PaintingId, HTMLButtonElement>();
-  private readonly drawerToggleBtn: HTMLButtonElement;
+    private readonly drawerToggleBtn: HTMLButtonElement;
   private readonly topPauseBtn: HTMLButtonElement;
+  private readonly witnessBtn: HTMLButtonElement;
   private readonly odysseyBtn: HTMLButtonElement;
   private readonly themeBtn: HTMLButtonElement;
   private readonly atlasBtn: HTMLButtonElement;
@@ -447,10 +480,20 @@ export class DirectorUI {
   private readonly cardSub: HTMLDivElement;
   private readonly cardTitle: HTMLDivElement;
   private readonly cardPortal: HTMLDivElement;
+  private readonly letterBox: HTMLDivElement;
+  private readonly letterBeat: HTMLDivElement;
+  private readonly letterHead: HTMLDivElement;
+  private readonly letterRecipient: HTMLSpanElement;
+  private readonly letterSrc: HTMLSpanElement;
+  private readonly letterQuote: HTMLDivElement;
+  private readonly letterOrig: HTMLDivElement;
+  private readonly letterNote: HTMLDivElement;
+  private readonly letterRecon: HTMLDivElement;
   private readonly tlRoot: HTMLDivElement;
   private readonly tlShot: HTMLSpanElement;
   private readonly tlControls: HTMLDivElement;
   private readonly playPauseBtn: HTMLButtonElement;
+  private readonly dwellBtn: HTMLButtonElement;
   private readonly modeToggleBtn: HTMLButtonElement;
   private readonly eyeBtn: HTMLButtonElement;
   private readonly stormBtn: HTMLButtonElement;
@@ -488,6 +531,7 @@ export class DirectorUI {
     shotIdx: -1,
     cleanEye: '',
     inviteVis: false,
+    letterKey: '',
   };
   private onSelectPainting: ((id: PaintingId) => void) | null = null;
   private onSelectMode: ((mode: ViewMode, pathId?: string) => void) | null = null;
@@ -497,6 +541,7 @@ export class DirectorUI {
   private onSelectShot: ((shotIndex: number) => void) | null = null;
   private onAction: ((action: UiAction) => void) | null = null;
   private onTouchThrust: ((dir: number) => void) | null = null;
+  private onSetDwell: ((held: boolean) => void) | null = null;
   private scrubbing = false;
   private currentActive: PaintingId = 'starry';
   private currentMode: ViewMode = 'theme';
@@ -622,6 +667,18 @@ export class DirectorUI {
       this.input.focus();
     });
 
+    this.witnessBtn = doc.createElement('button');
+    this.witnessBtn.type = 'button';
+    this.witnessBtn.className = 'pn-odyssey-btn pn-witness-btn';
+    this.witnessBtn.textContent = '✦ 陪他走過一生';
+    this.witnessBtn.title = '五章見證模式：跟隨寫實梵谷走過荷蘭、巴黎、亞爾、聖雷米、奧維爾五大人生章節、四段幕間留白與書信痕跡 (快捷鍵 J)';
+    this.witnessBtn.dataset.on = '0';
+    this.witnessBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onSelectMode?.('witness', 'witness');
+      this.input.focus();
+    });
+
     this.odysseyBtn = doc.createElement('button');
     this.odysseyBtn.type = 'button';
     this.odysseyBtn.className = 'pn-odyssey-btn';
@@ -642,7 +699,7 @@ export class DirectorUI {
     this.themeBtn.dataset.on = '0';
     this.themeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const nextPath = this.currentPathId === 'odyssey' || this.currentPathId === 'single' ? 'nights' : this.currentPathId;
+      const nextPath = this.currentPathId === 'odyssey' || this.currentPathId === 'single' || this.currentPathId === 'witness' ? 'nights' : this.currentPathId;
       this.onSelectMode?.('theme', nextPath);
       this.input.focus();
     });
@@ -656,7 +713,8 @@ export class DirectorUI {
     this.atlasBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (this.currentMode === 'atlas') {
-        this.onSelectMode?.(this.currentPathId === 'odyssey' ? 'odyssey' : 'theme', this.currentPathId);
+        const backMode: ViewMode = this.currentPathId === 'witness' ? 'witness' : this.currentPathId === 'odyssey' ? 'odyssey' : 'theme';
+        this.onSelectMode?.(backMode, this.currentPathId);
       } else {
         this.onSelectMode?.('atlas', this.currentPathId);
       }
@@ -681,6 +739,7 @@ export class DirectorUI {
       scrollRightBtn,
       sep,
       this.topPauseBtn,
+      this.witnessBtn,
       this.odysseyBtn,
       this.themeBtn,
       this.atlasBtn,
@@ -746,7 +805,8 @@ export class DirectorUI {
     atlasClose.textContent = '返回畫作 (U / Esc)';
     atlasClose.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.onSelectMode?.(this.currentPathId === 'odyssey' ? 'odyssey' : 'theme', this.currentPathId);
+      const backMode: ViewMode = this.currentPathId === 'witness' ? 'witness' : this.currentPathId === 'odyssey' ? 'odyssey' : 'theme';
+      this.onSelectMode?.(backMode, this.currentPathId);
       this.input.focus();
     });
     atlasTop.append(atlasTitle, atlasClose);
@@ -852,6 +912,28 @@ export class DirectorUI {
     };
 
     this.playPauseBtn = makeCtl('⏸ 暫停', '暫停 / 繼續運鏡時間軸 (快捷鍵 P)', 'pause');
+
+    // Hold-to-Dwell button for Witness Mode contemplation windows (never freezes Van Gogh like an NPC)
+    this.dwellBtn = doc.createElement('button');
+    this.dwellBtn.type = 'button';
+    this.dwellBtn.className = 'pn-ctl-btn';
+    this.dwellBtn.textContent = '⏳ 駐足停留';
+    this.dwellBtn.title = '在自然停頓處延長凝視停留（只放慢運鏡推進，絕不把梵谷凍結成遊戲 NPC）';
+    this.dwellBtn.dataset.on = '0';
+    this.dwellBtn.style.display = 'none';
+    const releaseDwell = (e: Event) => {
+      e.stopPropagation();
+      this.onSetDwell?.(false);
+    };
+    this.dwellBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      try { this.dwellBtn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      this.onSetDwell?.(true);
+    });
+    this.dwellBtn.addEventListener('pointerup', releaseDwell);
+    this.dwellBtn.addEventListener('pointercancel', releaseDwell);
+    this.dwellBtn.addEventListener('lostpointercapture', releaseDwell);
+
     this.modeToggleBtn = makeCtl('🕊️ 自由探索', '鎖定自由探索模式 / 返回電影運鏡 (快捷鍵 F / C，WASD+拖曳飛行，右鍵/Alt攪動星空)', 'freelock');
     this.eyeBtn = makeCtl('👁️ 歸位 E', '沿對數螺線飛回畫家唯一凝視點 E (快捷鍵 Space)', 'return');
     this.stormBtn = makeCtl('🌪️ 暴風', '觸發 3D 筆觸暴風漩渦解構與彈簧重組 (快捷鍵 G)', 'storm');
@@ -860,6 +942,7 @@ export class DirectorUI {
 
     this.tlControls.append(
       this.playPauseBtn,
+      this.dwellBtn,
       this.modeToggleBtn,
       this.eyeBtn,
       this.stormBtn,
@@ -921,6 +1004,35 @@ export class DirectorUI {
     this.cardPortal.className = 'pn-card-portal';
     this.card.append(this.cardSub, this.cardTitle, this.cardPortal);
 
+    // Epistolary Trace & Interlude / Epilogue overlay card (Letters to Theo + RM25 + Jo van Gogh-Bonger + reconstruction note)
+    this.letterBox = doc.createElement('div');
+    this.letterBox.className = 'pn-letter';
+    this.letterBeat = doc.createElement('div');
+    this.letterBeat.className = 'pn-letter-beat';
+    this.letterHead = doc.createElement('div');
+    this.letterHead.className = 'pn-letter-head';
+    this.letterRecipient = doc.createElement('span');
+    this.letterSrc = doc.createElement('span');
+    this.letterSrc.className = 'pn-letter-src';
+    this.letterHead.append(this.letterRecipient, this.letterSrc);
+    this.letterQuote = doc.createElement('div');
+    this.letterQuote.className = 'pn-letter-quote';
+    this.letterOrig = doc.createElement('div');
+    this.letterOrig.className = 'pn-letter-orig';
+    this.letterNote = doc.createElement('div');
+    this.letterNote.className = 'pn-letter-note';
+    this.letterRecon = doc.createElement('div');
+    this.letterRecon.className = 'pn-letter-recon';
+    this.letterRecon.textContent = RECONSTRUCTION_DISCLAIMER_ZH;
+    this.letterBox.append(
+      this.letterBeat,
+      this.letterHead,
+      this.letterQuote,
+      this.letterOrig,
+      this.letterNote,
+      this.letterRecon,
+    );
+
     this.hint = doc.createElement('div');
     this.hint.className = 'pn-hint';
     this.hint.setAttribute('role', 'status');
@@ -954,15 +1066,15 @@ export class DirectorUI {
       this.input.focus();
     });
 
-    // End-of-loop invitation pill to enter the 30-World Odyssey after watching standalone Starry Night
+    // End-of-loop invitation pill to enter the 5-Chapter Biographical Witness Journey after watching standalone Starry Night
     this.odysseyInviteBtn = doc.createElement('button');
     this.odysseyInviteBtn.type = 'button';
     this.odysseyInviteBtn.className = 'pn-enter-odyssey';
-    this.odysseyInviteBtn.textContent = '✦ 進入梵谷 30 個世界 · 五章三十幕旅程';
-    this.odysseyInviteBtn.title = '開啟五大章 30 幅梵谷立體世界長篇旅程 (快捷鍵 O)';
+    this.odysseyInviteBtn.textContent = '✦ 陪他走過一生 · 進入五章人生見證旅程';
+    this.odysseyInviteBtn.title = '跟隨寫實梵谷走入五大人生章節、四段幕間留白與書信痕跡 (快捷鍵 J)';
     this.odysseyInviteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.onSelectMode?.('odyssey', 'odyssey');
+      this.onSelectMode?.('witness', 'witness');
       this.input.focus();
     });
 
@@ -1012,6 +1124,7 @@ export class DirectorUI {
       this.neighborsBox,
       this.atlasModal,
       this.card,
+      this.letterBox,
       this.odysseyInviteBtn,
       this.touchPad,
       this.tlRoot,
@@ -1224,6 +1337,7 @@ export class DirectorUI {
     onSelectShot?: (shotIndex: number) => void;
     onAction?: (action: UiAction) => void;
     onTouchThrust?: (dir: number) => void;
+    onSetDwell?: (held: boolean) => void;
   }): void {
     this.onSelectPainting = opts.onSelect;
     this.onSelectMode = opts.onSelectMode;
@@ -1233,6 +1347,7 @@ export class DirectorUI {
     this.onSelectShot = opts.onSelectShot ?? null;
     this.onAction = opts.onAction ?? null;
     this.onTouchThrust = opts.onTouchThrust ?? null;
+    this.onSetDwell = opts.onSetDwell ?? null;
     const show = opts.showBar !== false;
     this.suiteBar.style.display = show ? 'flex' : 'none';
     this.tlRoot.style.display = show ? 'block' : 'none';
@@ -1262,7 +1377,7 @@ export class DirectorUI {
     }
   }
 
-  /** Update active painting, viewing mode (Odyssey / Theme / Atlas), active sequence, and optionally flash title card. */
+  /** Update active painting, viewing mode (Witness / Odyssey / Theme / Atlas), active sequence, and optionally flash title card. */
   setWorldState(opts: {
     active: PaintingId;
     mode: ViewMode;
@@ -1316,6 +1431,7 @@ export class DirectorUI {
     }
 
     const isSingle = opts.pathId === 'single';
+    const isWitness = opts.mode === 'witness' || opts.pathId === 'witness';
     const stripOpen = !isSingle || this.stripUserExpanded;
     this.suiteBar.dataset.stripOpen = stripOpen ? '1' : '0';
     const activeItem = SUITE_ITEM_MAP.get(opts.active);
@@ -1324,6 +1440,7 @@ export class DirectorUI {
       ? `🎨 ${activeItem.roman}·${activeItem.shortZh} (30幅) ${stripOpen ? '▴' : '▾'}`
       : `🎨 30 幅畫作 ${stripOpen ? '▴' : '▾'}`;
 
+    this.witnessBtn.dataset.on = isWitness ? '1' : '0';
     this.odysseyBtn.dataset.on = opts.mode === 'odyssey' ? '1' : '0';
     this.themeBtn.dataset.on = opts.mode === 'theme' && !isSingle ? '1' : '0';
     this.atlasBtn.dataset.on = opts.mode === 'atlas' ? '1' : '0';
@@ -1335,6 +1452,11 @@ export class DirectorUI {
     this.pathBar.style.display = showBar && opts.mode === 'theme' && !isSingle ? 'flex' : 'none';
     this.atlasModal.style.display = showBar && opts.mode === 'atlas' ? 'block' : 'none';
     this.neighborsBox.style.display = showBar && opts.mode === 'theme' && !isSingle ? 'flex' : 'none';
+    if (!isWitness) {
+      this.letterBox.style.display = 'none';
+      this.letterBox.style.opacity = '0';
+      this.last.letterKey = 'off';
+    }
 
     for (const [pid, b] of this.pathBtns) {
       b.dataset.active = pid === opts.pathId ? '1' : '0';
@@ -1342,7 +1464,7 @@ export class DirectorUI {
 
     this.updateNeighborPortals(opts.active);
 
-    if (opts.showCard) {
+    if (opts.showCard && !isWitness) {
       const item = SUITE_ITEM_MAP.get(opts.active);
       if (item) {
         const pathSpec = THEME_PATHS.find((p) => p.id === opts.pathId);
@@ -1364,7 +1486,35 @@ export class DirectorUI {
           this.card.style.opacity = '0';
         }, 9500);
       }
+    } else if (isWitness) {
+      this.card.style.opacity = '0';
     }
+  }
+
+  /** Update the Witness Mode Epistolary Trace & Interlude / Epilogue overlay card. */
+  updateWitnessOverlay(w: WitnessOverlayState): void {
+    const visible = w.active && w.letter !== null && w.letterAlpha > 0.02;
+    const key = visible && w.letter
+      ? `${w.letter.id}|${w.kind}|${w.beatTitleZh}|${w.letterAlpha.toFixed(2)}|${w.showReconstructionNote ? 1 : 0}`
+      : 'off';
+    if (key === this.last.letterKey) return;
+    this.last.letterKey = key;
+    const st = this.letterBox.style;
+    if (!visible || !w.letter) {
+      st.opacity = '0';
+      st.display = 'none';
+      return;
+    }
+    this.letterBox.dataset.kind = w.kind;
+    this.letterBeat.textContent = `${w.beatTitleZh} · ${w.beatSubtitleZh}`;
+    this.letterRecipient.textContent = `✉ ${w.letter.citationZh}`;
+    this.letterSrc.textContent = w.letter.citationEn;
+    this.letterQuote.textContent = w.letter.quoteZh;
+    this.letterOrig.textContent = w.letter.quoteEn;
+    this.letterNote.textContent = w.letter.contextNoteZh;
+    this.letterRecon.style.display = w.showReconstructionNote ? 'block' : 'none';
+    st.display = 'block';
+    st.opacity = String(Math.min(1, w.letterAlpha));
   }
 
   /** Update the floating 3D Spatial Portal Beacon projected onto the active painting's 3D portal. */
@@ -1467,7 +1617,7 @@ export class DirectorUI {
       this.root.dataset.cleanEye = cleanEye;
     }
 
-    const ctlKey = `${s.mode ?? ''}|${s.paused ? 1 : 0}|${s.freeLocked ? 1 : 0}|${(s.warpK ?? 1).toFixed(1)}`;
+    const ctlKey = `${s.mode ?? ''}|${s.paused ? 1 : 0}|${s.freeLocked ? 1 : 0}|${(s.warpK ?? 1).toFixed(1)}|${s.witnessMode ? 1 : 0}|${s.dwellHeld ? 1 : 0}|${s.canDwell ? 1 : 0}`;
     if (ctlKey !== this.last.ctlKey) {
       this.last.ctlKey = ctlKey;
       const paused = !!s.paused;
@@ -1475,6 +1625,21 @@ export class DirectorUI {
       this.playPauseBtn.textContent = paused ? '▶ 繼續' : '⏸ 暫停';
       this.topPauseBtn.dataset.on = paused ? '1' : '0';
       this.topPauseBtn.textContent = paused ? '▶ 繼續' : '⏸ 暫停';
+
+      const inWitness = !!s.witnessMode;
+      this.dwellBtn.style.display = inWitness ? 'inline-block' : 'none';
+      this.stormBtn.style.display = inWitness ? 'none' : 'inline-block';
+      if (inWitness) {
+        const dwelling = !!(s.dwellHeld && s.canDwell);
+        this.dwellBtn.dataset.on = dwelling ? '1' : '0';
+        this.dwellBtn.dataset.ready = s.canDwell ? '1' : '0';
+        this.dwellBtn.style.opacity = s.canDwell ? '1' : '0.52';
+        this.dwellBtn.textContent = dwelling
+          ? '⏳ 駐足凝視中…'
+          : s.canDwell
+            ? '⏳ 按住駐足停留'
+            : '⏳ 伴隨梵谷前行';
+      }
 
       const inFree = s.mode === 'free';
       this.modeToggleBtn.dataset.on = inFree ? '1' : '0';
