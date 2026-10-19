@@ -1,5 +1,7 @@
-// Chapter III: The Bedroom in Arles (Arles, Yellow House, Oct 1888 / Saint-Rémy 1889), aspect = 1.26.
-// 3D anamorphic interior: perspective ochre-and-olive floorboards (208-520 m), pale violet-blue plaster walls (215-590 m),
+// Chapter III: The Bedroom in Arles (Arles, Yellow House, Oct 1888), aspect = 1.26.
+// Historical pigment note (Letter 705, Oct 16, 1888 & Van Gogh Museum restoration ontrafel.vangogh.nl):
+// Original walls were painted pale lilac-violet ("les murs sont d'un violet pâle"), before carmine lake faded to blue.
+// 3D anamorphic interior: perspective ochre-and-olive floorboards (208-520 m), pale lilac-violet plaster walls (215-590 m),
 // the scarlet-blanketed golden-oak bed on the right (208-485 m), two yellow cane chairs (245 m & 395 m), washstand table
 // with ceramic pitcher (445 m), framed portraits on the walls, and the half-open green shuttered window portal (506-555 m).
 import { Group, Vector3 } from 'three';
@@ -17,9 +19,9 @@ import {
 export const BEDROOM_ASPECT = 1.26;
 const P = PALETTE;
 
-const WALL_LAVENDER = 0x6a86ba;
-const WALL_COBALT = 0x526ea4;
-const WALL_LILAC = 0x7e96c6;
+const WALL_LAVENDER = 0x9c86c2;
+const WALL_COBALT = 0x7b66a4;
+const WALL_LILAC = 0xb49ed4;
 const SCARLET_A = 0xd82e20;
 const SCARLET_B = 0xb51e14;
 const SHUTTER_GREEN = 0x2c6e44;
@@ -309,20 +311,20 @@ function buildBedroomUnderlays(mat: UnderlayMaterialFactory): Group {
     0x6e4c30,
     'bedroom-floor',
   ));
-  // Left wall quad
+  // Left wall quad (pale lilac-violet backing)
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
     [[-0.04, 0.16, 215], [0.18, 0.35, 525], [0.18, 0.98, 525], [-0.04, 0.98, 215]],
     mat,
-    0x415682,
+    0x68548c,
     'bedroom-wall-left',
   ));
-  // Right wall quad
+  // Right wall quad (pale lilac-violet backing)
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
     [[0.76, 0.35, 525], [1.04, 0.16, 215], [1.04, 0.98, 215], [0.76, 0.98, 525]],
     mat,
-    0x415682,
+    0x68548c,
     'bedroom-wall-right',
   ));
   // Scarlet bed core quad

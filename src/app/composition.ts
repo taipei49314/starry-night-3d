@@ -1,5 +1,6 @@
 // M10: world assembly, Van Gogh World System orchestration (5 Chapters, 30 Iconic Worlds, Dynamic Path Compiler,
-// 6 Motif Transition Grammars, In-Scene 3D Spatial Portal Beacon, Dynamic World Graph Weaver), and per-frame loop (§4.10).
+// 5-Chapter Biographical Witness Journey with Realistic Actor & Non-Painting Interludes, 6 Motif Transition Grammars,
+// In-Scene 3D Spatial Portal Beacon, Dynamic World Graph Weaver), and per-frame loop (§4.10).
 import { Scene, Vector2, Vector3, type Material, type PerspectiveCamera } from 'three';
 import {
   CANVAS_ASPECT, LOOP_SECONDS, type DirectorFrame, type Engine, type PostFrame, type QualitySettings, type SharedUniforms,
@@ -25,6 +26,10 @@ import {
   getThemePathSpec, MOTIF_SPECS, resolveTransitionEdge, weaveGraphPath, WORLD_GRAPH,
 } from '../chapters/worldGraph';
 import { isPaintingId, type MotifId, type PaintingId, type ViewMode } from '../chapters/types';
+import {
+  compileWitnessTrack, evalWitnessState, getWitnessBeatStartForPainting, WITNESS_BEATS, WITNESS_PAINTING_SEQUENCE,
+} from '../chapters/narrativeTimeline';
+import { ChapterStageSystem } from '../actors/chapterStages';
 import { StormController } from './storm';
 import { assertPaintOrder, runInvarianceSelfTest } from './selfTest';
 import { DebugOverlay } from './debugOverlay';
@@ -115,13 +120,17 @@ function readFlags(): Flags {
   try { calmStored = localStorage.getItem('punctum.calm') === '1'; } catch { /* storage blocked */ }
   const isHarnessPin = num('t') !== undefined || p.has('freeze') || p.has('overlay');
   const odysseyParam = p.get('odyssey');
+  const witnessParam = p.get('witness');
   const modeParam = p.get('mode')?.toLowerCase();
   const pathParam = p.get('path')?.toLowerCase();
 
   let mode: ViewMode = 'theme';
   let pathId = 'single';
 
-  if (odysseyParam === '1' || modeParam === 'odyssey' || pathParam === 'odyssey') {
+  if (witnessParam === '1' || modeParam === 'witness' || pathParam === 'witness') {
+    mode = 'witness';
+    pathId = 'witness';
+  } else if (odysseyParam === '1' || modeParam === 'odyssey' || pathParam === 'odyssey') {
     mode = 'odyssey';
     pathId = 'odyssey';
   } else if (odysseyParam === '0' || isHarnessPin) {
@@ -138,9 +147,11 @@ function readFlags(): Flags {
   const defaultPaint: PaintingId =
     pathId === 'single'
       ? 'starry'
-      : pathId === 'odyssey'
-        ? DEFAULT_ODYSSEY_SEQUENCE[0]
-        : getThemePathSpec(pathId).sequence[0] ?? 'starry';
+      : pathId === 'witness'
+        ? WITNESS_PAINTING_SEQUENCE[0]
+        : pathId === 'odyssey'
+          ? DEFAULT_ODYSSEY_SEQUENCE[0]
+          : getThemePathSpec(pathId).sequence[0] ?? 'starry';
 
   return {
     t: num('t'),
@@ -257,6 +268,7 @@ interface ManualMorph {
 
 function resolveSequence(pathId: string, activeId: PaintingId): readonly PaintingId[] {
   if (pathId === 'single') return [activeId];
+  if (pathId === 'witness') return WITNESS_PAINTING_SEQUENCE;
   return getThemePathSpec(pathId).sequence;
 }
 
@@ -276,12 +288,13 @@ export async function boot(container: HTMLElement): Promise<void> {
   let activeSequence: readonly PaintingId[] = resolveSequence(pathId, activeId);
   applyBlendedAtmosphere(u, activeId, null, 0);
 
-  // Master scene holds shared backdrop + dust + 3D portal vortex + all cached paintings' stroke & underlay groups
+  // Master scene holds shared backdrop + dust + 3D portal vortex + 5-Chapter Realistic Stage + all cached paintings
   const masterScene = new Scene();
   const masterBackdrop = createBackdrop(u, engine.quality);
   const masterDust = createDust(u, engine.quality, forkRng(flags.seed, 'dust:master'));
   const masterPortalVortex = createPortalVortex(u, engine.quality, forkRng(flags.seed, 'portal:master'));
-  masterScene.add(masterBackdrop, masterDust, masterPortalVortex.points);
+  const stageSystem = new ChapterStageSystem();
+  masterScene.add(masterBackdrop, masterDust, masterPortalVortex.points, stageSystem.root);
 
   const MAX_CACHED_WORLDS = 4;
   const worldCache = new Map<PaintingId, BuiltWorld>();
@@ -354,19 +367,28 @@ export async function boot(container: HTMLElement): Promise<void> {
   let world = getOrBuildWorld(activeId);
   const post = createPost(engine.renderer, u, engine.quality);
   const initialSpec = getPaintingSpec(activeId);
-  const isMultiAct = () => activeSequence.length > 1;
+  const witnessTrack = compileWitnessTrack();
+  const isWitness = () => viewMode === 'witness' || pathId === 'witness';
+  const isMultiAct = () => !isWitness() && activeSequence.length > 1;
   const initialStartTime = flags.t !== undefined
     ? flags.t
-    : isMultiAct()
-      ? getPaintingActStart(activeId, activeSequence)
-      : 0;
+    : isWitness()
+      ? getWitnessBeatStartForPainting(activeId)
+      : isMultiAct()
+        ? getPaintingActStart(activeId, activeSequence)
+        : 0;
   const director = new Director(engine.camera, engine.canvas, {
     calm: flags.calm,
     startTime: initialStartTime,
     free: flags.free,
     firstBoot: flags.t === undefined,
-    track: isMultiAct() ? compilePathTrack(activeSequence) : initialSpec.track,
+    track: isWitness()
+      ? witnessTrack
+      : isMultiAct()
+        ? compilePathTrack(activeSequence)
+        : initialSpec.track,
   });
+  if (isWitness()) director.setWitnessMode(true);
   const storm = new StormController();
   const overlay = flags.overlay ? new DebugOverlay(container) : null;
   const soundscape = new SoundscapeEngine({
@@ -396,7 +418,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       pathId,
       sequence: activeSequence,
       shots: currentShotsForUi(),
-      pathTitleZh: pathId === 'woven' ? wovenTitleZh : undefined,
+      pathTitleZh: pathId === 'woven' ? wovenTitleZh : pathId === 'witness' ? '五章人生見證旅程' : undefined,
       showCard,
     });
   };
@@ -408,10 +430,24 @@ export async function boot(container: HTMLElement): Promise<void> {
 
     // Selecting a painting inside the Atlas automatically exits the modal so the user sees the 3D world
     if (viewMode === 'atlas') {
-      viewMode = pathId === 'odyssey' ? 'odyssey' : 'theme';
+      viewMode = pathId === 'witness' ? 'witness' : pathId === 'odyssey' ? 'odyssey' : 'theme';
     }
 
-    if (pathId === 'single') {
+    if (isWitness()) {
+      if (WITNESS_PAINTING_SEQUENCE.includes(targetId)) {
+        director.seekTo(getWitnessBeatStartForPainting(targetId));
+        syncUi(false);
+        soundscape.triggerSnapChord(targetId);
+        return;
+      }
+      // Picking a painting outside the 18-painting Witness sequence transitions cleanly to Odyssey
+      director.setWitnessMode(false);
+      stageSystem.setHidden();
+      pathId = 'odyssey';
+      viewMode = 'odyssey';
+      activeSequence = DEFAULT_ODYSSEY_SEQUENCE;
+      director.setTrack(compilePathTrack(activeSequence), getPaintingActStart(targetId, activeSequence), false);
+    } else if (pathId === 'single') {
       activeSequence = [activeId];
       director.setTrack(getPaintingSpec(targetId).track, 0, false);
     } else if (!activeSequence.includes(targetId)) {
@@ -435,6 +471,8 @@ export async function boot(container: HTMLElement): Promise<void> {
   };
 
   const weaveAndPlay = (startId: PaintingId, preferredMotif?: MotifId) => {
+    director.setWitnessMode(false);
+    stageSystem.setHidden();
     const woven = weaveGraphPath(startId, preferredMotif, 6);
     wovenSequence = woven.sequence;
     wovenTitleZh = woven.nameZh;
@@ -453,7 +491,9 @@ export async function boot(container: HTMLElement): Promise<void> {
   };
 
   const selectModeAndPath = (nextMode: ViewMode, nextPathId?: string) => {
-    const resolvedPath = nextPathId ?? (nextMode === 'odyssey' ? 'odyssey' : pathId);
+    const resolvedPath =
+      nextPathId
+      ?? (nextMode === 'witness' ? 'witness' : nextMode === 'odyssey' ? 'odyssey' : pathId);
     if (resolvedPath === 'woven') {
       weaveAndPlay(activeId);
       return;
@@ -463,25 +503,41 @@ export async function boot(container: HTMLElement): Promise<void> {
     pathId = resolvedPath;
     activeSequence = resolveSequence(pathId, activeId);
 
-    if (prevPath !== pathId) {
-      if (pathId === 'single') {
-        director.setTrack(getPaintingSpec(activeId).track, 0, false);
-      } else {
+    if (prevPath !== pathId || nextMode === 'witness') {
+      if (pathId === 'witness' || nextMode === 'witness') {
+        viewMode = 'witness';
+        pathId = 'witness';
+        activeSequence = WITNESS_PAINTING_SEQUENCE;
         if (!activeSequence.includes(activeId)) {
-          const prevId = activeId;
           activeId = activeSequence[0];
-          getOrBuildWorld(activeId);
-          manualMorph = { fromId: prevId, toId: activeId, t: 0 };
         }
-        director.setTrack(
-          compilePathTrack(activeSequence),
-          getPaintingActStart(activeId, activeSequence),
-          false,
-        );
+        getOrBuildWorld(activeId);
+        manualMorph = null;
+        director.setWitnessMode(true);
+        director.setTrack(witnessTrack, getWitnessBeatStartForPainting(activeId), false);
+        soundscape.triggerSnapChord(activeId);
+      } else {
+        director.setWitnessMode(false);
+        stageSystem.setHidden();
+        if (pathId === 'single') {
+          director.setTrack(getPaintingSpec(activeId).track, 0, false);
+        } else {
+          if (!activeSequence.includes(activeId)) {
+            const prevId = activeId;
+            activeId = activeSequence[0];
+            getOrBuildWorld(activeId);
+            manualMorph = { fromId: prevId, toId: activeId, t: 0 };
+          }
+          director.setTrack(
+            compilePathTrack(activeSequence),
+            getPaintingActStart(activeId, activeSequence),
+            false,
+          );
+        }
+        soundscape.triggerSnapChord(activeId);
       }
-      soundscape.triggerSnapChord(activeId);
     }
-    syncUi(prevPath !== pathId);
+    syncUi(prevPath !== pathId && pathId !== 'witness');
   };
 
   const toggleSound = () => {
@@ -504,6 +560,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     onWeavePath: (startId, motif) => weaveAndPlay(startId, motif),
     onToggleSound: toggleSound,
     onSelectShot: (shotIdx) => director.jumpToShot(shotIdx),
+    onSetDwell: (held) => director.setDwellHeld(held),
     onAction: (action) => {
       switch (action) {
         case 'pause':
@@ -525,6 +582,9 @@ export async function boot(container: HTMLElement): Promise<void> {
           if (pathId === 'single') selectModeAndPath('odyssey', 'odyssey');
           else selectModeAndPath('theme', 'single');
           break;
+        case 'dwellToggle':
+          director.setDwellHeld(!director.dwellHeld);
+          break;
       }
     },
     onTouchThrust: (dir) => director.setTouchThrust(dir),
@@ -532,7 +592,13 @@ export async function boot(container: HTMLElement): Promise<void> {
       const targetT = fraction * director.activeTrack.loopSeconds;
       director.seekTo(targetT);
       manualMorph = null;
-      if (isMultiAct()) {
+      if (isWitness()) {
+        const ws = evalWitnessState(targetT);
+        if (ws.primaryId !== activeId) {
+          activeId = ws.primaryId;
+          syncUi(false);
+        }
+      } else if (isMultiAct()) {
         const ms = evalOdysseyMorph(targetT, activeSequence);
         if (ms.activeId !== activeId) {
           activeId = ms.activeId;
@@ -542,11 +608,20 @@ export async function boot(container: HTMLElement): Promise<void> {
     },
   });
 
-  // Keyboard shortcuts: [ / ] (prev/next painting), Enter (enter active 3D portal when visible), O (toggle Odyssey/Single), U (toggle Atlas), V (toggle Sound)
+  // Keyboard shortcuts: J (toggle 5-Chapter Witness Journey), [ / ] (prev/next painting), Enter (enter active 3D portal),
+  // O (toggle Odyssey/Single), U (toggle Atlas), V (toggle Sound), Shift hold in Witness Mode (Hold-to-Dwell contemplation)
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if ((e.key === 'Shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') && isWitness()) {
+      director.setDwellHeld(true);
+      return;
+    }
     const navSeq = activeSequence.length > 1 ? activeSequence : DEFAULT_ODYSSEY_SEQUENCE;
-    if (e.key === '[' || e.key === 'PageUp') {
+    if (e.key === 'j' || e.key === 'J') {
+      e.preventDefault();
+      if (isWitness()) selectModeAndPath('theme', 'single');
+      else selectModeAndPath('witness', 'witness');
+    } else if (e.key === '[' || e.key === 'PageUp') {
       e.preventDefault();
       triggerTransition(nextPaintingId(activeId, -1, navSeq));
     } else if (e.key === ']' || e.key === 'PageDown') {
@@ -562,16 +637,23 @@ export async function boot(container: HTMLElement): Promise<void> {
     } else if (e.key === 'u' || e.key === 'U') {
       e.preventDefault();
       if (viewMode === 'atlas') {
-        selectModeAndPath(pathId === 'odyssey' ? 'odyssey' : 'theme', pathId);
+        const backMode: ViewMode = pathId === 'witness' ? 'witness' : pathId === 'odyssey' ? 'odyssey' : 'theme';
+        selectModeAndPath(backMode, pathId);
       } else {
         selectModeAndPath('atlas', pathId);
       }
     } else if (e.key === 'Escape' && viewMode === 'atlas') {
       e.preventDefault();
-      selectModeAndPath(pathId === 'odyssey' ? 'odyssey' : 'theme', pathId);
+      const backMode: ViewMode = pathId === 'witness' ? 'witness' : pathId === 'odyssey' ? 'odyssey' : 'theme';
+      selectModeAndPath(backMode, pathId);
     } else if (e.key === 'v' || e.key === 'V') {
       e.preventDefault();
       toggleSound();
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      director.setDwellHeld(false);
     }
   });
 
@@ -601,6 +683,10 @@ export async function boot(container: HTMLElement): Promise<void> {
   const debug = {
     engine,
     director,
+    stageSystem,
+    witnessTrack,
+    witnessBeats: WITNESS_BEATS,
+    evalWitnessState,
     get world() { return world; },
     get activeId() { return activeId; },
     get pathId() { return pathId; },
@@ -616,6 +702,8 @@ export async function boot(container: HTMLElement): Promise<void> {
     weaveAndPlay,
     pinPainting: (id: PaintingId, tSec = 0) => {
       const w = getOrBuildWorld(id);
+      director.setWitnessMode(false);
+      stageSystem.setHidden();
       activeId = id;
       viewMode = 'theme';
       pathId = 'single';
@@ -672,9 +760,22 @@ export async function boot(container: HTMLElement): Promise<void> {
     let morphStirRadiusH = 0.18;
     let portalUV: [number, number] = [0.5, 0.5];
     let snapTriggered = false;
+    let witnessColorAwakening = 1;
+    let witnessSuppressEffects = false;
+    let witnessNonPaintingBeat = false;
     const calmScatterScale = f.calm ? 0.35 : 1.0;
 
     if (manualMorph) {
+      stageSystem.setHidden();
+      director.ui?.updateWitnessOverlay({
+        active: false,
+        beatTitleZh: '',
+        beatSubtitleZh: '',
+        kind: 'painting',
+        letter: null,
+        letterAlpha: 0,
+        showReconstructionNote: false,
+      });
       manualMorph.t += dt;
       const p = Math.min(1, manualMorph.t / MANUAL_MORPH_DUR);
       const bell = Math.sin(Math.PI * p);
@@ -713,7 +814,43 @@ export async function boot(container: HTMLElement): Promise<void> {
         manualMorph = null;
         snapTriggered = true;
       }
+    } else if (isWitness()) {
+      const ws = evalWitnessState(f.loopTime);
+      director.setCanDwellWindow(ws.canDwell);
+      primaryId = ws.primaryId;
+      secondaryId = ws.secondaryId;
+      primaryFade = ws.primaryFade;
+      secondaryFade = ws.secondaryFade;
+      primaryScatter = ws.primaryScatter * calmScatterScale;
+      secondaryScatter = ws.secondaryScatter * calmScatterScale;
+      atmoMix = ws.atmoMix;
+      displayAspect = ws.displayAspect;
+      portalUV = ws.portalUV;
+      witnessNonPaintingBeat = Boolean(ws.beat.isInterlude || ws.beat.isEpilogue);
+      if (ws.primaryId !== activeId && !witnessNonPaintingBeat) {
+        activeId = ws.primaryId;
+        if (viewMode !== 'atlas') syncUi(false);
+      }
+      director.ui?.updateWitnessOverlay({
+        active: !isHarnessPin,
+        beatTitleZh: `${ws.beat.chapterRoman} · ${ws.beat.titleZh}`,
+        beatSubtitleZh: ws.beat.subtitleZh,
+        kind: ws.beat.isEpilogue ? 'epilogue' : ws.beat.isInterlude ? 'interlude' : 'painting',
+        letter: ws.activeTrace,
+        letterAlpha: ws.traceOpacity,
+        showReconstructionNote: Boolean(ws.beat.isActorEntry),
+      });
     } else if (isMultiAct()) {
+      stageSystem.setHidden();
+      director.ui?.updateWitnessOverlay({
+        active: false,
+        beatTitleZh: '',
+        beatSubtitleZh: '',
+        kind: 'painting',
+        letter: null,
+        letterAlpha: 0,
+        showReconstructionNote: false,
+      });
       const ms = evalOdysseyMorph(f.loopTime, activeSequence);
       primaryId = ms.primaryId;
       secondaryId = ms.secondaryId;
@@ -744,6 +881,16 @@ export async function boot(container: HTMLElement): Promise<void> {
         if (viewMode !== 'atlas') syncUi(true);
       }
     } else {
+      stageSystem.setHidden();
+      director.ui?.updateWitnessOverlay({
+        active: false,
+        beatTitleZh: '',
+        beatSubtitleZh: '',
+        kind: 'painting',
+        letter: null,
+        letterAlpha: 0,
+        showReconstructionNote: false,
+      });
       primaryId = activeId;
       const spec = getPaintingSpec(activeId);
       displayAspect = spec.aspect;
@@ -777,41 +924,86 @@ export async function boot(container: HTMLElement): Promise<void> {
     }
     evictExcessWorlds(primaryId, secondaryId, lookaheadId);
 
-    applyBlendedAtmosphere(u, primaryId, secondaryId, atmoMix);
-
     engine.renderer.getDrawingBufferSize(bufSize);
     const bufW = bufSize.x;
     const bufH = bufSize.y;
     const enableLayIn = activeId === 'starry' && pathId === 'single';
     derivedUniforms(u, f, engine.camera, bufH, displayAspect, enableLayIn);
 
+    // Update 3D realistic foreground stage & Van Gogh actor rig (using u.uAlign.value so E remains 100% pure)
+    if (isWitness() && !manualMorph) {
+      const ws = evalWitnessState(f.loopTime);
+      const treat = stageSystem.update(
+        dt,
+        ws.beat.chapterId,
+        ws.primaryId,
+        ws.beatTau,
+        ws.beatDuration,
+        Boolean(ws.beat.isActorEntry),
+        Boolean(ws.beat.isInterlude),
+        Boolean(ws.beat.isEpilogue),
+        u.uAlign.value,
+        true,
+      );
+      primaryFade *= treat.paintFade;
+      u.uImpastoGain.value *= treat.impastoScale;
+      witnessColorAwakening = treat.colorAwakening;
+      witnessSuppressEffects = treat.suppressEffects;
+    }
+
+    applyBlendedAtmosphere(u, primaryId, secondaryId, atmoMix);
+    if (witnessNonPaintingBeat) {
+      // Non-painting Interlude / Epilogue: warm raw linen/parchment atmosphere with quiet drifting dust
+      u.uFogNear.value.set(0.065, 0.052, 0.038);
+      u.uFogFar.value.set(0.115, 0.094, 0.070);
+      u.uSkyMode.value = 0.15;
+    } else if (witnessColorAwakening < 0.999) {
+      // Chapter II (Paris): street colors awaken gradually from misty grey-taupe into pointillist chromatic vitality
+      const fn = u.uFogNear.value;
+      const ff = u.uFogFar.value;
+      const lumN = 0.2126 * fn.x + 0.7152 * fn.y + 0.0722 * fn.z;
+      const lumF = 0.2126 * ff.x + 0.7152 * ff.y + 0.0722 * ff.z;
+      const k = witnessColorAwakening;
+      fn.set(lumN + (fn.x - lumN) * k, lumN + (fn.y - lumN) * k, lumN + (fn.z - lumN) * k);
+      ff.set(lumF + (ff.x - lumF) * k, lumF + (ff.y - lumF) * k, lumF + (ff.z - lumF) * k);
+    }
+
     // Apply Motif Transition Grammar modulations (depth warp fold, pigment dust drift, and portal vortex stir)
-    if (!isHarnessPin && (morphWarpOffset !== 0 || morphDust !== 0 || morphStirPulse > 0)) {
+    if (!isHarnessPin && !witnessSuppressEffects && (morphWarpOffset !== 0 || morphDust !== 0 || morphStirPulse > 0)) {
       u.uWarpK.value = Math.max(0.25, f.warpK + morphWarpOffset);
       u.uDustAlpha.value = Math.min(1.0, f.env.dust + morphDust);
       if (!f.stir && morphStirPulse > 1e-3) {
         u.uStir.value.set(portalUV[0] * displayAspect, portalUV[1], morphStirPulse, morphStirRadiusH);
       }
     }
+    if (witnessSuppressEffects) {
+      u.uWarpK.value = 1.0;
+      u.uStir.value.z = 0;
+    }
+    if (witnessNonPaintingBeat) {
+      u.uDustAlpha.value = 0.58;
+    }
     const warped = u.uWarpK.value !== 1;
 
     storm.update(f, engine.camera.position, dt, u, world.strokes);
 
     // Compute 3D Portal Vortex state & project In-Scene 3D Spatial Portal Beacon
-    // Suppress golden portal particles and floating beacon whenever the painting is registered at E
+    // Suppress golden portal particles and floating beacon whenever the painting is registered at E or in Arles quiet restraint
     const pSpec = getPaintingSpec(primaryId);
     const tau = isMultiAct() ? ((f.loopTime % ACT_SECONDS) + ACT_SECONDS) % ACT_SECONDS : f.loopTime;
     const portalEdge = resolveTransitionEdge(primaryId, secondaryId ?? lookaheadId);
     const eyeFade = 1 - smoothstep(0.35, 0.72, u.uAlign.value);
     const rawPortalProximity =
-      secondaryId !== null
-        ? 1.0
-        : f.mode === 'free'
-          ? 0.55 + 0.45 * u.uOff.value
-          : isMultiAct()
-            ? smoothstep(14.0, 21.5, tau) * (1 - smoothstep(23.2, 24.8, tau))
-            : 0;
-    const portalProximity = secondaryId !== null ? 1.0 : rawPortalProximity * eyeFade;
+      witnessSuppressEffects || witnessNonPaintingBeat
+        ? 0
+        : secondaryId !== null
+          ? 1.0
+          : f.mode === 'free'
+            ? 0.55 + 0.45 * u.uOff.value
+            : isMultiAct()
+              ? smoothstep(14.0, 21.5, tau) * (1 - smoothstep(23.2, 24.8, tau))
+              : 0;
+    const portalProximity = secondaryId !== null && !witnessSuppressEffects ? 1.0 : rawPortalProximity * eyeFade;
 
     masterPortalVortex.setPortalState(
       isHarnessPin || portalProximity <= 0.01 ? 0 : (0.28 + 0.92 * portalProximity) * eyeFade * (f.calm ? 0.35 : 1.0),
@@ -822,7 +1014,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       canvasToWorld(pSpec.moonUVD[0], pSpec.moonUVD[1], pSpec.moonUVD[2], _portalWorld);
       const inPortalWindow = isMultiAct() && tau >= 16.5 && tau <= 23.8;
       const beaconEnabled =
-        viewMode !== 'atlas' && !manualMorph && u.uAlign.value <= 0.72 && (f.mode === 'free' || inPortalWindow);
+        viewMode !== 'atlas' && !isWitness() && !manualMorph && u.uAlign.value <= 0.72 && (f.mode === 'free' || inPortalWindow);
       const targetSpec = getPaintingSpec(lookaheadId);
       const mIcon = MOTIF_SPECS[portalEdge.motif].icon;
       const winAlpha =
@@ -911,7 +1103,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       exposure: f.env.exposure,
       matte,
       align: u.uAlign.value,
-      smear: Math.max(f.env.smear, morphSmear),
+      smear: witnessSuppressEffects ? 0 : Math.max(f.env.smear, morphSmear),
       fade: f.env.fade,
       time: u.uTime.value,
       canvasRectPx: canvasRect(bufW, bufH, displayAspect),

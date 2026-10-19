@@ -230,6 +230,76 @@ async function main() {
       await record(page, fileName);
     }
 
+    // 2b. 5-Chapter Biographical Witness Journey verification (actor shaders, non-painting interlude, purity of E, Hold-to-Dwell)
+    console.log('[verify-worlds] 2b/5 Verifying 5-Chapter Biographical Witness Journey (?mode=witness)...');
+    const witnessCheck = await page.evaluate(async () => {
+      const p = window.__punctum;
+      p.selectModeAndPath('witness', 'witness');
+      // Beat 0 (Ch I Nuenen, t = 4.0 s): realistic Van Gogh sketching in the cottage corner
+      p.director.seekTo(4.0);
+      for (let k = 0; k < 3; k++) await new Promise((r) => requestAnimationFrame(r));
+      const ch1ActorVisible = p.stageSystem.actor.root.visible;
+      const ch1StageVisible = p.stageSystem.root.visible;
+      const clockBefore = p.stageSystem.actor.actorClock;
+      // Hold-to-Dwell should never freeze Van Gogh's actorClock
+      p.director.setDwellHeld(true);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const clockAfter = p.stageSystem.actor.actorClock;
+      p.director.setDwellHeld(false);
+
+      // End of Beat 0 (t = 41.0 s, aligned at E): Van Gogh must have stepped outside the frame so E stays pure
+      p.director.seekTo(41.0);
+      for (let k = 0; k < 3; k++) await new Promise((r) => requestAnimationFrame(r));
+      const ch1HoldAlign = p.uniforms.uAlign.value;
+      const ch1ActorAtE = p.stageSystem.actor.root.visible;
+
+      // Interlude I (non-painting breathing space between Ch I and Ch II)
+      const interludeBeat = p.witnessBeats.find((b) => b.isInterlude);
+      let acc = 0;
+      for (const b of p.witnessBeats) {
+        if (b.id === interludeBeat.id) break;
+        acc += b.durationSec;
+      }
+      p.director.seekTo(acc + 5.0);
+      for (let k = 0; k < 3; k++) await new Promise((r) => requestAnimationFrame(r));
+      const interludePaintVisible = p.world.strokes.group.visible;
+
+      return {
+        viewMode: p.viewMode,
+        pathId: p.pathId,
+        beatCount: p.witnessBeats.length,
+        totalSeconds: p.witnessTrack.loopSeconds,
+        ch1ActorVisible,
+        ch1StageVisible,
+        actorClockAdvanced: clockAfter > clockBefore,
+        ch1HoldAlign,
+        ch1ActorAtE,
+        interludePaintVisible,
+      };
+    });
+    console.log('[verify-worlds] Witness Journey state:', witnessCheck);
+    if (witnessCheck.viewMode !== 'witness' || witnessCheck.pathId !== 'witness') {
+      throw new Error(`Expected Witness Mode active, got viewMode=${witnessCheck.viewMode}, pathId=${witnessCheck.pathId}`);
+    }
+    if (!witnessCheck.ch1ActorVisible || !witnessCheck.ch1StageVisible) {
+      throw new Error(`Expected 3D Van Gogh actor and Nuenen stage visible at t=4s, got actor=${witnessCheck.ch1ActorVisible}, stage=${witnessCheck.ch1StageVisible}`);
+    }
+    if (!witnessCheck.actorClockAdvanced) {
+      throw new Error('Expected Van Gogh actorClock to keep advancing even while Hold-to-Dwell is held');
+    }
+    if (!(witnessCheck.ch1HoldAlign >= 0.99) || witnessCheck.ch1ActorAtE) {
+      throw new Error(`Expected E to remain 100% pure (align>=0.99 and actor hidden) at t=41s, got align=${witnessCheck.ch1HoldAlign}, actorVisible=${witnessCheck.ch1ActorAtE}`);
+    }
+    if (witnessCheck.interludePaintVisible) {
+      throw new Error('Expected non-painting Interlude to hide oil painting strokes (paintFade=0)');
+    }
+    // Record Ch I Nuenen actor frame (t=4.0 s)
+    await page.evaluate(async () => {
+      window.__punctum.director.seekTo(4.0);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    });
+    await record(page, '50-witness-ch1-nuenen-actor.png');
+
     // 3. All 30 worlds at E (t=0, freeze)
     console.log('[verify-worlds] 3/5 Rendering and verifying all 30 worlds at E...');
     await page.goto(`${baseUrl}/?t=0&freeze`, { waitUntil: 'domcontentloaded' });
@@ -330,6 +400,7 @@ async function main() {
       timestamp: new Date().toISOString(),
       openingState,
       odysseyHolds,
+      witnessCheck,
       retriedShots,
       recordedShots,
       highTier,
