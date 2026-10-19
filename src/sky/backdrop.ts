@@ -147,12 +147,13 @@ void bdSkyColours(float S, float low, float high, vec4 k, vec4 r, out vec3 ca, o
   // Multi-era atmospheric palette harmonization (Nuenen, Auvers, Arles, Saint-Rémy; 0.0 for Starry Night)
   float envW = smoothstep(0.05, 0.55, uSkyMode) * (1.0 - 0.55 * smoothstep(2.85, 3.0, uSkyMode));
   if (envW > 0.0) {
+    float interiorW = smoothstep(0.05, 0.25, uSkyMode) * (1.0 - smoothstep(0.82, 1.15, uSkyMode));
     vec3 envHigh = uFogNear * (1.2 + 0.4 * high);
-    vec3 envLow = mix(uFogFar, PAL_ZINC_WHITE, 0.22 * (1.0 - high) + 0.16 * dayMix);
+    vec3 envLow = mix(uFogFar, PAL_ZINC_WHITE, (0.22 * (1.0 - 0.85 * interiorW)) * (1.0 - high) + 0.16 * dayMix);
     vec3 envA = band < 0.42 ? envHigh : (band < 0.76 ? mix(envHigh, envLow, 0.55) : envLow);
     vec3 envB = k.z < 0.5 ? envLow : envHigh * 0.85;
-    ca = mix(ca, envA * (0.9 + 0.16 * k.w), envW * 0.68);
-    cb = mix(cb, envB, envW * 0.62);
+    ca = mix(ca, envA * (0.9 + 0.16 * k.w), envW * mix(0.68, 0.96, interiorW));
+    cb = mix(cb, envB, envW * mix(0.62, 0.95, interiorW));
   }
 }
 
@@ -172,8 +173,9 @@ vec3 bdBandGround(float S, float low, float high) {
   }
   float envW = smoothstep(0.05, 0.55, uSkyMode) * (1.0 - 0.55 * smoothstep(2.85, 3.0, uSkyMode));
   if (envW > 0.0) {
+    float interiorW = smoothstep(0.05, 0.25, uSkyMode) * (1.0 - smoothstep(0.82, 1.15, uSkyMode));
     vec3 envG = mix(uFogFar * 1.15, uFogNear * 1.25, 0.45 + 0.35 * high - 0.25 * low);
-    gCol = mix(gCol, envG, envW * 0.65);
+    gCol = mix(gCol, envG, envW * mix(0.65, 0.96, interiorW));
   }
   return gCol;
 }
@@ -194,10 +196,11 @@ void bdEarthColours(vec4 k, out vec3 ca, out vec3 cb) {
   }
   float envW = smoothstep(0.05, 0.55, uSkyMode) * (1.0 - 0.55 * smoothstep(2.85, 3.0, uSkyMode));
   if (envW > 0.0) {
+    float interiorW = smoothstep(0.05, 0.25, uSkyMode) * (1.0 - smoothstep(0.82, 1.15, uSkyMode));
     vec3 envEarthA = mix(uFogNear * 0.72, PAL_OCHRE * 0.55, 0.25 * k.y + 0.25 * dayMix);
     vec3 envEarthB = mix(uFogNear * 0.48, PAL_OUTLINE, 0.45 * k.z);
-    ca = mix(ca, envEarthA * (0.85 + 0.22 * k.w), envW * 0.62);
-    cb = mix(cb, envEarthB, envW * 0.58);
+    ca = mix(ca, envEarthA * (0.85 + 0.22 * k.w), envW * mix(0.62, 0.94, interiorW));
+    cb = mix(cb, envEarthB, envW * mix(0.58, 0.94, interiorW));
   }
 }
 
@@ -247,12 +250,13 @@ void main() {
   float highPx = clamp((R - 0.88) / 0.22, 0.0, 1.0);
   float dayMix = smoothstep(2.0, 3.0, uSkyMode);
   float envW = smoothstep(0.05, 0.55, uSkyMode) * (1.0 - 0.55 * smoothstep(2.85, 3.0, uSkyMode));
+  float interiorW = smoothstep(0.05, 0.25, uSkyMode) * (1.0 - smoothstep(0.82, 1.15, uSkyMode));
   vec3 skyUnder = mix(mix(PAL_ULTRAMARINE, PAL_PRUSSIAN, clamp(0.15 + (R - 0.35), 0.0, 1.0)), mix(PAL_CERULEAN, PAL_BLUE_GREEN, 0.4), dayMix);
-  skyUnder = mix(skyUnder, mix(uFogFar, uFogNear, clamp(0.2 + (R - 0.35), 0.0, 1.0)), envW * 0.65);
+  skyUnder = mix(skyUnder, mix(uFogFar, uFogNear, clamp(0.2 + (R - 0.35), 0.0, 1.0)), envW * mix(0.65, 0.96, interiorW));
   vec3 skyBase = mix(skyUnder,
                      bdBandGround(S, 1.0 - clamp(H / 0.16, 0.0, 1.0), highPx), 0.55) * (0.8 * BD_LIGHT);
   vec3 earthBase = mix(mix(PAL_PRUSSIAN, PAL_ULTRAMARINE, 0.35) * 0.8, mix(PAL_OCHRE, PAL_GROVE, 0.4) * 0.75, dayMix);
-  earthBase = mix(earthBase, uFogNear * 0.65, envW * 0.6);
+  earthBase = mix(earthBase, uFogNear * 0.65, envW * mix(0.6, 0.95, interiorW));
   vec3 base = mix(skyBase, earthBase, earthPx);
   // splats composited front to back (top layer first, later cells over earlier ones), so a pixel whose upper splats
   // already cover it skips the rest

@@ -124,8 +124,10 @@ function readFlags(): Flags {
   const modeParam = p.get('mode')?.toLowerCase();
   const pathParam = p.get('path')?.toLowerCase();
 
-  let mode: ViewMode = 'theme';
-  let pathId = 'single';
+  // Default public entry point (/) enters the 5-Chapter Biographical Witness Journey ("陪他走過一生").
+  // Explicit single-painting showcase (?path=single, ?odyssey=0, ?witness=0, ?painting=<id>) or harness pin (?t=...) enters single mode.
+  let mode: ViewMode = 'witness';
+  let pathId = 'witness';
 
   if (witnessParam === '1' || modeParam === 'witness' || pathParam === 'witness') {
     mode = 'witness';
@@ -133,13 +135,13 @@ function readFlags(): Flags {
   } else if (odysseyParam === '1' || modeParam === 'odyssey' || pathParam === 'odyssey') {
     mode = 'odyssey';
     pathId = 'odyssey';
-  } else if (odysseyParam === '0' || isHarnessPin) {
+  } else if (odysseyParam === '0' || witnessParam === '0' || pathParam === 'single' || isHarnessPin || validPaint !== undefined) {
     mode = 'theme';
     pathId = 'single';
   } else if (modeParam === 'atlas') {
     mode = 'atlas';
-    pathId = pathParam ?? 'odyssey';
-  } else if (modeParam === 'theme' || (pathParam && pathParam !== 'odyssey' && pathParam !== 'single')) {
+    pathId = pathParam ?? 'witness';
+  } else if (modeParam === 'theme' || (pathParam && pathParam !== 'odyssey' && pathParam !== 'single' && pathParam !== 'witness')) {
     mode = 'theme';
     pathId = pathParam ?? 'nights';
   }
@@ -491,19 +493,25 @@ export async function boot(container: HTMLElement): Promise<void> {
   };
 
   const selectModeAndPath = (nextMode: ViewMode, nextPathId?: string) => {
-    const resolvedPath =
-      nextPathId
-      ?? (nextMode === 'witness' ? 'witness' : nextMode === 'odyssey' ? 'odyssey' : pathId);
+    const forceStarrySingle = nextPathId === 'single-starry';
+    const resolvedPath = forceStarrySingle
+      ? 'single'
+      : (nextPathId ?? (nextMode === 'witness' ? 'witness' : nextMode === 'odyssey' ? 'odyssey' : pathId));
     if (resolvedPath === 'woven') {
       weaveAndPlay(activeId);
       return;
     }
     const prevPath = pathId;
+    const prevActive = activeId;
+    if (forceStarrySingle) {
+      activeId = 'starry';
+      getOrBuildWorld('starry');
+    }
     viewMode = nextMode;
     pathId = resolvedPath;
     activeSequence = resolveSequence(pathId, activeId);
 
-    if (prevPath !== pathId || nextMode === 'witness') {
+    if (prevPath !== pathId || nextMode === 'witness' || forceStarrySingle) {
       if (pathId === 'witness' || nextMode === 'witness') {
         viewMode = 'witness';
         pathId = 'witness';
@@ -520,6 +528,9 @@ export async function boot(container: HTMLElement): Promise<void> {
         director.setWitnessMode(false);
         stageSystem.setHidden();
         if (pathId === 'single') {
+          if (forceStarrySingle && prevActive !== 'starry') {
+            manualMorph = { fromId: prevActive, toId: 'starry', t: 0 };
+          }
           director.setTrack(getPaintingSpec(activeId).track, 0, false);
         } else {
           if (!activeSequence.includes(activeId)) {
@@ -537,7 +548,7 @@ export async function boot(container: HTMLElement): Promise<void> {
         soundscape.triggerSnapChord(activeId);
       }
     }
-    syncUi(prevPath !== pathId && pathId !== 'witness');
+    syncUi((prevPath !== pathId || forceStarrySingle) && pathId !== 'witness');
   };
 
   const toggleSound = () => {

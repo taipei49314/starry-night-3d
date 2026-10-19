@@ -95,7 +95,7 @@ export function generateWeaverChapter(
     );
   }
 
-  // 3. Monumental 3D Oak Handloom Posts (CYPRESS [150..238 m]) & Crossbeams + Weaver + Woven Cloth (HOUSE & WINDOW)
+  // 3. Monumental 3D Oak Handloom Posts (CYPRESS [150..238 m]) & Crossbeams + Contoured Weaver + Woven Cloth (HOUSE & WINDOW)
   const posts = [0.16, 0.36, 0.62, 0.84];
   for (const uPost of posts) {
     for (let i = 0; i < 1600; i++) {
@@ -109,29 +109,76 @@ export function generateWeaverChapter(
       );
     }
   }
-  // Horizontal loom beams & seated weaver in dark indigo smock (HOUSE [460..920 m])
-  for (let i = 0; i < 6200; i++) {
-    const isBeam = i < 4200;
-    const uP = isBeam ? rng.range(0.10, 0.88) : 0.48 + rng.range(-0.09, 0.09);
-    const v = isBeam ? (i % 3 === 0 ? rng.range(0.42, 0.48) : i % 3 === 1 ? rng.range(0.76, 0.82) : rng.range(0.22, 0.28)) : rng.range(0.38, 0.72);
-    const d = isBeam ? rng.range(470, 680) : rng.range(720, 880);
-    const ang = isBeam ? rng.range(-0.06, 0.06) : Math.PI * 0.5 + rng.range(-0.2, 0.2);
-    const cA = isBeam ? LOOM_WALNUT : P.prussian;
-    T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
-    emitSurfaceStroke(
-      sink, WEAVER_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.018, 0.036), rng.range(0.005, 0.010), T_DIR, N_FRONT,
-      cA, LOOM_OAK, rng, { flags: StrokeFlag.OUTLINE },
-    );
+  // Horizontal loom beams, diagonal heddle harness cords & contoured seated weaver in dark indigo smock (HOUSE [460..920 m])
+  for (let i = 0; i < 6800; i++) {
+    if (i < 3800) {
+      // Horizontal oak beams, pulley crossbar & vertical heddle frames
+      const isHeddle = i >= 3000;
+      const uP = isHeddle ? rng.range(0.28, 0.56) : rng.range(0.10, 0.88);
+      const v = isHeddle
+        ? rng.range(0.46, 0.78)
+        : (i % 3 === 0 ? rng.range(0.42, 0.47) : i % 3 === 1 ? rng.range(0.76, 0.82) : rng.range(0.22, 0.27));
+      const d = isHeddle ? rng.range(510, 640) : rng.range(470, 680);
+      const ang = isHeddle ? Math.PI * 0.5 + rng.range(-0.08, 0.08) : rng.range(-0.05, 0.05);
+      T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
+      emitSurfaceStroke(
+        sink, WEAVER_ASPECT, StrokeClass.HOUSE, uP, v, d,
+        rng.range(0.015, 0.032), rng.range(0.0045, 0.0090), T_DIR, N_FRONT,
+        isHeddle ? mixHex(LOOM_WALNUT, LINEN_CREAM, 0.25) : LOOM_WALNUT, LOOM_OAK, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    } else {
+      // Contoured seated weaver behind the loom (head, sloped shoulders, indigo smock torso & outstretched arm throwing shuttle)
+      const isArm = i >= 6100;
+      let uP: number, v: number, d: number, ang: number, cA: number, cB: number;
+      if (isArm) {
+        const s = rng.next();
+        uP = 0.50 - 0.13 * s + rng.range(-0.012, 0.012);
+        v = 0.55 - 0.07 * s + 0.018 * Math.sin(s * Math.PI) + rng.range(-0.010, 0.010);
+        d = 735 - 30 * s + rng.range(-6, 6);
+        ang = Math.atan2(-0.07, -0.13 * WEAVER_ASPECT) + rng.range(-0.18, 0.18);
+        cA = s > 0.74 ? mixHex(LINEN_CREAM, P.ochre, 0.55) : P.prussian;
+        cB = LOOM_OAK;
+      } else {
+        const tH = rng.next(); // 0 = lower torso (0.34), 0.68 = neck, 0.72..1.0 = head & cap (0.73)
+        v = 0.34 + 0.39 * tH;
+        let halfW: number;
+        if (tH > 0.70) {
+          const hRel = (tH - 0.85) / 0.15;
+          halfW = 0.044 * Math.sqrt(Math.max(0.12, 1 - hRel * hRel));
+        } else if (tH > 0.63) {
+          halfW = 0.026;
+        } else {
+          halfW = 0.082 * (0.72 + 0.28 * Math.sin(Math.min(1, tH / 0.58) * Math.PI * 0.5));
+        }
+        const uRel = rng.range(-1, 1);
+        const lean = -0.016 * Math.max(0, tH - 0.45);
+        uP = 0.51 + lean + uRel * halfW;
+        d = 755 + 35 * (uRel * uRel) + rng.range(-8, 8);
+        const isFace = tH > 0.70 && tH < 0.90 && uRel < 0.25;
+        cA = isFace
+          ? shadeHex(mixHex(LINEN_CREAM, P.ochre, rng.range(0.35, 0.75)), rng.range(0.85, 1.10))
+          : shadeHex(mixHex(P.prussian, LOOM_OAK, rng.range(0.20, 0.65)), rng.range(0.86, 1.14));
+        cB = isFace ? LOOM_WALNUT : LOOM_OAK;
+        ang = Math.PI * 0.5 - 0.32 * uRel + rng.range(-0.18, 0.18);
+      }
+      T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
+      emitSurfaceStroke(
+        sink, WEAVER_ASPECT, StrokeClass.HOUSE, uP, v, d,
+        rng.range(0.013, 0.026), rng.range(0.0042, 0.0082), T_DIR, N_FRONT,
+        cA, cB, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
   }
-  // Luminous woven linen cloth & shuttle threads (WINDOW [465..560 m])
-  for (let i = 0; i < 1800; i++) {
+  // Luminous woven linen cloth, taut warp threads & wooden shuttle (WINDOW [465..560 m])
+  for (let i = 0; i < 2000; i++) {
     const uP = rng.range(0.22, 0.62);
     const v = rng.range(0.45, 0.53);
-    T_DIR.set(1, 0, 0);
+    const isWarp = (i & 3) === 0;
+    const ang = isWarp ? 0.18 * (uP - 0.42) : rng.range(-0.04, 0.04);
+    T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
     emitSurfaceStroke(
       sink, WEAVER_ASPECT, StrokeClass.WINDOW, uP, v, rng.range(468, 540),
-      rng.range(0.014, 0.028), rng.range(0.004, 0.008), T_DIR, N_FRONT,
+      rng.range(0.013, 0.026), rng.range(0.0038, 0.0075), T_DIR, N_FRONT,
       LINEN_CREAM, P.ochre, rng, { emissive: 0.75 },
     );
   }
@@ -995,55 +1042,146 @@ export function generateTanguyChapter(
     const v = rng.range(0.04, 1.04);
     const colIdx = (uP < 0.32 ? 0 : uP > 0.68 ? 2 : 1) + (v > 0.54 ? 3 : 0);
     const palette = [0xd84830, P.cerulean, SAKURA_PINK, P.lemon, 0x489c68, P.cobalt];
+    // Woodblock print border frames at uP ≈ 0.32, 0.68 and v ≈ 0.54
+    const onPrintBorder = Math.abs(uP - 0.32) < 0.012 || Math.abs(uP - 0.68) < 0.012 || Math.abs(v - 0.54) < 0.012;
     // Mount Fuji snow-cone in the upper-center Ukiyo-e print above Tanguy's hat (uP in 0.38..0.62, v in 0.80..0.94)
     const inFuji = v > 0.80 && v < 0.94 && Math.abs(uP - 0.50) < (0.95 - v) * 0.85;
-    const cA = inFuji
-      ? P.zincWhite
-      : shadeHex(palette[colIdx % palette.length], rng.range(0.86, 1.14));
+    const cA = onPrintBorder
+      ? 0x3a281c
+      : inFuji
+        ? P.zincWhite
+        : shadeHex(palette[colIdx % palette.length], rng.range(0.86, 1.14));
+    const ang = onPrintBorder
+      ? (Math.abs(v - 0.54) < 0.012 ? 0 : Math.PI * 0.5)
+      : inFuji
+        ? (uP < 0.50 ? 0.65 : -0.65)
+        : rng.range(-0.4, 0.4);
     emitCanvasStroke(
       sink, TANGUY_ASPECT, StrokeClass.SKY_BAND, uP, v, rng.range(98000, 168000),
-      rng.range(0.014, 0.028), inFuji ? (uP < 0.50 ? 0.65 : -0.65) : rng.range(-0.4, 0.4), rng.range(0.005, 0.0095),
-      cA, P.zincWhite, rng,
+      rng.range(0.014, 0.028), ang, rng.range(0.005, 0.0095),
+      cA, onPrintBorder ? P.ochre : P.zincWhite, rng,
     );
   }
 
-  // 2. Sculptural Seated Figure of Père Tanguy: Cobalt Coat, Straw Hat, Beard & Clasped Hands (HOUSE & CYPRESS)
-  for (let i = 0; i < 18500; i++) {
-    const v = rng.range(0.02, 0.82);
-    let halfW = 0.34;
-    let cA: number = COAT_COBALT;
-    let cB: number = P.ultramarine;
-    if (v > 0.68) {
-      // Wide-brimmed yellow straw hat
-      halfW = 0.22;
-      cA = HAT_STRAW;
-      cB = P.ochre;
-    } else if (v > 0.48) {
-      // Kind bearded face
-      halfW = 0.13;
-      cA = 0xdca478;
-      cB = 0x8e7258;
+  // 2. Sculptural Seated Figure of Père Tanguy: Contoured Straw Hat, Bearded Oval Face & Sloped Cobalt Coat (HOUSE & WINDOW)
+  for (let i = 0; i < 19200; i++) {
+    const vBase = rng.range(0.02, 0.82);
+    const uRel = rng.range(-1, 1);
+    let halfW: number;
+    let v = vBase;
+    let cA: number;
+    let cB: number;
+    let ang: number;
+
+    if (vBase > 0.67) {
+      // Upturned yellow straw hat brim (0.67..0.73) & pinched crown (0.73..0.82)
+      const hT = (vBase - 0.67) / 0.15;
+      const isBrim = hT < 0.42;
+      halfW = isBrim
+        ? 0.215 * Math.sqrt(Math.max(0.18, 1 - Math.pow((hT - 0.20) / 0.28, 2)))
+        : 0.135 * (1 - 0.32 * Math.pow((hT - 0.42) / 0.58, 1.4));
+      v = vBase + (isBrim ? 0.024 * (uRel * uRel) : -0.008 * (uRel * uRel));
+      const isBand = hT >= 0.36 && hT <= 0.48;
+      cA = isBand ? P.prussian : shadeHex(mixHex(HAT_STRAW, P.lemon, rng.range(0.20, 0.65)), rng.range(0.88, 1.14));
+      cB = isBand ? 0xa82820 : P.ochre;
+      ang = isBrim ? 0.24 * uRel + rng.range(-0.14, 0.14) : rng.range(-0.22, 0.22);
+    } else if (vBase > 0.46) {
+      // Contoured oval face (0.46..0.67) with warm cheek planes, nose bridge & grey-white beard
+      const fT = (vBase - 0.46) / 0.21; // 0 = beard tip, 0.5 = cheeks/nose, 1 = forehead under brim
+      const oval = Math.sqrt(Math.max(0.15, 1 - Math.pow(fT * 2 - 1, 2)));
+      halfW = 0.128 * (0.68 + 0.32 * oval);
+      const isBeardOrMoustache = fT < 0.38 || (fT < 0.58 && Math.abs(uRel) > 0.56) || (fT > 0.36 && fT < 0.48 && Math.abs(uRel) < 0.45);
+      const isNoseBridge = fT >= 0.45 && fT <= 0.76 && Math.abs(uRel) < 0.16;
+      if (isBeardOrMoustache) {
+        cA = shadeHex(mixHex(0xd8d2c4, 0x8e7e6c, rng.range(0.2, 0.8)), rng.range(0.88, 1.12));
+        cB = P.cerulean;
+        ang = Math.PI * 0.5 + 0.38 * uRel + rng.range(-0.16, 0.16);
+      } else if (isNoseBridge) {
+        cA = mixHex(0xeac09a, P.lemon, 0.35);
+        cB = 0xdca478;
+        ang = Math.PI * 0.5 + rng.range(-0.08, 0.08);
+      } else {
+        cA = shadeHex(mixHex(0xdca478, SAKURA_PINK, rng.range(0.15, 0.45)), rng.range(0.88, 1.12));
+        cB = 0x8e7258;
+        ang = Math.PI * 0.5 + 0.45 * uRel + rng.range(-0.18, 0.18);
+      }
+    } else {
+      // Sloped rounded cobalt-blue coat shoulders & double-breasted lapels (0.02..0.46)
+      const cT = (vBase - 0.02) / 0.44; // 0 = bottom hem/arms, 1 = neck/collar
+      const shoulderCurve = Math.sin(Math.min(1, (1 - cT) * 1.35) * Math.PI * 0.5);
+      halfW = 0.13 + 0.22 * shoulderCurve;
+      const isCrimsonLapel = cT > 0.32 && Math.abs(Math.abs(uRel) - (0.34 - 0.20 * cT)) < 0.055;
+      const isSleeveFold = Math.abs(uRel) > 0.62 && cT < 0.55;
+      cA = isCrimsonLapel
+        ? 0xa82820
+        : shadeHex(mixHex(COAT_COBALT, isSleeveFold ? P.prussian : P.ultramarine, rng.range(0.2, 0.75)), rng.range(0.86, 1.14));
+      cB = isCrimsonLapel ? P.ochre : P.cerulean;
+      ang = Math.PI * 0.5 + (uRel * 0.65) + rng.range(-0.15, 0.15);
     }
-    const uP = 0.50 + rng.range(-halfW, halfW);
-    const d = clamp(475 + 180 * Math.abs(uP - 0.50), 468, 720);
-    const ang = v > 0.68 ? rng.range(-0.2, 0.2) : Math.PI * 0.5 + (uP - 0.50) * 0.8;
+
+    const uP = 0.50 + uRel * halfW;
+    const d = clamp(475 + 165 * Math.abs(uP - 0.50) + rng.range(-6, 6), 468, 720);
     T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
     emitSurfaceStroke(
       sink, TANGUY_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.015, 0.030), rng.range(0.005, 0.0095), T_DIR, N_FRONT,
-      shadeHex(cA, rng.range(0.86, 1.14)), cB, rng, { flags: StrokeFlag.OUTLINE },
+      rng.range(0.013, 0.026), rng.range(0.0044, 0.0088), T_DIR, N_FRONT,
+      cA, cB, rng, { flags: Math.abs(uRel) > 0.82 ? StrokeFlag.OUTLINE : StrokeFlag.NONE },
     );
   }
-  // Clasped hands in foreground (CYPRESS [156..222 m]) & Red lapel lines
-  for (let i = 0; i < 2600; i++) {
-    const th = rng.range(0, Math.PI * 2);
-    const uP = 0.50 + 0.11 * Math.cos(th) * rng.range(0.2, 1.0);
-    const v = 0.16 + 0.08 * Math.sin(th) * rng.range(0.2, 1.0);
-    emitCanvasStroke(
-      sink, TANGUY_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 218),
-      rng.range(0.014, 0.026), th + Math.PI * 0.5, rng.range(0.0045, 0.0085),
-      0xdca478, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
-    );
+
+  // Père Tanguy's kind eyes & double-breasted coat buttons (WINDOW [458..466 m])
+  const tanguyAccents = [
+    { u0: 0.46, v0: 0.59, r: 0.016, eye: true },
+    { u0: 0.54, v0: 0.59, r: 0.016, eye: true },
+    { u0: 0.44, v0: 0.36, r: 0.013, eye: false },
+    { u0: 0.56, v0: 0.36, r: 0.013, eye: false },
+    { u0: 0.44, v0: 0.27, r: 0.013, eye: false },
+    { u0: 0.56, v0: 0.27, r: 0.013, eye: false },
+  ];
+  for (const ac of tanguyAccents) {
+    for (let i = 0; i < 160; i++) {
+      const th = rng.range(0, Math.PI * 2);
+      const rad = rng.range(0.002, ac.r);
+      const uP = ac.u0 + Math.cos(th) * rad;
+      const v = ac.v0 + Math.sin(th) * rad * 0.72;
+      T_DIR.set(1, 0, 0);
+      emitSurfaceStroke(
+        sink, TANGUY_ASPECT, StrokeClass.WINDOW, uP, v, 460 + rng.range(0, 5),
+        0.008, 0.0032, T_DIR, N_FRONT,
+        ac.eye ? (rad < 0.005 ? P.zincWhite : P.prussian) : 0x2a1812,
+        ac.eye ? P.cerulean : P.ochre, rng,
+        { emissive: ac.eye && rad < 0.005 ? 2.2 : 0.85 },
+      );
+    }
+  }
+
+  // Interlocked clasped hands & cobalt sleeve cuffs in foreground (CYPRESS [156..222 m])
+  for (let i = 0; i < 2800; i++) {
+    const isCuff = i < 700;
+    if (isCuff) {
+      const side = (i & 1) ? 1 : -1;
+      const uP = 0.50 + side * rng.range(0.085, 0.145);
+      const v = 0.14 + rng.range(-0.045, 0.045);
+      emitCanvasStroke(
+        sink, TANGUY_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(185, 220),
+        rng.range(0.015, 0.028), Math.PI * 0.5 + side * 0.35, rng.range(0.005, 0.009),
+        COAT_COBALT, P.prussian, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    } else {
+      // Articulated interlocked fingers across 4 horizontal finger bands
+      const fingerIdx = i & 3;
+      const s = rng.range(-1, 1);
+      const uP = 0.50 + s * 0.088;
+      const v = 0.115 + fingerIdx * 0.022 + 0.012 * Math.cos(s * Math.PI) + rng.range(-0.007, 0.007);
+      const ang = -0.25 * Math.sin(s * Math.PI) + rng.range(-0.12, 0.12);
+      const isKnuckle = Math.abs(s) < 0.25 || Math.abs(s) > 0.78;
+      emitCanvasStroke(
+        sink, TANGUY_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 196),
+        rng.range(0.012, 0.022), ang, rng.range(0.0042, 0.0078),
+        isKnuckle ? 0xe8b88c : 0xdca478, isKnuckle ? P.ochre : 0x9e6848, rng,
+        { flags: StrokeFlag.OUTLINE },
+      );
+    }
   }
 
   const underlays = new Group();

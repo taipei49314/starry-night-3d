@@ -83,8 +83,14 @@ export class ChapterStageSystem {
     this.buildInterludeStage(this.interludeGroup);
   }
 
-  private mat(hex: number, rough = 0.85, sss = 0.05, doubleSide = false): ShaderMaterial {
-    const m = makeRealisticStageMaterial(hex, this.stageLight, { roughness: rough, subsurface: sss, doubleSide });
+  private mat(hex: number, rough = 0.85, sss = 0.08, doubleSide = false, accentHex?: number, relief = 0.52): ShaderMaterial {
+    const m = makeRealisticStageMaterial(hex, this.stageLight, {
+      roughness: rough,
+      subsurface: sss,
+      doubleSide,
+      accentHex,
+      brushRelief: relief,
+    });
     this.materials.push(m);
     return m;
   }
@@ -103,31 +109,40 @@ export class ChapterStageSystem {
     return mesh;
   }
 
-  // 1. Nuenen Cottage Corner (1885): dark timber floor, cottage corner wall, hanging oil lamp, rustic table edge
+  // 1. Nuenen Cottage Corner (1885): dark timber floor, cottage corner walls, rafters, hanging oil lamp, rustic table
   private buildNuenenStage(g: Group): void {
-    const floorMat = this.mat(0x1b140e, 0.92);
-    const beamMat = this.mat(0x261b12, 0.88);
-    const tableMat = this.mat(0x362618, 0.82);
-    const brassMat = this.mat(0xc89238, 0.42, 0.25);
-    const flameMat = this.mat(0xffe29a, 0.15, 0.85);
+    const floorMat = this.mat(0x1c140d, 0.92, 0.06, false, 0x332417, 0.65);
+    const beamMat = this.mat(0x281c12, 0.88, 0.08, false, 0x45301e, 0.68);
+    const wallMat = this.mat(0x221911, 0.90, 0.08, false, 0x3d2c1d, 0.72);
+    const tableMat = this.mat(0x3b2919, 0.80, 0.12, false, 0x63452a, 0.62);
+    const brassMat = this.mat(0xd49b3c, 0.38, 0.35, false, 0xf5cc64, 0.35);
+    const flameMat = this.mat(0xffe69e, 0.12, 0.92, false, 0xffb84d, 0.20);
 
-    const floorGeo = this.geo(new BoxGeometry(7.5, 0.08, 9.0));
-    const wallGeo = this.geo(new BoxGeometry(0.18, 3.8, 8.5));
-    const beamGeo = this.geo(new BoxGeometry(7.2, 0.22, 0.24));
-    const tableTopGeo = this.geo(new BoxGeometry(1.9, 0.07, 1.25));
+    const floorGeo = this.geo(new BoxGeometry(7.8, 0.08, 9.2));
+    const wallGeo = this.geo(new BoxGeometry(0.20, 3.9, 8.8));
+    const ceilingGeo = this.geo(new BoxGeometry(7.8, 0.14, 8.8));
+    const beamGeo = this.geo(new BoxGeometry(7.4, 0.20, 0.24));
+    const tableTopGeo = this.geo(new CylinderGeometry(0.88, 0.88, 0.06, 20));
+    const tableLegGeo = this.geo(new CylinderGeometry(0.045, 0.038, 0.76, 10));
+    const platterGeo = this.geo(new CylinderGeometry(0.26, 0.22, 0.04, 16));
     const lampCordGeo = this.geo(new CylinderGeometry(0.012, 0.012, 1.35, 8));
-    const lampShadeGeo = this.geo(new CylinderGeometry(0.12, 0.26, 0.14, 16));
-    const lampBulbGeo = this.geo(new SphereGeometry(0.065, 12, 10));
+    const lampShadeGeo = this.geo(new CylinderGeometry(0.11, 0.25, 0.13, 18));
+    const lampBulbGeo = this.geo(new SphereGeometry(0.072, 14, 12));
 
-    this.addPart(g, floorGeo, floorMat, -0.4, -1.62, 5.2);
-    this.addPart(g, wallGeo, beamMat, -2.6, 0.2, 5.0);
-    this.addPart(g, beamGeo, beamMat, -0.2, 1.85, 4.8);
-    this.addPart(g, beamGeo, beamMat, -0.2, 1.85, 7.2);
-    // Table silhouette ahead and hanging oil lamp above it
-    this.addPart(g, tableTopGeo, tableMat, 0.0, -0.82, 6.8);
-    this.addPart(g, lampCordGeo, beamMat, 0.0, 1.15, 6.6);
-    this.addPart(g, lampShadeGeo, brassMat, 0.0, 0.48, 6.6);
-    this.addPart(g, lampBulbGeo, flameMat, 0.0, 0.39, 6.6);
+    this.addPart(g, floorGeo, floorMat, -0.2, -1.62, 5.2);
+    this.addPart(g, ceilingGeo, beamMat, -0.2, 2.02, 5.2);
+    this.addPart(g, wallGeo, wallMat, -2.35, 0.2, 5.0);
+    this.addPart(g, wallGeo, wallMat, 2.65, 0.2, 5.0);
+    this.addPart(g, beamGeo, beamMat, -0.2, 1.78, 4.4);
+    this.addPart(g, beamGeo, beamMat, -0.2, 1.78, 6.4);
+    // Contoured table & steaming potato platter silhouette ahead under the hanging oil lamp
+    this.addPart(g, tableTopGeo, tableMat, 0.0, -0.82, 6.5);
+    this.addPart(g, tableLegGeo, beamMat, -0.52, -1.22, 6.1);
+    this.addPart(g, tableLegGeo, beamMat, 0.52, -1.22, 6.1);
+    this.addPart(g, platterGeo, brassMat, -0.04, -0.77, 6.35);
+    this.addPart(g, lampCordGeo, beamMat, 0.0, 1.15, 6.35);
+    this.addPart(g, lampShadeGeo, brassMat, 0.0, 0.48, 6.35);
+    this.addPart(g, lampBulbGeo, flameMat, 0.0, 0.39, 6.35);
   }
 
   // 2. Paris Boulevard (1887): misty grey cobblestone pavement, curbstone, boulevard trees & iron streetlamp
@@ -296,13 +311,14 @@ export class ChapterStageSystem {
     switch (chapterId) {
       case 'earth': {
         // Chapter I (Nuenen): "油燈微光逐漸揭露筆觸，幾乎察覺不到現實何時消失"
-        // Ultra-subtle crossfade modulated by a gentle oil-lamp breath so the viewer never notices a hard boundary.
+        // Warm oil-lamp brushstrokes of The Potato Eaters already glow softly in the background from the start,
+        // gradually taking over the room as the realistic cottage stage dissolves imperceptibly.
         if (isActorEntryBeat) {
           const lampBreath = 0.035 * Math.sin(beatTau * 1.6);
-          const reveal = smooth01((beatTau - 1.5) / 15.5);
-          paintFade = Math.max(0.08, Math.min(1, reveal + lampBreath * (1 - reveal)));
+          const reveal = smooth01((beatTau - 0.5) / 13.5);
+          paintFade = Math.max(0.42, Math.min(1, 0.42 + 0.58 * reveal + lampBreath * (1 - reveal)));
           stageOpacity = (1 - smooth01((beatTau - 5.0) / 14.0)) * eyeStageMask;
-          impastoScale = 0.45 + 0.55 * smooth01((beatTau - 3.0) / 14.0);
+          impastoScale = 0.55 + 0.45 * smooth01((beatTau - 2.0) / 13.0);
         }
         suppressEffects = true;
         break;

@@ -68,19 +68,18 @@ function genCottageEnvelope(sink: StrokeSink, rng: Rng): void {
   emitCustomStar(sink, POTATO_ASPECT, 0.50, 0.78, 12200, 0.016, 5, 1.05, rng, LAMP_AMBER, PEAT_UMBER);
 }
 
-/** 2. Earthen cottage floor, wooden table, steaming potato platter & oil lamp frame. */
+/** 2. Earthen cottage floor, perspective wooden table, steaming potato platter, coffee pot & oil lamp frame. */
 function genTableAndEarthFloor(sink: StrokeSink, rng: Rng): void {
   const nUp = new Vector3(0, 1, 0.15).normalize();
   const nFront = new Vector3(0, 0, 1);
-  const tHoriz = new Vector3(1, 0, 0);
-  const tVert = new Vector3(0, 1, 0);
+  const tDir = new Vector3(1, 0, 0);
 
-  // Dark beaten-earth floor in the foreground (GROUND [155..520 m])
-  for (let i = 0; i < 14000; i++) {
+  // Dark beaten-earth floor in the foreground (GROUND [201..515 m])
+  for (let i = 0; i < 13500; i++) {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.15);
     const v = 0.002 + 0.34 * t;
-    const d = clamp(156 + 340 * t + rng.range(-6, 6), 154, 510);
+    const d = clamp(206 + 304 * t + rng.range(-5, 5), 201, 515);
     const centerGlow = Math.max(0, 1 - Math.hypot((uP - 0.50) * POTATO_ASPECT, v - 0.28) / 0.46);
     const cA = shadeHex(mixHex(PEAT_DARK, PEAT_UMBER, 0.3 + 0.5 * centerGlow), rng.range(0.86, 1.12));
     const cB = mixHex(COAL_OLIVE, EARTH_OCHRE, 0.35 * centerGlow);
@@ -92,91 +91,200 @@ function genTableAndEarthFloor(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // Central wooden table (uP = 0.28..0.72, v = 0.22..0.38, d = 290..375 m, HOUSE class)
-  for (let i = 0; i < 6500; i++) {
-    const uP = rng.range(0.28, 0.72);
-    const v = rng.range(0.22, 0.38);
-    const d = rng.range(455, 535);
-    const distPlatter = Math.hypot((uP - 0.47) * POTATO_ASPECT, (v - 0.33) * 1.8);
-    const isPotato = distPlatter < 0.11;
-    const cA = isPotato
-      ? shadeHex(mixHex(POTATO_GOLD, LAMP_AMBER, rng.range(0.25, 0.75)), rng.range(0.90, 1.14))
-      : shadeHex(mixHex(PEAT_UMBER, EARTH_OCHRE, rng.range(0.3, 0.75)), rng.range(0.88, 1.12));
-    const cB = isPotato ? P.lemon : PEAT_DARK;
+  // Perspective trapezoidal wooden table + steaming platter of potatoes (center-left) & coffee cups (right)
+  for (let i = 0; i < 6800; i++) {
+    const tV = rng.next();
+    const v = 0.22 + 0.16 * tV;
+    const halfSpan = 0.24 - 0.05 * tV; // perspective taper toward back of table
+    const uP = 0.49 + rng.range(-halfSpan, halfSpan);
+    const d = 460 + 68 * tV + rng.range(-5, 5);
+
+    const distPlatter = Math.hypot((uP - 0.43) * POTATO_ASPECT, (v - 0.32) * 2.1);
+    const distCoffee = Math.hypot((uP - 0.62) * POTATO_ASPECT, (v - 0.31) * 2.3);
+    const isPotato = distPlatter < 0.095;
+    const isPlatterRim = distPlatter >= 0.095 && distPlatter < 0.125;
+    const isCoffeePot = distCoffee < 0.055;
+
+    let cA: number, cB: number, em = 0.22;
+    let ang = rng.range(-0.08, 0.08);
+    if (isPotato) {
+      // Gnarled golden-ochre potatoes heaped on the platter
+      cA = shadeHex(mixHex(POTATO_GOLD, LAMP_AMBER, rng.range(0.25, 0.80)), rng.range(0.90, 1.15));
+      cB = EARTH_OCHRE;
+      em = 0.65;
+      ang = Math.atan2(v - 0.32, uP - 0.43) + Math.PI * 0.5 + rng.range(-0.3, 0.3);
+    } else if (isPlatterRim || isCoffeePot) {
+      cA = shadeHex(mixHex(BONNET_CREAM, POTATO_GOLD, rng.range(0.3, 0.7)), rng.range(0.88, 1.12));
+      cB = PEAT_UMBER;
+      em = 0.42;
+    } else {
+      // Sun/lamp-bleached wooden tabletop planks
+      const lampFalloff = Math.max(0, 1 - Math.hypot((uP - 0.48) * POTATO_ASPECT, v - 0.33) / 0.30);
+      cA = shadeHex(mixHex(PEAT_UMBER, EARTH_OCHRE, 0.25 + 0.60 * lampFalloff), rng.range(0.88, 1.12));
+      cB = lampFalloff > 0.4 ? POTATO_GOLD : PEAT_DARK;
+      em = 0.16 + 0.28 * lampFalloff;
+    }
+    tDir.set(Math.cos(ang), Math.sin(ang), 0).normalize();
     emitSurfaceStroke(
       sink, POTATO_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.013, 0.026), rng.range(0.0045, 0.0085),
-      tHoriz, nUp, cA, cB, rng,
-      { emissive: isPotato ? 0.55 : 0.22 },
+      rng.range(0.012, 0.024), rng.range(0.0042, 0.0080),
+      tDir, nUp, cA, cB, rng,
+      { emissive: em },
     );
   }
 
-  // Rising steam wisps above the potato platter + hanging brass oil lamp body (WINDOW class [455..560 m])
-  for (let i = 0; i < 1600; i++) {
-    const isLamp = i < 950;
-    const uP = isLamp ? 0.50 + rng.range(-0.035, 0.035) : 0.47 + rng.range(-0.06, 0.06);
-    const v = isLamp ? rng.range(0.72, 0.86) : rng.range(0.35, 0.52);
-    const d = isLamp ? rng.range(460, 495) : rng.range(465, 515);
-    const cA = isLamp ? LAMP_AMBER : mixHex(BONNET_CREAM, EARTH_OCHRE, 0.5);
-    const cB = isLamp ? P.lemon : PEAT_UMBER;
-    emitSurfaceStroke(
-      sink, POTATO_ASPECT, StrokeClass.WINDOW, uP, v, d,
-      rng.range(0.011, 0.022), rng.range(0.0038, 0.0068),
-      tVert, nFront, cA, cB, rng,
-      { emissive: isLamp ? 3.4 : 0.45 },
-    );
+  // Hanging brass oil lamp shade, glowing flame & rising potato steam wisps (WINDOW class [455..560 m])
+  for (let i = 0; i < 1800; i++) {
+    const isLamp = i < 1050;
+    if (isLamp) {
+      const tL = rng.next();
+      const v = 0.71 + 0.15 * tL;
+      const shadeW = tL < 0.45 ? 0.024 + 0.032 * (1 - tL / 0.45) : 0.012;
+      const uP = 0.50 + rng.range(-shadeW, shadeW);
+      const d = rng.range(458, 490);
+      const isFlame = tL < 0.32 && Math.abs(uP - 0.50) < 0.022;
+      const ang = isFlame ? Math.PI * 0.5 + rng.range(-0.2, 0.2) : rng.range(-0.15, 0.15);
+      tDir.set(Math.cos(ang), Math.sin(ang), 0).normalize();
+      emitSurfaceStroke(
+        sink, POTATO_ASPECT, StrokeClass.WINDOW, uP, v, d,
+        rng.range(0.010, 0.020), rng.range(0.0038, 0.0068),
+        tDir, nFront, isFlame ? P.lemon : LAMP_AMBER, isFlame ? LAMP_AMBER : EARTH_OCHRE, rng,
+        { emissive: isFlame ? 3.8 : 2.1 },
+      );
+    } else {
+      const s = rng.next();
+      const uP = 0.43 + 0.02 * Math.sin(s * 7.0) + rng.range(-0.045, 0.045);
+      const v = 0.34 + 0.18 * s;
+      tDir.set(0.25 * Math.cos(s * 7.0), 1, 0).normalize();
+      emitSurfaceStroke(
+        sink, POTATO_ASPECT, StrokeClass.WINDOW, uP, v, rng.range(465, 515),
+        rng.range(0.011, 0.021), rng.range(0.0036, 0.0064),
+        tDir, nFront, mixHex(BONNET_CREAM, EARTH_OCHRE, 0.5), PEAT_UMBER, rng,
+        { emissive: 0.45 * (1 - 0.5 * s) },
+      );
+    }
   }
 }
 
-/** 3. The Five Peasant Figures gathered around the table in sculptural chiaroscuro. */
+/** 3. The Five Peasant Figures gathered around the table with contoured heads, bonnets, shoulders & reaching hands. */
 function genPeasantFigures(sink: StrokeSink, rng: Rng): void {
   const nFront = new Vector3(0, 0, 1);
-  const tVert = new Vector3(0, 1, 0);
+  const tDir = new Vector3(0, 1, 0);
 
-  // Five figures around the table: [left-profile man, back-left man, center-foreground woman (back), back-right woman, right woman]
+  // Five figures around the table:
+  //  0: Left-profile young peasant woman/man reaching toward platter
+  //  1: Back-left man in peaked cap holding cup & fork
+  //  2: Center-foreground child/figure seen from the back (silhouette against the table glow)
+  //  3: Back-right older peasant man/woman reaching with fork
+  //  4: Right peasant woman in large white Dutch bonnet pouring coffee
   const figures = [
-    { u0: 0.16, v0: 0.14, v1: 0.64, w: 0.085, d: 475, faceDir: 1, bonnet: false },
-    { u0: 0.34, v0: 0.36, v1: 0.68, w: 0.070, d: 545, faceDir: 1, bonnet: false },
-    { u0: 0.50, v0: 0.06, v1: 0.54, w: 0.095, d: 455, faceDir: 0, bonnet: true },
-    { u0: 0.65, v0: 0.36, v1: 0.68, w: 0.075, d: 540, faceDir: -1, bonnet: true },
-    { u0: 0.81, v0: 0.14, v1: 0.64, w: 0.085, d: 480, faceDir: -1, bonnet: true },
+    { u0: 0.17, v0: 0.12, v1: 0.63, w: 0.088, d: 472, faceDir: 1, bonnet: true, cap: false, reachU: 0.37, reachV: 0.34 },
+    { u0: 0.34, v0: 0.34, v1: 0.68, w: 0.072, d: 542, faceDir: 1, bonnet: false, cap: true, reachU: 0.42, reachV: 0.36 },
+    { u0: 0.49, v0: 0.04, v1: 0.50, w: 0.086, d: 452, faceDir: 0, bonnet: true, cap: false, reachU: 0.49, reachV: 0.28 },
+    { u0: 0.64, v0: 0.35, v1: 0.69, w: 0.074, d: 538, faceDir: -1, bonnet: false, cap: false, reachU: 0.51, reachV: 0.36 },
+    { u0: 0.81, v0: 0.12, v1: 0.64, w: 0.090, d: 478, faceDir: -1, bonnet: true, cap: false, reachU: 0.64, reachV: 0.33 },
   ];
 
   for (const fig of figures) {
-    for (let i = 0; i < 3200; i++) {
-      const tH = rng.next(); // 0 = lower coat/skirt, 1 = head/bonnet
+    // A. Anatomical body & head silhouette strokes
+    for (let i = 0; i < 3100; i++) {
+      const tH = rng.next(); // 0 = lower torso/skirt, 0.64 = neck, 0.68..1.0 = head & bonnet/cap
       const v = fig.v0 + (fig.v1 - fig.v0) * tH;
-      const widthAtV = tH > 0.72 ? fig.w * 0.58 : fig.w * (1 - 0.18 * tH);
-      const uRel = rng.range(-1, 1);
-      const uP = fig.u0 + uRel * widthAtV;
-      const d = fig.d + rng.range(-10, 10);
 
-      // Lamp-facing side of the figure catches warm ochre-gold chiaroscuro light!
-      const lampSide = fig.u0 < 0.50 ? uRel > 0.15 : fig.u0 > 0.50 ? uRel < -0.15 : tH > 0.76;
-      const isHead = tH > 0.72;
-      let cA: number, cB: number, em = 0.08;
-
-      if (isHead && fig.bonnet && (!lampSide || tH > 0.82)) {
-        cA = shadeHex(mixHex(BONNET_CREAM, POTATO_GOLD, 0.35), rng.range(0.85, 1.12));
-        cB = EARTH_OCHRE;
-        em = 0.32;
-      } else if (isHead && lampSide) {
-        // Sculpted peasant cheekbones & gnarled hands in warm lamp light
-        cA = shadeHex(mixHex(EARTH_OCHRE, POTATO_GOLD, rng.range(0.3, 0.75)), rng.range(0.88, 1.14));
-        cB = PEAT_UMBER;
-        em = 0.38;
+      // Contoured width profile: rounded head oval, narrow neck, sloped rounded shoulders, draped torso
+      let widthFactor: number;
+      let headRelY = 0;
+      if (tH > 0.68) {
+        headRelY = (tH - 0.84) / 0.16; // -1 at chin, 0 at cheekbones, +1 at crown
+        const oval = Math.sqrt(Math.max(0.08, 1 - headRelY * headRelY));
+        widthFactor = (fig.bonnet ? 0.64 : 0.52) * oval;
+      } else if (tH > 0.61) {
+        // Neck transition
+        widthFactor = 0.34;
       } else {
-        // Dark coarse wool & linen garments
-        cA = shadeHex(mixHex(PEAT_DARK, COAL_OLIVE, rng.range(0.2, 0.75)), rng.range(0.85, 1.15));
-        cB = lampSide ? EARTH_OCHRE : PEAT_UMBER;
+        // Sloped shoulders (peak around tH = 0.48) tapering gently down
+        const shoulderCurve = Math.sin(Math.min(1, tH / 0.58) * Math.PI * 0.5);
+        widthFactor = 0.78 + 0.22 * shoulderCurve;
       }
 
+      const uRel = rng.range(-1, 1);
+      // Slight forward lean of head/upper torso toward the table center
+      const leanOffset = fig.faceDir * 0.018 * Math.max(0, tH - 0.45);
+      const uP = fig.u0 + leanOffset + uRel * fig.w * widthFactor;
+      const d = fig.d + 12 * (uRel * uRel) + rng.range(-7, 7);
+
+      const isHead = tH > 0.68;
+      const lampSide = fig.faceDir > 0 ? uRel > 0.05 : fig.faceDir < 0 ? uRel < -0.05 : tH > 0.82;
+      let cA: number, cB: number, em = 0.08;
+      let ang = Math.PI * 0.5 + rng.range(-0.22, 0.22);
+
+      if (isHead) {
+        const inBonnetBack = fig.bonnet && (headRelY > 0.22 || (fig.faceDir > 0 && uRel < -0.10) || (fig.faceDir < 0 && uRel > 0.10) || fig.faceDir === 0);
+        const inCap = fig.cap && headRelY > 0.28;
+        if (inBonnetBack) {
+          // Curved white/cream Dutch peasant linen bonnet catching warm amber lamplight
+          cA = shadeHex(mixHex(BONNET_CREAM, POTATO_GOLD, fig.faceDir === 0 ? 0.20 : 0.38), rng.range(0.86, 1.14));
+          cB = EARTH_OCHRE;
+          em = fig.faceDir === 0 ? 0.18 : 0.36;
+          ang = Math.atan2(headRelY, uRel) + Math.PI * 0.5 + rng.range(-0.2, 0.2);
+        } else if (inCap) {
+          cA = PEAT_DARK;
+          cB = EARTH_OCHRE;
+          ang = rng.range(-0.25, 0.25);
+        } else if (lampSide) {
+          // Sculpted peasant cheekbones, brow ridge, nose & jaw in warm chiaroscuro
+          const isEyeOrShadow = Math.abs(headRelY - 0.12) < 0.16 && Math.abs(uRel - 0.35 * fig.faceDir) < 0.22;
+          cA = isEyeOrShadow
+            ? PEAT_UMBER
+            : shadeHex(mixHex(EARTH_OCHRE, POTATO_GOLD, rng.range(0.35, 0.82)), rng.range(0.88, 1.15));
+          cB = PEAT_UMBER;
+          em = isEyeOrShadow ? 0.08 : 0.44;
+          ang = Math.PI * 0.5 + 0.35 * headRelY * fig.faceDir + rng.range(-0.2, 0.2);
+        } else {
+          cA = shadeHex(mixHex(PEAT_UMBER, EARTH_OCHRE, 0.35), rng.range(0.85, 1.10));
+          cB = PEAT_DARK;
+          em = 0.14;
+        }
+      } else {
+        // Draped coarse wool & linen garments with shoulder fold directions
+        cA = shadeHex(mixHex(PEAT_DARK, COAL_OLIVE, rng.range(0.2, 0.78)), rng.range(0.85, 1.15));
+        cB = lampSide ? EARTH_OCHRE : PEAT_UMBER;
+        em = lampSide && fig.faceDir !== 0 ? 0.16 : 0.06;
+        ang = Math.PI * 0.5 - 0.38 * uRel + rng.range(-0.18, 0.18);
+      }
+
+      tDir.set(Math.cos(ang), Math.sin(ang), 0).normalize();
       emitSurfaceStroke(
         sink, POTATO_ASPECT, StrokeClass.HOUSE, uP, v, d,
-        rng.range(0.014, 0.028), rng.range(0.0048, 0.0092),
-        tVert, nFront, cA, cB, rng,
-        { flags: Math.abs(uRel) > 0.78 ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: em },
+        rng.range(0.013, 0.025), rng.range(0.0044, 0.0085),
+        tDir, nFront, cA, cB, rng,
+        { flags: Math.abs(uRel) > 0.80 ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: em },
       );
+    }
+
+    // B. Outstretched forearm & gnarled working hand ("those very hands they put in the dish")
+    if (fig.faceDir !== 0) {
+      const shoulderU = fig.u0 + fig.faceDir * 0.035;
+      const shoulderV = fig.v0 + (fig.v1 - fig.v0) * 0.46;
+      for (let j = 0; j < 420; j++) {
+        const s = rng.next(); // 0 = shoulder/elbow, 1 = gnarled hand over platter/cup
+        const uP = shoulderU + (fig.reachU - shoulderU) * s + rng.range(-0.014, 0.014);
+        const v = shoulderV + (fig.reachV - shoulderV) * s - 0.025 * Math.sin(s * Math.PI) + rng.range(-0.012, 0.012);
+        const d = fig.d - 8 * s + rng.range(-5, 5);
+        const isHand = s > 0.72;
+        const cA = isHand
+          ? shadeHex(mixHex(EARTH_OCHRE, POTATO_GOLD, rng.range(0.35, 0.80)), rng.range(0.90, 1.14))
+          : shadeHex(mixHex(PEAT_UMBER, COAL_OLIVE, 0.5), rng.range(0.88, 1.12));
+        const cB = isHand ? PEAT_UMBER : EARTH_OCHRE;
+        const armAng = Math.atan2(fig.reachV - shoulderV, (fig.reachU - shoulderU) * POTATO_ASPECT) + rng.range(-0.18, 0.18);
+        tDir.set(Math.cos(armAng), Math.sin(armAng), 0).normalize();
+        emitSurfaceStroke(
+          sink, POTATO_ASPECT, StrokeClass.HOUSE, uP, v, d,
+          isHand ? 0.014 : 0.020, isHand ? 0.0045 : 0.0065,
+          tDir, nFront, cA, cB, rng,
+          { flags: StrokeFlag.OUTLINE, emissive: isHand ? 0.46 : 0.15 },
+        );
+      }
     }
   }
 }
