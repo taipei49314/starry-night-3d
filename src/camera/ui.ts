@@ -463,6 +463,7 @@ export class DirectorUI {
     private readonly drawerToggleBtn: HTMLButtonElement;
   private readonly topPauseBtn: HTMLButtonElement;
   private readonly witnessBtn: HTMLButtonElement;
+  private readonly starrySingleBtn: HTMLButtonElement;
   private readonly odysseyBtn: HTMLButtonElement;
   private readonly themeBtn: HTMLButtonElement;
   private readonly atlasBtn: HTMLButtonElement;
@@ -671,11 +672,23 @@ export class DirectorUI {
     this.witnessBtn.type = 'button';
     this.witnessBtn.className = 'pn-odyssey-btn pn-witness-btn';
     this.witnessBtn.textContent = '✦ 陪他走過一生';
-    this.witnessBtn.title = '五章見證模式：跟隨寫實梵谷走過荷蘭、巴黎、亞爾、聖雷米、奧維爾五大人生章節、四段幕間留白與書信痕跡 (快捷鍵 J)';
-    this.witnessBtn.dataset.on = '0';
+    this.witnessBtn.title = '五章見證模式（預設首頁）：跟隨寫實梵谷走過荷蘭、巴黎、亞爾、聖雷米、奧維爾五大人生章節、四段幕間留白與書信痕跡 (快捷鍵 J)';
+    this.witnessBtn.dataset.on = '1';
     this.witnessBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onSelectMode?.('witness', 'witness');
+      this.input.focus();
+    });
+
+    this.starrySingleBtn = doc.createElement('button');
+    this.starrySingleBtn.type = 'button';
+    this.starrySingleBtn.className = 'pn-odyssey-btn';
+    this.starrySingleBtn.textContent = '◎ 單幅星夜 96s';
+    this.starrySingleBtn.title = '切換至單幅《星夜》96 秒十鏡頭完整 3D 筆觸巡禮 (快捷鍵 O)';
+    this.starrySingleBtn.dataset.on = '0';
+    this.starrySingleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onSelectMode?.('theme', 'single-starry');
       this.input.focus();
     });
 
@@ -740,6 +753,7 @@ export class DirectorUI {
       sep,
       this.topPauseBtn,
       this.witnessBtn,
+      this.starrySingleBtn,
       this.odysseyBtn,
       this.themeBtn,
       this.atlasBtn,
@@ -1432,7 +1446,7 @@ export class DirectorUI {
 
     const isSingle = opts.pathId === 'single';
     const isWitness = opts.mode === 'witness' || opts.pathId === 'witness';
-    const stripOpen = !isSingle || this.stripUserExpanded;
+    const stripOpen = (!isSingle && !isWitness) || this.stripUserExpanded;
     this.suiteBar.dataset.stripOpen = stripOpen ? '1' : '0';
     const activeItem = SUITE_ITEM_MAP.get(opts.active);
     this.drawerToggleBtn.dataset.on = stripOpen ? '1' : '0';
@@ -1441,6 +1455,7 @@ export class DirectorUI {
       : `🎨 30 幅畫作 ${stripOpen ? '▴' : '▾'}`;
 
     this.witnessBtn.dataset.on = isWitness ? '1' : '0';
+    this.starrySingleBtn.dataset.on = isSingle && opts.active === 'starry' ? '1' : '0';
     this.odysseyBtn.dataset.on = opts.mode === 'odyssey' ? '1' : '0';
     this.themeBtn.dataset.on = opts.mode === 'theme' && !isSingle ? '1' : '0';
     this.atlasBtn.dataset.on = opts.mode === 'atlas' ? '1' : '0';

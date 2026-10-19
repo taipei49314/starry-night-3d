@@ -68,25 +68,34 @@ function genRadialAuraBackdrop(sink: StrokeSink, rng: Rng): void {
   }
 }
 
-/** 2. Blue Cobalt Painter's Jacket & Collar in the Foreground (GROUND [155..510 m]). */
+/** 2. Blue Cobalt Painter's Jacket & Collar in the Foreground (GROUND [201..510 m]). */
 function genPainterJacket(sink: StrokeSink, rng: Rng): void {
   const nUp = new Vector3(0, 0.5, 0.86).normalize();
 
   for (let i = 0; i < 14500; i++) {
     const t = Math.pow(rng.next(), 1.1);
     const v = 0.002 + 0.36 * t;
-    const shoulderSpan = 0.46 - 0.18 * t;
+    // Smooth rounded anatomical shoulder curve tapering into the collar at v = 0.36
+    const shoulderSpan = 0.14 + 0.32 * Math.sin(Math.min(1, (1 - t * 0.82) * 1.18) * Math.PI * 0.5);
     const uRel = rng.range(-1, 1);
     const uP = 0.50 + uRel * shoulderSpan;
-    const d = clamp(160 + 330 * t + rng.range(-8, 8), 154, 510);
+    const d = clamp(206 + 298 * t + rng.range(-5, 5), 201, 510);
 
-    // Lapel diagonal strokes converging toward the throat (0.50, 0.32)
-    const isLapel = Math.abs(uRel) < 0.36 && v > 0.14;
-    const ang = uRel < 0 ? 1.15 + rng.range(-0.18, 0.18) : 1.98 + rng.range(-0.18, 0.18);
-    const cA = isLapel
-      ? shadeHex(mixHex(P.ultramarine, EYE_EMERALD, rng.range(0.15, 0.55)), rng.range(0.88, 1.14))
-      : shadeHex(mixHex(JACKET_COBALT, P.prussian, rng.range(0.2, 0.75)), rng.range(0.85, 1.12));
-    const cB = isLapel ? P.lemon : P.cerulean;
+    // V-neck lapel diagonal strokes converging toward the throat (0.49, 0.31)
+    const lapelEdge = 0.12 + 0.34 * (1 - t);
+    const isThroatShirt = t > 0.58 && Math.abs(uRel) < 0.22;
+    const isLapel = !isThroatShirt && Math.abs(uRel) < lapelEdge && v > 0.10;
+    const ang = isThroatShirt
+      ? rng.range(-0.25, 0.25)
+      : uRel < 0
+        ? 1.18 + 0.22 * uRel + rng.range(-0.14, 0.14)
+        : 1.96 + 0.22 * uRel + rng.range(-0.14, 0.14);
+    const cA = isThroatShirt
+      ? shadeHex(mixHex(P.cerulean, FLESH_SAGE, rng.range(0.25, 0.75)), rng.range(0.92, 1.12))
+      : isLapel
+        ? shadeHex(mixHex(P.ultramarine, EYE_EMERALD, rng.range(0.15, 0.55)), rng.range(0.88, 1.14))
+        : shadeHex(mixHex(JACKET_COBALT, P.prussian, rng.range(0.2, 0.75)), rng.range(0.85, 1.12));
+    const cB = isThroatShirt ? P.lemon : isLapel ? P.lemon : P.cerulean;
 
     emitCanvasStroke(
       sink, SELFPORTRAIT_ASPECT, StrokeClass.GROUND, uP, v, d,
@@ -100,70 +109,103 @@ function genPainterJacket(sink: StrokeSink, rng: Rng): void {
 /** 3. Woven Golden Straw Hat, Sculpted Facial Contours, Fiery Red Beard & Piercing Emerald Eyes (HOUSE & WINDOW). */
 function genStrawHatAndFace(sink: StrokeSink, rng: Rng): void {
   const nFront = new Vector3(0, 0, 1);
-  const tVert = new Vector3(0, 1, 0);
+  const tDir = new Vector3(1, 0, 0);
   const tHoriz = new Vector3(1, 0, 0);
 
-  // Golden Woven Straw Hat Brim & Crown (uP = 0.14..0.86, v = 0.52..0.90, d = 505..575 m, HOUSE)
-  for (let i = 0; i < 11500; i++) {
+  // Golden Woven Straw Hat Brim & Crown (uP = 0.14..0.86, v = 0.50..0.91, d = 505..575 m, HOUSE)
+  for (let i = 0; i < 12000; i++) {
     const theta = rng.range(0, Math.PI * 2);
-    const rad = rng.range(0.16, 0.37);
-    const uP = 0.50 + Math.cos(theta) * rad;
-    const v = 0.64 + Math.sin(theta) * rad * 0.68;
+    const rad = rng.range(0.14, 0.37);
+    // Slight three-quarter tilt of the straw hat brim
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+    const uP = 0.50 + cosT * rad;
+    const v = 0.65 + sinT * rad * 0.66 - 0.018 * cosT * rad;
     if (v < 0.48 || v > 0.92) continue;
     // Skip central facial oval so the hat frames the head cleanly
-    const inFace = Math.hypot((uP - 0.49) / 0.16, (v - 0.53) / 0.18) < 0.92;
-    if (inFace && v < 0.70) continue;
+    const inFace = Math.hypot((uP - 0.49) / 0.152, (v - 0.525) / 0.175) < 0.94;
+    if (inFace && v < 0.69) continue;
 
     const d = 510 + 55 * rad + rng.range(-8, 8);
-    const isBand = Math.abs(rad - 0.21) < 0.024 && v > 0.62;
+    const isCrown = rad < 0.21 && v > 0.63;
+    const isBand = Math.abs(rad - 0.21) < 0.022 && v > 0.61;
     const cA = isBand
       ? P.prussian
       : shadeHex(mixHex(STRAW_GOLD, P.lemon, rng.range(0.25, 0.85)), rng.range(0.90, 1.15));
     const cB = isBand ? BEARD_VERMILION : STRAW_OCHRE;
 
+    // Tangential woven straw brushwork along the brim, radial/arched weave on the crown
+    const strokeAng = isCrown
+      ? Math.PI * 0.5 - 0.45 * cosT + rng.range(-0.16, 0.16)
+      : theta + Math.PI * 0.5 + rng.range(-0.14, 0.14);
+    tDir.set(Math.cos(strokeAng), Math.sin(strokeAng), 0).normalize();
+
     emitSurfaceStroke(
       sink, SELFPORTRAIT_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.013, 0.026), rng.range(0.0045, 0.0085),
-      Math.abs(Math.cos(theta)) > 0.5 ? tVert : tHoriz, nFront, cA, cB, rng,
+      rng.range(0.013, 0.025), rng.range(0.0044, 0.0082),
+      tDir, nFront, cA, cB, rng,
       { emissive: isBand ? 0.12 : 0.45 },
     );
   }
 
-  // Sculpted Facial Contours & Fiery Ginger-Vermilion Beard (uP = 0.34..0.65, v = 0.32..0.71, d = 462..502 m, HOUSE)
-  for (let i = 0; i < 9500; i++) {
-    const tV = rng.next(); // 0 = chin/beard tip (0.32), 1 = forehead (0.70)
-    const v = 0.32 + 0.38 * tV;
-    const halfW = tV < 0.35 ? 0.09 + 0.16 * tV : 0.155 * (1 - 0.18 * Math.pow((tV - 0.5) * 2, 2));
+  // Sculpted Facial Contours & Fiery Ginger-Vermilion Beard (uP = 0.34..0.65, v = 0.31..0.70, d = 462..502 m, HOUSE)
+  for (let i = 0; i < 10200; i++) {
+    const tV = rng.next(); // 0 = chin/beard tip (0.31), 1 = forehead (0.70)
+    const v = 0.31 + 0.39 * tV;
+    // Smooth anatomical jaw-to-cheekbone-to-temple contour
+    const cheekCurve = Math.sin(Math.min(1, tV * 1.15) * Math.PI);
+    const halfW = tV < 0.32
+      ? 0.065 + 0.24 * tV
+      : 0.142 + 0.018 * cheekCurve - 0.022 * Math.max(0, tV - 0.72);
     const uRel = rng.range(-1, 1);
     const uP = 0.49 + uRel * halfW;
-    const d = 464 + 34 * Math.abs(uRel) + rng.range(-6, 6);
+    const d = 464 + 34 * (uRel * uRel) + rng.range(-5, 5);
 
     const isBeardOrMoustache =
-      tV < 0.38
-      || (tV < 0.54 && Math.abs(uRel) > 0.58)
-      || (v > 0.42 && v < 0.47 && Math.abs(uP - 0.49) < 0.075);
-    const isBrowOrHair = tV > 0.82 || (Math.abs(v - 0.60) < 0.022 && Math.abs(uP - 0.49) < 0.12);
-    const isCoolShadow = uRel < -0.25 && !isBeardOrMoustache;
+      tV < 0.37
+      || (tV < 0.55 && Math.abs(uRel) > 0.56)
+      || (v > 0.42 && v < 0.475 && Math.abs(uP - 0.485) < 0.078);
+    const isBrowOrHair = tV > 0.82 || (Math.abs(v - 0.595) < 0.020 && Math.abs(uP - 0.49) < 0.115 && Math.abs(uP - 0.485) > 0.018);
+    const isNoseBridge = v >= 0.475 && v <= 0.585 && Math.abs(uP - 0.482) < 0.022;
+    const isEar = tV >= 0.44 && tV <= 0.64 && uRel > 0.76;
+    const isCoolShadow = uRel < -0.22 && !isBeardOrMoustache && !isNoseBridge;
 
     let cA: number, cB: number, em = 0.25;
+    let strokeAng = Math.PI * 0.5;
     if (isBeardOrMoustache || isBrowOrHair) {
       cA = shadeHex(mixHex(BEARD_VERMILION, BEARD_GINGER, rng.range(0.2, 0.85)), rng.range(0.88, 1.15));
       cB = STRAW_GOLD;
       em = 0.38;
+      // Whiskers fan outward from the philtrum/chin; brows arch over the eyes
+      strokeAng = isBrowOrHair && v < 0.63
+        ? (uP < 0.49 ? 0.28 : -0.28) + rng.range(-0.12, 0.12)
+        : Math.PI * 0.5 + 0.52 * uRel + rng.range(-0.15, 0.15);
+    } else if (isNoseBridge) {
+      cA = shadeHex(mixHex(FLESH_PEACH, P.lemon, rng.range(0.35, 0.70)), rng.range(0.96, 1.14));
+      cB = STRAW_GOLD;
+      em = 0.40;
+      strokeAng = Math.PI * 0.5 + 0.06 + rng.range(-0.06, 0.06);
+    } else if (isEar) {
+      cA = shadeHex(mixHex(FLESH_PEACH, BEARD_VERMILION, 0.35), rng.range(0.90, 1.10));
+      cB = STRAW_OCHRE;
+      strokeAng = Math.PI * 0.5 - 0.25 + rng.range(-0.12, 0.12);
     } else if (isCoolShadow) {
-      // Complementary impressionist cool sage-green / lavender cheek shadow
+      // Complementary divisionist cool sage-green / cerulean cheek plane shadow
       cA = shadeHex(mixHex(FLESH_SAGE, FLESH_PEACH, rng.range(0.3, 0.7)), rng.range(0.88, 1.12));
       cB = P.cerulean;
+      strokeAng = Math.PI * 0.5 + 0.38 * uRel + rng.range(-0.14, 0.14);
     } else {
       cA = shadeHex(mixHex(FLESH_PEACH, P.lemon, rng.range(0.15, 0.45)), rng.range(0.92, 1.12));
       cB = BEARD_GINGER;
       em = 0.32;
+      strokeAng = Math.PI * 0.5 - 0.34 * uRel + rng.range(-0.14, 0.14);
     }
 
+    tDir.set(Math.cos(strokeAng), Math.sin(strokeAng), 0).normalize();
     emitSurfaceStroke(
       sink, SELFPORTRAIT_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.010, 0.020), rng.range(0.0036, 0.0068),
-      tVert, nFront, cA, cB, rng,
+      rng.range(0.0095, 0.019), rng.range(0.0035, 0.0066),
+      tDir, nFront, cA, cB, rng,
       { flags: Math.abs(uRel) > 0.84 ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: em },
     );
   }
@@ -198,9 +240,9 @@ function buildSelfPortraitUnderlays(mat: UnderlayMaterialFactory): Group {
   g.name = 'underlays:selfportrait';
   g.add(buildCanvasQuadMesh(
     SELFPORTRAIT_ASPECT,
-    [[0.12, 0.0, 175], [0.88, 0.0, 175], [0.82, 0.84, 540], [0.18, 0.84, 540]],
+    [[-0.08, -0.02, 590], [1.08, -0.02, 590], [1.08, 1.04, 590], [-0.08, 1.04, 590]],
     mat,
-    0x1e325c,
+    0x33536e,
     'selfportrait-backing',
   ));
   return g;

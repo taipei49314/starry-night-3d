@@ -72,13 +72,13 @@ function genVermilionTableAndFoxglove(sink: StrokeSink, rng: Rng): void {
   const nFront = new Vector3(0, 0, 1);
   const tHoriz = new Vector3(1, 0.22, 0).normalize();
 
-  // Tilted vermilion-crimson tabletop occupying the lower-left diagonal (uP < 0.64, v < 0.45 - 0.28 * uP, GROUND [155..510 m])
+  // Tilted vermilion-crimson tabletop occupying the lower-left diagonal (uP < 0.64, v < 0.45 - 0.28 * uP, GROUND [201..510 m])
   for (let i = 0; i < 12500; i++) {
     const uP = rng.range(-0.04, 0.66);
     const vMax = 0.44 - 0.30 * Math.max(0, uP);
     const t = rng.next();
     const v = 0.002 + vMax * t;
-    const d = clamp(158 + 335 * t + rng.range(-6, 6), 154, 510);
+    const d = clamp(206 + 298 * t + rng.range(-5, 5), 201, 510);
     const cA = shadeHex(mixHex(TABLE_VERMILION, TABLE_CRIMSON, rng.range(0.2, 0.75)), rng.range(0.88, 1.14));
     const cB = mixHex(P.ochre, BOOK_YELLOW, 0.35);
 
@@ -133,71 +133,133 @@ function genVermilionTableAndFoxglove(sink: StrokeSink, rng: Rng): void {
 /** 3. Dr. Gachet: Prussian-Blue Coat, Leaning Hand, Melancholic Face & White Peaked Cap (HOUSE & WINDOW). */
 function genDoctorGachetFigure(sink: StrokeSink, rng: Rng): void {
   const nFront = new Vector3(0, 0, 1);
-  const tVert = new Vector3(-0.18, 0.98, 0).normalize();
+  const tDir = new Vector3(0, 1, 0);
   const tHoriz = new Vector3(1, 0, 0);
 
-  // Deep Prussian & Ultramarine Double-Breasted Coat (uP = 0.34..0.92, v = 0.02..0.54, d = 468..535 m, HOUSE)
-  for (let i = 0; i < 12500; i++) {
-    const tV = rng.next(); // 0 = bottom torso (0.02), 1 = shoulders/collar (0.54)
-    const v = 0.02 + 0.52 * tV;
-    const uMin = 0.34 + 0.08 * tV;
-    const uMax = 0.92 - 0.14 * tV;
-    const uP = rng.range(uMin, uMax);
-    const d = 472 + 45 * Math.abs(uP - 0.62) + rng.range(-8, 8);
+  // Deep Prussian & Ultramarine Double-Breasted Coat + Leaning Right Forearm Sleeve (uP = 0.34..0.92, v = 0.02..0.54, d = 468..535 m, HOUSE)
+  for (let i = 0; i < 13000; i++) {
+    const isRightSleeve = i >= 10500;
+    let uP: number, v: number, d: number, strokeAng: number, cA: number, cB: number, isOutline = false;
 
-    // Expressive undulating contour folds along the sleeves and lapels
-    const isLapelEdge = Math.abs(uP - 0.56) < 0.035 && tV > 0.45;
-    const cA = isLapelEdge
-      ? P.prussian
-      : shadeHex(mixHex(COAT_PRUSSIAN, COAT_ULTRAMARINE, rng.range(0.2, 0.85)), rng.range(0.86, 1.15));
-    const cB = P.cerulean;
+    if (isRightSleeve) {
+      // Right elbow resting on red table at (0.43, 0.20) rising to wrist at (0.49, 0.45)
+      const s = rng.next();
+      const sleeveW = 0.056 - 0.016 * s;
+      const uRel = rng.range(-1, 1);
+      uP = 0.43 + 0.06 * s + uRel * sleeveW;
+      v = 0.19 + 0.26 * s + rng.range(-0.012, 0.012);
+      d = 464 + 18 * (uRel * uRel) + rng.range(-4, 4);
+      strokeAng = Math.atan2(0.26, 0.06 * GACHET_ASPECT) + 0.25 * uRel + rng.range(-0.14, 0.14);
+      cA = shadeHex(mixHex(COAT_PRUSSIAN, COAT_ULTRAMARINE, 0.35 + 0.45 * Math.max(0, -uRel)), rng.range(0.88, 1.14));
+      cB = P.cerulean;
+      isOutline = Math.abs(uRel) > 0.78;
+    } else {
+      const tV = rng.next(); // 0 = bottom torso (0.02), 1 = rounded shoulders/collar (0.54)
+      v = 0.02 + 0.52 * tV;
+      // Curved shoulder contour tapering smoothly at top
+      const shoulderArc = Math.sin(Math.min(1, (1 - tV * 0.78) * 1.22) * Math.PI * 0.5);
+      const uMin = 0.36 + 0.11 * (1 - shoulderArc);
+      const uMax = 0.92 - 0.18 * (1 - shoulderArc);
+      uP = rng.range(uMin, uMax);
+      d = 472 + 45 * Math.abs(uP - 0.62) + rng.range(-7, 7);
 
+      // Expressive undulating contour folds along the sleeves and lapels
+      const isLapelEdge = Math.abs(uP - (0.55 + 0.04 * tV)) < 0.032 && tV > 0.38;
+      cA = isLapelEdge
+        ? P.prussian
+        : shadeHex(mixHex(COAT_PRUSSIAN, COAT_ULTRAMARINE, rng.range(0.2, 0.85)), rng.range(0.86, 1.15));
+      cB = P.cerulean;
+      strokeAng = 1.72 - 0.35 * (uP - 0.62) + 0.15 * Math.sin(tV * 8.0) + rng.range(-0.14, 0.14);
+      isOutline = isLapelEdge || uP < uMin + 0.022 || uP > uMax - 0.022;
+    }
+
+    tDir.set(Math.cos(strokeAng), Math.sin(strokeAng), 0).normalize();
     emitSurfaceStroke(
       sink, GACHET_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.014, 0.028), rng.range(0.0046, 0.0088),
-      tVert, nFront, cA, cB, rng,
-      { flags: isLapelEdge ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.16 },
+      rng.range(0.014, 0.027), rng.range(0.0046, 0.0086),
+      tDir, nFront, cA, cB, rng,
+      { flags: isOutline ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.16 },
     );
   }
 
-  // Tilted Head, Supporting Right Hand, Red-Gold Mustache & White Peaked Cap (uP = 0.42..0.74, v = 0.42..0.86, d = 458..498 m, HOUSE)
-  for (let i = 0; i < 9500; i++) {
+  // Tilted Head, Supporting Right Hand, Red-Gold Mustache & Curved White Peaked Cap (uP = 0.42..0.74, v = 0.42..0.86, d = 458..498 m, HOUSE)
+  for (let i = 0; i < 10200; i++) {
     const tV = rng.next(); // 0 = supporting hand & wrist (0.42), 1 = white cap crown (0.86)
     const v = 0.42 + 0.44 * tV;
-    // Head tilts slightly to the viewer's left (doctor's right)
-    const uCenter = 0.58 - 0.06 * (1 - tV);
-    const halfW = tV > 0.72 ? 0.135 : tV < 0.25 ? 0.075 : 0.115;
     const uRel = rng.range(-1, 1);
-    const uP = uCenter + uRel * halfW;
-    const d = 462 + 28 * Math.abs(uRel) + rng.range(-6, 6);
 
-    const isWhiteCap = tV > 0.72;
-    const isVisor = tV > 0.68 && tV <= 0.73 && uRel < 0.35;
-    const isMustacheOrHair = (tV > 0.36 && tV < 0.44 && Math.abs(uRel) < 0.48) || (tV > 0.56 && tV <= 0.72 && uRel > 0.45);
+    // Smoothly contoured width & center curve for hand -> tilted oval face -> curved cap
+    let uCenter: number;
+    let halfW: number;
+    if (tV < 0.25) {
+      // Supporting right hand & curled fingers against the doctor's right cheek/temple
+      const hT = tV / 0.25;
+      uCenter = 0.49 + 0.02 * hT;
+      halfW = 0.048 + 0.024 * Math.sin(hT * Math.PI);
+    } else if (tV <= 0.71) {
+      // Tilted oval melancholic face
+      const fT = (tV - 0.25) / 0.46; // 0 = chin/goatee, 0.55 = cheekbones/eyes, 1 = brow under visor
+      uCenter = 0.54 + 0.045 * fT;
+      const oval = Math.sqrt(Math.max(0.14, 1 - Math.pow(fT * 2 - 1, 2)));
+      halfW = 0.112 * (0.66 + 0.34 * oval);
+    } else {
+      // Curved white peaked cap dome
+      const cT = (tV - 0.71) / 0.29;
+      uCenter = 0.585 + 0.015 * cT;
+      halfW = 0.136 * Math.sqrt(Math.max(0.16, 1 - cT * cT * 0.85));
+    }
+
+    const uP = uCenter + uRel * halfW;
+    const d = 461 + 26 * (uRel * uRel) + rng.range(-5, 5);
+
+    const isWhiteCap = tV > 0.71;
+    const isVisor = tV > 0.66 && tV <= 0.72 && uRel < 0.42;
+    const isSupportingHand = tV < 0.25 || (tV < 0.48 && uRel < -0.52);
+    const isMustacheOrHair =
+      (!isSupportingHand && tV > 0.34 && tV < 0.45 && Math.abs(uRel) < 0.46)
+      || (tV > 0.54 && tV <= 0.71 && uRel > 0.44);
+    const isNoseBridge = !isSupportingHand && tV >= 0.44 && tV <= 0.62 && Math.abs(uRel + 0.10) < 0.15;
 
     let cA: number, cB: number, em = 0.28;
+    let strokeAng = 1.72;
     if (isWhiteCap) {
       cA = shadeHex(mixHex(CAP_WHITE, P.cerulean, rng.range(0.10, 0.35)), rng.range(0.94, 1.10));
       cB = BOOK_YELLOW;
       em = 0.46;
+      strokeAng = -0.25 * uRel + rng.range(-0.15, 0.15);
     } else if (isVisor) {
       cA = COAT_PRUSSIAN;
       cB = P.cobalt;
       em = 0.14;
+      strokeAng = -0.18 + rng.range(-0.10, 0.10);
+    } else if (isSupportingHand) {
+      const isFingerCrease = Math.abs((uRel * 4) - Math.round(uRel * 4)) < 0.16;
+      cA = shadeHex(mixHex(FLESH_PALE, isFingerCrease ? TABLE_VERMILION : P.lemon, isFingerCrease ? 0.28 : 0.22), rng.range(0.88, 1.12));
+      cB = P.ochre;
+      em = 0.30;
+      strokeAng = Math.PI * 0.5 - 0.22 * uRel + rng.range(-0.14, 0.14);
     } else if (isMustacheOrHair) {
       cA = shadeHex(mixHex(TABLE_VERMILION, BOOK_YELLOW, rng.range(0.3, 0.75)), rng.range(0.90, 1.12));
       cB = P.ochre;
       em = 0.35;
+      strokeAng = Math.PI * 0.5 + 0.48 * uRel + rng.range(-0.16, 0.16);
+    } else if (isNoseBridge) {
+      cA = shadeHex(mixHex(FLESH_PALE, CAP_WHITE, 0.35), rng.range(0.95, 1.12));
+      cB = P.lemon;
+      em = 0.38;
+      strokeAng = 1.45 + rng.range(-0.08, 0.08);
     } else {
       cA = shadeHex(mixHex(FLESH_PALE, P.lemon, rng.range(0.12, 0.38)), rng.range(0.90, 1.12));
       cB = P.cerulean;
       em = 0.32;
+      strokeAng = 1.65 - 0.32 * uRel + rng.range(-0.14, 0.14);
     }
 
+    tDir.set(Math.cos(strokeAng), Math.sin(strokeAng), 0).normalize();
     emitSurfaceStroke(
       sink, GACHET_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.010, 0.020), rng.range(0.0036, 0.0068),
-      isWhiteCap ? tHoriz : tVert, nFront, cA, cB, rng,
+      rng.range(0.0095, 0.019), rng.range(0.0035, 0.0066),
+      tDir, nFront, cA, cB, rng,
       { flags: Math.abs(uRel) > 0.84 ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: em },
     );
   }
@@ -233,9 +295,9 @@ function buildGachetUnderlays(mat: UnderlayMaterialFactory): Group {
   g.name = 'underlays:gachet';
   g.add(buildCanvasQuadMesh(
     GACHET_ASPECT,
-    [[-0.04, 0.0, 165], [1.04, 0.0, 165], [0.96, 0.86, 540], [0.04, 0.86, 540]],
+    [[-0.08, -0.02, 590], [1.08, -0.02, 590], [1.08, 1.04, 590], [-0.08, 1.04, 590]],
     mat,
-    0x1c2f5e,
+    0x1e3c73,
     'gachet-backing',
   ));
   return g;

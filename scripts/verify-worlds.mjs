@@ -145,13 +145,40 @@ async function main() {
     const page = await context.newPage();
     watch(page);
 
-    // 1. Default opening: standalone 96 s, 10-shot Starry Night with lay-in
-    console.log('[verify-worlds] 1/5 Checking default opening experience (/)...');
+    // 1. Default opening (/): 5-Chapter Biographical Witness Journey ("陪他走過一生"), plus standalone 96 s Starry Night (?path=single)
+    console.log('[verify-worlds] 1/5 Checking default opening experience (/) and standalone Starry Night (?path=single)...');
     await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.__ready === true, null, { timeout: 60_000 });
+    const defaultWitnessRootState = await page.evaluate(() => {
+      const p = window.__punctum;
+      return {
+        activeId: p.activeId,
+        pathId: p.pathId,
+        viewMode: p.viewMode,
+        suiteCount: p.suite.length,
+        act4Id: p.suite[3]?.id,
+        act5Id: p.suite[4]?.id,
+        overlayGone: !document.getElementById('loading-overlay') || document.getElementById('loading-overlay').getAttribute('data-ready') === '1',
+      };
+    });
+    console.log('[verify-worlds] Default (/) Witness opening state:', defaultWitnessRootState);
+    if (defaultWitnessRootState.viewMode !== 'witness' || defaultWitnessRootState.pathId !== 'witness' || defaultWitnessRootState.activeId !== 'potato') {
+      throw new Error(`Expected default (/) to enter 5-Chapter Witness Journey ('witness' / 'potato'), got viewMode=${defaultWitnessRootState.viewMode}, pathId=${defaultWitnessRootState.pathId}, activeId=${defaultWitnessRootState.activeId}`);
+    }
+    if (defaultWitnessRootState.suiteCount !== 30 || defaultWitnessRootState.act4Id !== 'skull' || defaultWitnessRootState.act5Id !== 'shoes') {
+      throw new Error(`Expected 30 worlds with Act IV=skull and Act V=shoes, got count=${defaultWitnessRootState.suiteCount}, IV=${defaultWitnessRootState.act4Id}, V=${defaultWitnessRootState.act5Id}`);
+    }
+    if (!defaultWitnessRootState.overlayGone) {
+      throw new Error('Loading overlay still shown after the first frames');
+    }
+
+    // Verify standalone 96 s, 10-shot Starry Night (?path=single) with lay-in animation
+    await page.goto(`${baseUrl}/?path=single`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__ready === true, null, { timeout: 60_000 });
     const openingState = await page.evaluate(() => {
       const p = window.__punctum;
       return {
+        defaultRootMode: 'witness',
         activeId: p.activeId,
         pathId: p.pathId,
         viewMode: p.viewMode,
@@ -159,27 +186,17 @@ async function main() {
         shotCount: p.director.activeTrack.shots.length,
         uLayIn: p.uniforms.uLayIn.value,
         suiteCount: p.suite.length,
-        act4Id: p.suite[3]?.id,
-        act5Id: p.suite[4]?.id,
-        overlayGone: !document.getElementById('loading-overlay') || document.getElementById('loading-overlay').getAttribute('data-ready') === '1',
       };
     });
-    console.log('[verify-worlds] Default opening state:', openingState);
-
+    console.log('[verify-worlds] Standalone Starry Night (?path=single) state:', openingState);
     if (openingState.activeId !== 'starry' || openingState.pathId !== 'single') {
-      throw new Error(`Expected default opening to be standalone 'starry' ('single'), got activeId=${openingState.activeId}, pathId=${openingState.pathId}`);
+      throw new Error(`Expected ?path=single to be standalone 'starry' ('single'), got activeId=${openingState.activeId}, pathId=${openingState.pathId}`);
     }
     if (openingState.loopSeconds !== 96 || openingState.shotCount !== 10) {
       throw new Error(`Expected standalone Starry Night to use 96s 10-shot choreography, got ${openingState.loopSeconds}s / ${openingState.shotCount} shots`);
     }
     if (!(openingState.uLayIn >= 0)) {
-      throw new Error(`Expected default opening boot to enable lay-in animation (uLayIn >= 0), got uLayIn=${openingState.uLayIn}`);
-    }
-    if (openingState.suiteCount !== 30 || openingState.act4Id !== 'skull' || openingState.act5Id !== 'shoes') {
-      throw new Error(`Expected 30 worlds with Act IV=skull and Act V=shoes, got count=${openingState.suiteCount}, IV=${openingState.act4Id}, V=${openingState.act5Id}`);
-    }
-    if (!openingState.overlayGone) {
-      throw new Error('Loading overlay still shown after the first frames');
+      throw new Error(`Expected standalone Starry Night boot to enable lay-in animation (uLayIn >= 0), got uLayIn=${openingState.uLayIn}`);
     }
     await shoot(page, '00-default-opening-starry.png');
 

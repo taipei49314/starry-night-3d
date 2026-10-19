@@ -116,7 +116,7 @@ export const WITNESS_BEATS: readonly WitnessBeatSpec[] = [
     durationSec: 42,
     profile: 'actor-entry',
     isActorEntry: true,
-    letterId: 'letter-595-paris',
+    letterId: 'letter-574-paris',
     dwellWindowFrac: [0.45, 0.88],
   },
   {
@@ -143,7 +143,7 @@ export const WITNESS_BEATS: readonly WitnessBeatSpec[] = [
     yearZh: '1887.11',
     durationSec: 24,
     profile: 'observational-walk',
-    letterId: 'letter-590-tanguy',
+    letterId: 'letter-686-tanguy',
     dwellWindowFrac: [0.22, 0.84],
   },
   {
@@ -166,12 +166,12 @@ export const WITNESS_BEATS: readonly WitnessBeatSpec[] = [
     chapterTitleZh: '南下普羅旺斯的陽光',
     paintingId: 'yellowhouse',
     titleZh: '幕間留白 · 尋找南方畫室的家',
-    subtitleZh: '不進入畫作的空白 · 窗外的空氣逐漸變得透明而溫暖',
-    yearZh: '1888.02',
+    subtitleZh: '不進入畫作的空白 · 從北方灰調走向南方鮮明多彩的調色盤',
+    yearZh: '1888.02 – 03',
     durationSec: 14,
     profile: 'interlude',
     isInterlude: true,
-    letterId: 'interlude-2-south-sun',
+    letterId: 'letter-590-arles-palette',
     dwellWindowFrac: [0.10, 0.90],
   },
 
@@ -198,10 +198,11 @@ export const WITNESS_BEATS: readonly WitnessBeatSpec[] = [
     chapterTitleZh: '嘗試建立自己的家',
     paintingId: 'sunflowers',
     titleZh: '亞爾 · 《向日葵》',
-    subtitleZh: '為裝飾客房、迎接遠方朋友而畫下的陽光',
+    subtitleZh: '普羅旺斯的陽光與為迎接遠方朋友而畫下的花朵',
     yearZh: '1888.08',
     durationSec: 26,
     profile: 'sanctuary-still',
+    letterId: 'letter-595-arles',
     dwellWindowFrac: [0.18, 0.86],
   },
   {
@@ -269,7 +270,7 @@ export const WITNESS_BEATS: readonly WitnessBeatSpec[] = [
     chapterTitleZh: '在困境中繼續創造',
     paintingId: 'starry',
     titleZh: '聖雷米 · 《星夜》（日間畫室創作）',
-    subtitleZh: '他站在畫架前沉靜落筆 · 鏡頭緩緩離開他身旁，從地面升入融合觀察、記憶與想像的星空宇宙',
+    subtitleZh: '他站在畫架前沉靜落筆 · 鏡頭緩緩離開他身旁，從地面升入融合觀察、記憶與想像的星空宇宙（藝術重建）',
     yearZh: '1889.06',
     durationSec: 54,
     profile: 'cosmos-ascent',
@@ -301,7 +302,7 @@ export const WITNESS_BEATS: readonly WitnessBeatSpec[] = [
     yearZh: '1890.02',
     durationSec: 34,
     profile: 'sanctuary-still',
-    letterId: 'letter-850-almond',
+    letterId: 'letter-855-almond',
     dwellWindowFrac: [0.18, 0.88],
   },
   {
@@ -477,12 +478,12 @@ function evalWitnessBeatPose(beat: WitnessBeatSpec, tau: number, out: CamPose): 
     // Phase 2 (0.42 .. 0.72): Camera glides gently into the painting's near space as Van Gogh steps outside the frame.
     // Phase 3 (0.72 .. 1.0): Camera settles cleanly into E so the painting holds in pure registration.
     if (beat.chapterId === 'earth') {
-      // Ch I (Nuenen): Start behind young Van Gogh sketching in the cottage corner, move past his shoulder to the table (E)
+      // Ch I (Nuenen): Start over young Van Gogh's shoulder as he sketches in the cottage corner, gliding past him to the table (E)
       const k1 = ease.inOutSine(clamp01(p / 0.52));
       const k2 = ease.inOutCubic(clamp01((p - 0.52) / 0.34));
-      stagePt(-1.42 * (1 - k1), -1.08 * (1 - k1), 1.6 + 2.8 * Math.sin(k1 * Math.PI * 0.5) * (1 - k2), out.p);
-      // Look from his sketchboard toward the oil lamp and dining table
-      stagePt(-0.65 * (1 - k1), -0.78 * (1 - k1), 5.8 + 80 * k1, _lookPt);
+      stagePt(-0.56 * (1 - k1), -0.34 * (1 - k1), 1.65 + 2.45 * Math.sin(k1 * Math.PI * 0.5) * (1 - k2), out.p);
+      // Look past his sketching shoulder toward the hanging oil lamp and peasant dining table
+      stagePt(-0.36 * (1 - k1), -0.30 * (1 - k1), 5.8 + 80 * k1, _lookPt);
       if (p >= 0.86) {
         out.p.copy(EYE);
         out.d.copy(FORWARD);
@@ -498,11 +499,11 @@ function evalWitnessBeatPose(beat: WitnessBeatSpec, tau: number, out: CamPose): 
       // Ch II (Paris): Follow behind him walking down the misty street as colors awaken along the boulevard
       const k1 = ease.inOutSine(clamp01(p / 0.58));
       const k2 = ease.inOutCubic(clamp01((p - 0.58) / 0.30));
-      const walkZ = (1.8 + 4.4 * k1) * (1 - k2);
-      const walkX = -0.32 * (1 - k2);
-      const walkY = -1.05 * (1 - k2);
+      const walkZ = (1.7 + 4.2 * k1) * (1 - k2);
+      const walkX = -0.24 * (1 - k2);
+      const walkY = -0.38 * (1 - k2);
       stagePt(walkX, walkY, walkZ, out.p);
-      stagePt(-0.22 * (1 - k1), -0.55 * (1 - k1), 9.5 + 120 * k1, _lookPt);
+      stagePt(-0.18 * (1 - k1), -0.28 * (1 - k1), 9.5 + 120 * k1, _lookPt);
       if (p >= 0.88) {
         out.p.copy(EYE);
         out.d.copy(FORWARD);
@@ -515,11 +516,11 @@ function evalWitnessBeatPose(beat: WitnessBeatSpec, tau: number, out: CamPose): 
     }
 
     if (beat.chapterId === 'sun') {
-      // Ch III (Arles Yellow House): Follow him approaching the green door of the Yellow House, then settle into E
+      // Ch III (Arles Yellow House): Follow behind him approaching the green door of the Yellow House, then settle into E
       const k1 = ease.inOutSine(clamp01(p / 0.55));
       const k2 = ease.inOutCubic(clamp01((p - 0.55) / 0.32));
-      stagePt(0.95 * (1 - k1) * (1 - k2), -1.02 * (1 - k2), 3.2 * Math.sin(k1 * Math.PI) * (1 - k2), out.p);
-      stagePt(0.45 * (1 - k1), -0.45 * (1 - k1), 8.0 + 150 * k1, _lookPt);
+      stagePt(0.58 * (1 - k1) * (1 - k2), -0.36 * (1 - k2), 3.0 * Math.sin(k1 * Math.PI) * (1 - k2), out.p);
+      stagePt(0.32 * (1 - k1), -0.24 * (1 - k1), 8.0 + 150 * k1, _lookPt);
       if (p >= 0.87) {
         out.p.copy(EYE);
         out.d.copy(FORWARD);
@@ -535,11 +536,11 @@ function evalWitnessBeatPose(beat: WitnessBeatSpec, tau: number, out: CamPose): 
       // Ch V (Auvers field walk): Follow behind him walking through the field path; unhurried, open ending
       const k1 = ease.inOutSine(clamp01(p / 0.65));
       const k2 = ease.inOutCubic(clamp01((p - 0.65) / 0.28));
-      const trailZ = (1.5 + 5.2 * k1) * (1 - k2);
-      const trailX = 0.18 * Math.sin(k1 * Math.PI) * (1 - k2);
-      const trailY = -1.04 * (1 - k2);
+      const trailZ = (1.5 + 5.0 * k1) * (1 - k2);
+      const trailX = 0.16 * Math.sin(k1 * Math.PI) * (1 - k2);
+      const trailY = -0.38 * (1 - k2);
       stagePt(trailX, trailY, trailZ, out.p);
-      stagePt(0.12 * (1 - k2), -0.48 * (1 - k2), 11.0 + 180 * k1, _lookPt);
+      stagePt(0.10 * (1 - k2), -0.26 * (1 - k2), 11.0 + 180 * k1, _lookPt);
       if (p >= 0.93) {
         out.p.copy(EYE);
         out.d.copy(FORWARD);
@@ -554,13 +555,13 @@ function evalWitnessBeatPose(beat: WitnessBeatSpec, tau: number, out: CamPose): 
 
   if (beat.profile === 'cosmos-ascent') {
     // Ch IV (Saint-Rémy Starry Night, 54 s):
-    // 0..14 s: Daytime indoor studio beside Van Gogh at his easel (calm brushwork, no dramatic acting).
+    // 0..14 s: Daytime indoor studio behind Van Gogh's shoulder at his easel (calm brushwork, no dramatic acting).
     // 14..42 s: Camera slowly leaves his side, crosses the canvas onto the quiet ground, and gradually ascends into the 250 km brushstroke cosmos.
     // 42..54 s: Gentle homecoming back to E, holding the pure reassembled painting.
     if (tau < 14.0) {
       const u = ease.inOutSine(tau / 14.0);
-      stagePt(-1.15 + 0.75 * u, -0.88 + 0.55 * u, 2.2 + 2.6 * u, out.p);
-      stagePt(-0.42 * (1 - u), -0.35 * (1 - u), 5.2 + 65 * u, _lookPt);
+      stagePt(-0.62 + 0.42 * u, -0.32 + 0.22 * u, 1.85 + 2.6 * u, out.p);
+      stagePt(-0.34 * (1 - u), -0.22 * (1 - u), 5.2 + 65 * u, _lookPt);
       out.d.subVectors(_lookPt, out.p).normalize();
       out.fov = 36;
       out.roll = 0;

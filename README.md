@@ -1,10 +1,14 @@
-# PUNCTUM: The Van Gogh World System, 250 km Deep (5 Chapters · 30 Iconic Worlds)
+# PUNCTUM: 與梵谷走過一生 · The Van Gogh Witness Journey & 30 Worlds (250 km Deep)
 
-A real-time 3D procedural painting universe built from **30 of Vincent van Gogh's iconic masterpieces (1884–1890)**. About **181,000** procedural brushstrokes in *The Starry Night* and roughly 47,000–130,000 in each companion world (each CI run's `verification-report.json` lists the exact count per world) sit up to 250 km deep in a 3D world. From one viewpoint (the painter's eye $E$) they line up into the painting; anywhere else the painting tears open into a living world of impasto paint, spatial portals, 3D vortex particles, and procedural Web Audio soundscapes.
+A real-time 3D biographical journey and procedural painting universe built around **Vincent van Gogh's life (1884–1890)** and **30 of his iconic masterpieces**. About **181,000** procedural brushstrokes in *The Starry Night* and roughly 47,000–130,000 in each companion world (each CI run's `verification-report.json` lists the exact count per world) sit up to 250 km deep in a 3D world. From one viewpoint (the painter's eye $E$) they line up into the painting; anywhere else the painting opens into a living 3D space of impasto paint, spatial portals, 3D vortex particles, and procedural Web Audio soundscapes.
 
-Opening the app launches directly into the signature **96-second, 10-shot standalone *The Starry Night*** (`?mode=theme&path=single`) with its 4-second radial lay-in and impasto inflation opener, then invites you at the end of the loop (`✦ 進入梵谷 30 個世界 · 五章三十幕旅程`) into the 30-World Odyssey.
+Opening the app (`/`) launches directly into the flagship **5-Chapter Biographical Witness Journey (`✦ 陪他走過一生`, `?mode=witness`)**:
+- **Witness Principle ("見證者原則")**: You accompany Van Gogh from an over-the-shoulder / side-back witness perspective across five chapters (**I. Nuenen · II. Paris · III. Arles · IV. Saint-Rémy · V. Auvers-sur-Oise**), four non-painting atmospheric interludes, and an epilogue dedicated to **Jo van Gogh-Bonger (1891)**.
+- **Purity of $E$ & Hold-to-Dwell (`⏳ 按住駐足停留`)**: Holding `Shift` or the on-screen dwell button slows camera progression during natural contemplation windows (`0.18×`) without ever freezing Van Gogh like a game NPC; as each painting reassembles at the mathematical eye point $E$, the 3D figure naturally steps outside the frame so $E$ remains 100% pure.
+- **Verbatim Epistolary Traces (`src/chapters/letters.ts`)**: Every letter quotation (`quoteZh` / `quoteEn`) is verified verbatim against the Van Gogh Museum / Huygens ING critical edition (`vangoghletters.org`, including Letters `497`, `448`, `567`, `574`, `686`, `590`, `677`, `595`, `705`, `691`, `776`, `777/782`, `855`, `873`, `898`, unsent draft `RM25`, and Jo van Gogh-Bonger's diary), strictly separated from contextual notes and artistic reconstruction disclosures.
+- **One-Click Standalone *Starry Night* (`◎ 單幅星夜 96s`, `?path=single`)**: Switch at any time from the top navigation bar to the signature 96-second, 10-shot standalone *The Starry Night* loop with its 4-second radial lay-in opener.
 
-TypeScript, Vite and three.js r186 (WebGL 2). Everything—3D brushstrokes, camera paths, and spatial audio—is 100% procedural: zero textures, external models, or audio files.
+TypeScript, Vite and three.js r186 (WebGL 2). Everything—3D brushstrokes, sculpted impasto/charcoal figure lofts, camera paths, and spatial audio—is 100% procedural: zero textures, external models, or audio files.
 
 ## Live Demo
 
@@ -49,8 +53,9 @@ Every edge in `WORLD_GRAPH` carries one of six motifs, each driving its own **3D
   - Right-sized `StrokeBuffer` initial capacity (`182,000` for *The Starry Night*, `76,000` for companion worlds); worlds that outgrow it (several companion worlds do) grow the buffer once.
   - Lookahead world pre-warming in an idle callback (`requestIdleCallback`), only on multi-act tracks and only after the first ~8 s of a track, so it never lands in the lay-in; the single loop builds the next world when the visitor asks for it. A world build is still one synchronous task, so that moment still hitches (time-slicing is open work). O(1) `PAINTING_SPEC_MAP` & `SUITE_ITEM_MAP` lookups, memoized `compilePathTrack`, pre-parsed linear RGB atmosphere cache (`_atmoCache`), and safe GPU geometry/material disposal on LRU world eviction (`MAX_CACHED_WORLDS = 4`).
 
-### Three Viewing Modes (`ViewMode`)
-- **Default Opening (`/` or `?mode=theme&path=single`)**: 96-second, 10-shot standalone *The Starry Night* (`starry`) with its 4-second radial lay-in and impasto inflation opener, collapsible 30-world drawer, and end-of-loop invitation to the 30-World Odyssey.
+### Four Viewing Modes (`ViewMode`)
+- **Flagship Witness Mode — Default Opening (`/`, `?mode=witness`, or shortcut `J`)**: **5-Chapter Biographical Witness Journey (`✦ 陪他走過一生`, `794 s` across 23 variable-cadence beats)** with 3D contoured charcoal/impasto Van Gogh actor stages, 4 non-painting atmospheric interludes, Jo van Gogh-Bonger's 1891 epilogue, Hold-to-Dwell contemplation windows (`Shift` or `⏳ 按住駐足停留`), and verbatim historical letters (`vangoghletters.org`).
+- **Standalone *The Starry Night* 96s Showcase (`◎ 單幅星夜 96s` button or `?path=single`)**: 96-second, 10-shot standalone *The Starry Night* (`starry`) with its 4-second radial lay-in and impasto inflation opener.
 - **Mode A — Odyssey Mode (`?mode=odyssey`)**: Complete 5-Chapter, 30-Act continuous feature film (`900 s` = 30 acts × `30 s`).
 - **Mode B — Atlas Mode (`?mode=atlas` or shortcut `U`)**: Interactive **Van Gogh World Graph Atlas** displaying all 30 worlds across the 5 Grand Chapters, 6 Motif filters, portal inspectors, clickable **Connected Neighbor Portals**, and one-click **Dynamic 6-Act Graph Weaving** (automatically closes the modal upon selection).
 - **Mode C — Theme Path Mode (`?mode=theme&path=nights|roads|dwellings|flora|gaze|woven|single`)**: Curated and dynamically woven journeys across the 30-World Graph:
