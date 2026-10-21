@@ -54,7 +54,7 @@ Every edge in `WORLD_GRAPH` carries one of six motifs, each driving its own **3D
   - Lookahead world pre-warming in an idle callback (`requestIdleCallback`), only on multi-act tracks and only after the first ~8 s of a track, so it never lands in the lay-in; the single loop builds the next world when the visitor asks for it. A world build is still one synchronous task, so that moment still hitches (time-slicing is open work). O(1) `PAINTING_SPEC_MAP` & `SUITE_ITEM_MAP` lookups, memoized `compilePathTrack`, pre-parsed linear RGB atmosphere cache (`_atmoCache`), and safe GPU geometry/material disposal on LRU world eviction (`MAX_CACHED_WORLDS = 4`).
 
 ### Four Viewing Modes (`ViewMode`)
-- **Flagship Witness Mode — Default Opening (`/`, `?mode=witness`, or shortcut `J`)**: **5-Chapter Biographical Witness Journey (`✦ 陪他走過一生`, `794 s` across 23 variable-cadence beats)** with 3D contoured charcoal/impasto Van Gogh actor stages, 4 non-painting atmospheric interludes, Jo van Gogh-Bonger's 1891 epilogue, Hold-to-Dwell contemplation windows (`Shift` or `⏳ 按住駐足停留`), and verbatim historical letters (`vangoghletters.org`).
+- **Flagship Witness Mode — Default Opening (`/`, `?mode=witness`, or shortcut `J`)**: **5-Chapter Biographical Witness Journey (`✦ 陪他走過一生`, `644 s` across 23 variable-cadence beats)** with 3D contoured charcoal/impasto Van Gogh actor stages, 4 non-painting atmospheric interludes, Jo van Gogh-Bonger's 1891 epilogue, Hold-to-Dwell contemplation windows (`Shift` or `⏳ 按住駐足停留`), and verbatim historical letters (`vangoghletters.org`).
 - **Standalone *The Starry Night* 96s Showcase (`◎ 單幅星夜 96s` button or `?path=single`)**: 96-second, 10-shot standalone *The Starry Night* (`starry`) with its 4-second radial lay-in and impasto inflation opener.
 - **Mode A — Odyssey Mode (`?mode=odyssey`)**: Complete 5-Chapter, 30-Act continuous feature film (`900 s` = 30 acts × `30 s`).
 - **Mode B — Atlas Mode (`?mode=atlas` or shortcut `U`)**: Interactive **Van Gogh World Graph Atlas** displaying all 30 worlds across the 5 Grand Chapters, 6 Motif filters, portal inspectors, clickable **Connected Neighbor Portals**, and one-click **Dynamic 6-Act Graph Weaving** (automatically closes the modal upon selection).
@@ -79,6 +79,16 @@ npm run build:single        # one self-contained dist-single/index.html
 ```
 
 `scripts/verify-worlds.mjs` runs in CI on a GitHub-hosted runner after the build (it needs `dist/` and Playwright's Chromium). It fails the job on page or console errors, a world whose generator threw, a failed self-test or paint-order check, a camera not registered at E, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at E and the holds (after one retry). Off-E frames and a high-tier set are recorded for people to look at, with their size and renderer state, but never fail the job. Every run uploads the screenshots as the `punctum-30-worlds-screenshots` artifact; `verification-report.json` is written on passing runs.
+
+Engineering delivery at `eb53819ade66a12bcd78a3b796e2962402b4f080` is complete:
+[PR #6](https://github.com/taipei49314/starry-night-3d/pull/6) is merged, and
+[CI & Pages 39243503566](https://github.com/taipei49314/starry-night-3d/actions/runs/39243503566)
+passed typecheck, both builds, the 30-world headless checks, screenshot capture
+and Pages deployment. This 2026-10-22 reconciliation closes that engineering
+delivery only. Human visual acceptance and the full hardware performance
+criteria in SPEC §9.3 remain open; headless success does not establish them.
+The same run's recorded Witness summary reports `beatCount: 23` and
+`totalSeconds: 644`; the old README's 794-second duration is corrected here.
 
 ## Controls
 
