@@ -80,6 +80,14 @@ npm run build:single        # one self-contained dist-single/index.html
 
 `scripts/verify-worlds.mjs` runs in CI on a GitHub-hosted runner after the build (it needs `dist/` and Playwright's Chromium). It fails the job on page or console errors, a world whose generator threw, a failed self-test or paint-order check, a camera not registered at E, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at E and the holds (after one retry). Off-E frames and a high-tier set are recorded for people to look at, with their size and renderer state, but never fail the job. Every run uploads the screenshots as the `punctum-30-worlds-screenshots` artifact; `verification-report.json` is written on passing runs.
 
+Engineering delivery at `eb53819ade66a12bcd78a3b796e2962402b4f080` is complete:
+[PR #6](https://github.com/taipei49314/starry-night-3d/pull/6) is merged, and
+[CI & Pages 39243503566](https://github.com/taipei49314/starry-night-3d/actions/runs/39243503566)
+passed typecheck, both builds, the 30-world headless checks, screenshot capture
+and Pages deployment. This 2026-10-22 reconciliation closes that engineering
+delivery only. Human visual acceptance and the full hardware performance
+criteria in SPEC §9.3 remain open; headless success does not establish them.
+
 ## Controls
 
 Any input hands control to you; after 12 s idle the camera rejoins the current act's timeline.
