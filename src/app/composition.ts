@@ -516,7 +516,8 @@ export async function boot(container: HTMLElement): Promise<void> {
         viewMode = 'witness';
         pathId = 'witness';
         activeSequence = WITNESS_PAINTING_SEQUENCE;
-        if (!activeSequence.includes(activeId)) {
+        // The standalone painting is the opening, so the life journey entered from it starts at Chapter I.
+        if (!activeSequence.includes(activeId) || prevPath === 'single') {
           activeId = activeSequence[0];
         }
         getOrBuildWorld(activeId);

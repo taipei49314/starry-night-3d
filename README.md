@@ -43,7 +43,7 @@ npm run build:single        # one self-contained dist-single/index.html
 
 `scripts/verify-worlds.mjs` runs in CI on a GitHub-hosted runner after the build (it needs `dist/` and Playwright's Chromium). It fails the job on page or console errors, a world whose generator threw, a failed self-test or paint-order check, a camera not registered at E, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at E and the holds (after one retry). Off-E frames and a high-tier set are recorded for people to look at, with their size and renderer state, but never fail the job. Every run uploads the screenshots as the `punctum-30-worlds-screenshots` artifact; `verification-report.json` is written on passing runs.
 
-Status: CI runs these checks on every push and pull request, on a software renderer. Human visual acceptance and the hardware performance targets in SPEC §9.3 have not been established.
+Status: CI runs these checks on every push to main and on every pull request, on a software renderer. Human visual acceptance and the hardware performance targets in SPEC §9.3 have not been established.
 
 ## Controls
 
@@ -60,7 +60,7 @@ Any input hands control to you; after 12 s idle the camera rejoins the current a
 | `P` or `⏸ 暫停` button | pause / resume the camera timeline and its automatic flights (return-to-eye, idle rejoin); you can still fly yourself, and the brushstrokes keep their gentle motion |
 | `Enter` or click 3D Portal Beacon | leap through the active painting's 3D Spatial Portal when the beacon is visible |
 | `[` / `]` or `PageUp` / `PageDown` | switch to previous / next painting in the active sequence via 6-Motif 3D Brushstroke Cross-Dissolve |
-| `J` | toggle the 5-Chapter Witness Journey (`?mode=witness`) vs. the single *Starry Night* |
+| `J` | toggle the 5-Chapter Witness Journey (`?mode=witness`) vs. the single-painting loop of the current painting; from the single *Starry Night* the journey starts at Chapter I |
 | Shift (hold) | in the Witness Journey, linger: the camera slows during contemplation windows |
 | `O` | toggle 5-Chapter 30-Act Odyssey (`∞ 五章三十幕`) vs. single-painting loop (`◎ 單幅沉浸循環`) |
 | `U` | toggle the interactive **Van Gogh World Graph Atlas (`🌌 宇宙星圖`)** |
