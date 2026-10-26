@@ -4,3 +4,4 @@ dist-single
 # render screenshots from tools/shot.mjs: regenerable output
 shots
 .claude
+artifacts
