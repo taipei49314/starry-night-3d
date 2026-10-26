@@ -1,73 +1,36 @@
-# PUNCTUM: 與梵谷走過一生 · The Van Gogh Witness Journey & 30 Worlds (250 km Deep)
+# The Starry Night, from One Viewpoint · 星夜，只在一個點成立
 
-A real-time 3D biographical journey and procedural painting universe built around **Vincent van Gogh's life (1884–1890)** and **30 of his iconic masterpieces**. About **181,000** procedural brushstrokes in *The Starry Night* and roughly 47,000–130,000 in each companion world (each CI run's `verification-report.json` lists the exact count per world) sit up to 250 km deep in a 3D world. From one viewpoint (the painter's eye $E$) they line up into the painting; anywhere else the painting opens into a living 3D space of impasto paint, spatial portals, 3D vortex particles, and procedural Web Audio soundscapes.
+<img src="docs/media/reveal.webp" width="640" alt="The camera starts at the painter's eye, where the brushstrokes form The Starry Night, then moves aside and the painting comes apart into 3D depth">
 
-Opening the app (`/`) launches directly into the flagship **5-Chapter Biographical Witness Journey (`✦ 陪他走過一生`, `?mode=witness`)**:
-- **Witness Principle ("見證者原則")**: You accompany Van Gogh from an over-the-shoulder / side-back witness perspective across five chapters (**I. Nuenen · II. Paris · III. Arles · IV. Saint-Rémy · V. Auvers-sur-Oise**), four non-painting atmospheric interludes, and an epilogue dedicated to **Jo van Gogh-Bonger (1891)**.
-- **Purity of $E$ & Hold-to-Dwell (`⏳ 按住駐足停留`)**: Holding `Shift` or the on-screen dwell button slows camera progression during natural contemplation windows (`0.18×`) without ever freezing Van Gogh like a game NPC; as each painting reassembles at the mathematical eye point $E$, the 3D figure naturally steps outside the frame so $E$ remains 100% pure.
-- **Verbatim Epistolary Traces (`src/chapters/letters.ts`)**: Every letter quotation (`quoteZh` / `quoteEn`) is verified verbatim against the Van Gogh Museum / Huygens ING critical edition (`vangoghletters.org`, including Letters `497`, `448`, `567`, `574`, `686`, `590`, `677`, `595`, `705`, `691`, `776`, `777/782`, `855`, `873`, `898`, unsent draft `RM25`, and Jo van Gogh-Bonger's diary), strictly separated from contextual notes and artistic reconstruction disclosures.
-- **One-Click Standalone *Starry Night* (`◎ 單幅星夜 96s`, `?path=single`)**: Switch at any time from the top navigation bar to the signature 96-second, 10-shot standalone *The Starry Night* loop with its 4-second radial lay-in opener.
+About 181,000 brushstrokes are scattered through 3D space, up to 250 km deep. From exactly one point, the painter's eye *E*, they line up into Van Gogh's *The Starry Night*. Step aside and the painting comes apart.
 
-TypeScript, Vite and three.js r186 (WebGL 2). Everything—3D brushstrokes, sculpted impasto/charcoal figure lofts, camera paths, and spatial audio—is 100% procedural: zero textures, external models, or audio files.
+約 18 萬筆筆觸散布在最深 250 公里的 3D 空間裡。只有站在畫家眼睛的那一點 *E*，它們才拼回梵谷的《星夜》；一離開那個點，畫就散開成立體的世界。
 
-## Live Demo
+**Open it:** <https://taipei49314.github.io/starry-night-3d/> · single-file version: <https://taipei49314.github.io/starry-night-3d/single.html>
 
-- **Interactive Showcase (GitHub Pages):** <https://taipei49314.github.io/starry-night-3d/>
-- **Single-File Bundle (`single.html`):** <https://taipei49314.github.io/starry-night-3d/single.html>
+## What you are looking at
 
----
-
-## Architecture: The 4-Level Van Gogh World System
-
-### Level 1 — Single Painting = An Enterable 3D World
-Every painting is an independent 3D space with its own canvas aspect ratio, brushwork DNA, atmospheric fog, lighting, procedural Web Audio soundscape, and **Diegetic Spatial Portals** (`portalIn` / `portalOut`).
-
-### Level 2 — Multi-Painting = Dynamic Thematic Paths (`compilePathTrack`)
-Instead of a single rigid sequence, all 30 paintings are connected in a directed **Van Gogh World Graph (`WORLD_GRAPH`)**. The dynamic path compiler `compilePathTrack(sequence)` weaves any sequence of paintings into a continuous one-take 3D camera trajectory (`30 s` per act). Each act flies deep into the painting's 3D world (including the 40 km Great Vortex in *The Starry Night*), returns to exact registration at the painter's eye $E$ at `25.0 s`, **holds the reassembled painting cleanly at $E$ for `1.8 s` (`25.0–26.8 s`)** with all floating portal labels, golden vortex particles, and UI chrome suppressed, and then performs a **Dual-World 3D Brushstroke Cross-Dissolve** (`26.8–30.0 s`) into the next painting.
-
-### Level 3 — Five Grand Chapters (1884–1890, 30 Worlds `I`–`XXX`)
-
-| Chapter | Era & Theme | 30 Iconic Worlds (`?painting=<id>`) |
+| At the eye *E* | Stepping aside | Inside the sky |
 |---|---|---|
-| **Chapter I · Earth (`earth`)** | **黑土與人** · Nuenen & Antwerp (1884–1886, 4 Worlds)<br>Peat-umber chiaroscuro, heavy palette-knife strokes, loom timbers, church tower & academy skeleton | **I. *The Potato Eaters* (`potato`, 1885)** · **II. *The Weaver* (`weaver`, 1884)** · **III. *The Old Church Tower at Nuenen* (`tower`, 1885)** · **IV. *Skull of a Skeleton with Burning Cigarette* (`skull`, 1886)** |
-| **Chapter II · Color (`color`)** | **巴黎與覺醒** · Paris & Montmartre (1886–1888, 7 Worlds)<br>Parisian studio boots, divisionist pointillist strokes, Seine reflections & steam train, Japonaiserie rain, radial self-portrait aura | **V. *A Pair of Shoes* (`shoes`, 1886)** · **VI. *Le Moulin de la Galette* (`galette`, 1886)** · **VII. *Boulevard de Clichy* (`paris`, 1887)** · **VIII. *Bridges across the Seine at Asnières* (`seine`, 1887)** · **IX. *Bridge in the Rain (after Hiroshige)* (`plum`, 1887)** · **X. *Portrait of Père Tanguy* (`tanguy`, 1887)** · **XI. *Self-Portrait with Straw Hat* (`selfportrait`, 1887)** |
-| **Chapter III · Sun (`sun`)** | **亞爾的黃金時代** · Arles (1888–1889, 8 Worlds)<br>High-chroma yellow vs. cobalt night, solar blooms, harvest plains, gaslight halos, intimate sanctuary | **XII. *The Yellow House* (`yellowhouse`, 1888)** · **XIII. *Sunflowers* (`sunflowers`, 1888)** · **XIV. *The Harvest at La Crau* (`harvest`, 1888)** · **XV. *The Sower at Sunset* (`sower`, 1888)** · **XVI. *Café Terrace at Night* (`cafe`, 1888)** · **XVII. *The Night Café* (`nightcafe`, 1888)** · **XVIII. *Starry Night Over the Rhône* (`rhone`, 1888)** · **XIX. *The Bedroom in Arles* (`bedroom`, 1888)** |
-| **Chapter IV · Cosmos (`cosmos`)** | **聖雷米的內在宇宙** · Saint-Rémy (1889–1890, 6 Worlds)<br>250 km twin-swirl flow fields, asylum garden irises, writhing olive groves, flame cypresses, blossoming boughs | **XX. *The Starry Night* (`starry`, 1889)** · **XXI. *Irises* (`irises`, 1889)** · **XXII. *Olive Trees with Yellow Sky and Sun* (`olive`, 1889)** · **XXIII. *Wheat Field with Cypresses* (`wheat`, 1889)** · **XXIV. *Road with Cypress and Star* (`roadcypress`, 1890)** · **XXV. *Almond Blossom* (`almond`, 1890)** |
-| **Chapter V · Road (`road`)** | **奧維爾的路與風** · Auvers-sur-Oise (1890, 5 Worlds)<br>Thatch cottages, Gothic apse, melancholic portraits, garden sanctuary, 2:1 widescreen storm tension | **XXVI. *Thatched Cottages at Cordeville* (`cottages`, 1890)** · **XXVII. *The Church at Auvers* (`church`, 1890)** · **XXVIII. *Portrait of Dr. Gachet* (`gachet`, 1890)** · **XXIX. *Daubigny's Garden* (`daubigny`, 1890)** · **XXX. *Wheatfield with Crows* (`crows`, 1890)** |
+| <img src="docs/media/at-eye.webp" alt="At the painter's eye the strokes form the painting"> | <img src="docs/media/step-aside.webp" alt="Some tens of metres aside, the cypress slides in front of the sky and hides one of the swirls, and the village shifts"> | <img src="docs/media/twin-funnels.webp" alt="Inside the sky the swirl is a funnel of brushstrokes"> |
 
-### Six Motif Backbones & Transition Grammars (`MOTIF_SPECS` & `MOTIF_TRANSITION_GRAMMARS`)
-Every edge in `WORLD_GRAPH` carries one of six motifs, each driving its own **3D Brushstroke Transition Grammar** (modulating scatter amplitude, radial speed smear, bloom surge, pigment dust drift, depth-warp folding `uWarpK`, portal sky-stirring `uStir`, 3D Portal Vortex trajectories, and Web Audio musical bridges):
-1. **✦ Light (`light` · 光暈綻放轉場 *Radiant Halo Dissolve*)** — Oil lamp, cigarette ember, golden sunflowers, Provençal sun, gas lamp, billiard lamp, star halos, crescent moon.
-2. **⟁ Road (`road` · 長路推進轉場 *Perspective Glide*)** — Worn peasant boots, Montmartre slope, Parisian boulevard, Asnières riverbanks, La Crau plains, cypress road, church fork, three wheat paths.
-3. **◎ Sky (`sky` · 天空渦流轉場 *Celestial Vortex Unbind*)** — Pointillist morning sky, twin nocturnal maelstroms, amber olive-grove sky, cumulus vortices, turquoise spring sky, storm clouds.
-4. **❀ Flora (`flora` · 繁花隨風轉場 *Botanical Wind Drift*)** — Potatoes of the earth, plum blossoms in rain, sunflowers, violet & white irises, gnarled olive trees, flame cypresses, golden wheat, almond blossoms, foxglove, Daubigny's roses.
-5. **⌂ Dwelling (`dwelling` · 門廊框景轉場 *Threshold Frame Fold*)** — Peasant cottage table, oak loom, church tower, Moulin de la Galette, Yellow House, street-corner café, Night Café, Arles bedroom, Cordeville thatched cottages, Gothic church at Auvers.
-6. **❖ Gaze (`gaze` · 瞳孔凝視轉場 *Ocular Iris Tunnel*)** — Skeleton skull sockets, Père Tanguy's gentle gaze, self-portrait emerald eyes, half-open window shutters, Dr. Gachet's melancholic gaze.
+- Each stroke is drawn in canvas coordinates and given one free value, its distance from *E*. Its size in the world grows with that distance, so seen from *E* it covers the same pixels at any depth.
+- Paint order becomes depth: the last touches (the cypress, the village) are nearest, and the underpainting is 250 km away. Each flat motif is the end-on view of a 3D form; the swirl is a pair of funnels pointing at the eye.
+- Everything is generated in code. No textures, models or audio files are used.
+- The opening is a 96-second, 10-shot camera loop: the canvas paints itself in, the frame slides away, the camera climbs the cypress, passes through Venus, falls into one of the two 50 km swirl funnels and flies back to *E*.
+- Drag to look, use W A S D to fly, and press Space to return to *E*. The full controls are below.
 
-### Universe Coherence & Performance Systems
-- **Multi-Era 360° Sphere Backdrop (`src/sky/backdrop.ts`)**: Full-sphere directional splat pass at infinity dynamically harmonizes with each painting's era palette (`uFogNear` / `uFogFar`), while keeping *The Starry Night* (`uSkyMode == 0`) 100% identical to its calibrated reference.
-- **3D Spatial Portal Motif Vortex (`src/sky/portalVortex.ts`)**: GPU-driven 3D vortex particle system anchored at `uMoonPos` that shapes its orbital trajectory and color palette to the active transition edge's motif (`light`, `road`, `sky`, `flora`, `dwelling`, `gaze`), while staying 100% invisible at the painter's eye $E$.
-- **6 Motif Transition Musical Bridges (`src/audio/soundscape.ts`)**: Synthesizes motif-specific harmonic bridges and continuous next-world drone pre-echoes across all 30 worlds, with automatic background-tab suspension and gesture-gated Web Audio unlock.
-- **Zero-Allocation Hot Paths, Idle Pre-Warming & Bounded 30-World VRAM Cache**:
-  - Reusable `StrokeRecord` Scratch (`emitCanvasStroke` / `emitSurfaceStroke`) eliminates ~1.95M temporary heap allocations across the 30 worlds.
-  - Right-sized `StrokeBuffer` initial capacity (`182,000` for *The Starry Night*, `76,000` for companion worlds); worlds that outgrow it (several companion worlds do) grow the buffer once.
-  - Lookahead world pre-warming in an idle callback (`requestIdleCallback`), only on multi-act tracks and only after the first ~8 s of a track, so it never lands in the lay-in; the single loop builds the next world when the visitor asks for it. A world build is still one synchronous task, so that moment still hitches (time-slicing is open work). O(1) `PAINTING_SPEC_MAP` & `SUITE_ITEM_MAP` lookups, memoized `compilePathTrack`, pre-parsed linear RGB atmosphere cache (`_atmoCache`), and safe GPU geometry/material disposal on LRU world eviction (`MAX_CACHED_WORLDS = 4`).
+The images above were rendered from this repository's code in headless Chrome on an NVIDIA laptop GPU, with the UI hidden.
 
-### Four Viewing Modes (`ViewMode`)
-- **Flagship Witness Mode — Default Opening (`/`, `?mode=witness`, or shortcut `J`)**: **5-Chapter Biographical Witness Journey (`✦ 陪他走過一生`, `644 s` across 23 variable-cadence beats)** with 3D contoured charcoal/impasto Van Gogh actor stages, 4 non-painting atmospheric interludes, Jo van Gogh-Bonger's 1891 epilogue, Hold-to-Dwell contemplation windows (`Shift` or `⏳ 按住駐足停留`), and verbatim historical letters (`vangoghletters.org`).
-- **Standalone *The Starry Night* 96s Showcase (`◎ 單幅星夜 96s` button or `?path=single`)**: 96-second, 10-shot standalone *The Starry Night* (`starry`) with its 4-second radial lay-in and impasto inflation opener.
-- **Mode A — Odyssey Mode (`?mode=odyssey`)**: Complete 5-Chapter, 30-Act continuous feature film (`900 s` = 30 acts × `30 s`).
-- **Mode B — Atlas Mode (`?mode=atlas` or shortcut `U`)**: Interactive **Van Gogh World Graph Atlas** displaying all 30 worlds across the 5 Grand Chapters, 6 Motif filters, portal inspectors, clickable **Connected Neighbor Portals**, and one-click **Dynamic 6-Act Graph Weaving** (automatically closes the modal upon selection).
-- **Mode C — Theme Path Mode (`?mode=theme&path=nights|roads|dwellings|flora|gaze|woven|single`)**: Curated and dynamically woven journeys across the 30-World Graph:
-  - `✦ 光與夜之路 (Nights, Lamps & Suns, 10 Acts, 300 s)`: `potato → skull → sower → cafe → nightcafe → rhone → starry → olive → roadcypress → crows`
-  - `⟁ 道路與橋樑 (Shoes, Bridges & Horizons, 10 Acts, 300 s)`: `shoes → galette → paris → seine → plum → cafe → rhone → roadcypress → church → crows`
-  - `⌂ 居所與聖殿 (Looms, Rooms & Sanctuaries, 10 Acts, 300 s)`: `potato → weaver → tower → yellowhouse → sunflowers → cafe → nightcafe → bedroom → cottages → church`
-  - `❀ 黑土、繁花與麥浪 (Earth, Blossoms & Wheat, 10 Acts, 300 s)`: `potato → sunflowers → harvest → sower → irises → olive → wheat → almond → daubigny → crows`
-  - `❖ 凝視與靈魂 (Gaze, Portraits & Mirrors, 8 Acts, 240 s)`: `potato → skull → tanguy → selfportrait → nightcafe → bedroom → gachet → starry`
-  - `✨ 智能編織 (Dynamic Woven 6-Act Path, 180 s)`: Dynamically woven 6-Act journey along `WORLD_GRAPH` edges from the current painting.
-  - `◎ 單幅沉浸循環 (Single World Loop)`: Continuous standalone loop of the active painting (`96 s` for *The Starry Night*, `48 s` for companion worlds).
+## Also in this repository
 
----
+The same engine renders 29 other Van Gogh paintings. They are reachable from the top bar or by URL:
+
+- `?mode=witness`: a five-chapter journey through his life (Nuenen, Paris, Arles, Saint-Rémy, Auvers). Its letter cards show a short summary written for this piece, not a quotation, with a link to the letter in the Van Gogh Museum / Huygens ING edition at [vangoghletters.org](https://vangoghletters.org/). The epilogue card, from Jo van Gogh-Bonger's diary, has no online link. Shortcut `J`; hold `Shift` to linger.
+- `?mode=odyssey`: all 30 paintings as one continuous 900-second flight, returning to each painting's eye before moving on.
+- `?mode=atlas`: a map of the 30 worlds and the paths between them.
+
+[docs/SPEC.md](docs/SPEC.md) describes the geometry, the camera choreography and all modes in detail.
 
 ## Run & Verify
 
@@ -80,15 +43,7 @@ npm run build:single        # one self-contained dist-single/index.html
 
 `scripts/verify-worlds.mjs` runs in CI on a GitHub-hosted runner after the build (it needs `dist/` and Playwright's Chromium). It fails the job on page or console errors, a world whose generator threw, a failed self-test or paint-order check, a camera not registered at E, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at E and the holds (after one retry). Off-E frames and a high-tier set are recorded for people to look at, with their size and renderer state, but never fail the job. Every run uploads the screenshots as the `punctum-30-worlds-screenshots` artifact; `verification-report.json` is written on passing runs.
 
-Engineering delivery at `eb53819ade66a12bcd78a3b796e2962402b4f080` is complete:
-[PR #6](https://github.com/taipei49314/starry-night-3d/pull/6) is merged, and
-[CI & Pages 39243503566](https://github.com/taipei49314/starry-night-3d/actions/runs/39243503566)
-passed typecheck, both builds, the 30-world headless checks, screenshot capture
-and Pages deployment. This 2026-10-22 reconciliation closes that engineering
-delivery only. Human visual acceptance and the full hardware performance
-criteria in SPEC §9.3 remain open; headless success does not establish them.
-The same run's recorded Witness summary reports `beatCount: 23` and
-`totalSeconds: 644`; the old README's 794-second duration is corrected here.
+Status: CI runs these checks on every push to main and on every pull request, on a software renderer. Human visual acceptance and the hardware performance targets in SPEC §9.3 have not been established.
 
 ## Controls
 
@@ -105,6 +60,8 @@ Any input hands control to you; after 12 s idle the camera rejoins the current a
 | `P` or `⏸ 暫停` button | pause / resume the camera timeline and its automatic flights (return-to-eye, idle rejoin); you can still fly yourself, and the brushstrokes keep their gentle motion |
 | `Enter` or click 3D Portal Beacon | leap through the active painting's 3D Spatial Portal when the beacon is visible |
 | `[` / `]` or `PageUp` / `PageDown` | switch to previous / next painting in the active sequence via 6-Motif 3D Brushstroke Cross-Dissolve |
+| `J` | toggle the 5-Chapter Witness Journey (`?mode=witness`) vs. the single-painting loop of the current painting; from the single *Starry Night* the journey starts at Chapter I |
+| Shift (hold) | in the Witness Journey, linger: the camera slows during contemplation windows |
 | `O` | toggle 5-Chapter 30-Act Odyssey (`∞ 五章三十幕`) vs. single-painting loop (`◎ 單幅沉浸循環`) |
 | `U` | toggle the interactive **Van Gogh World Graph Atlas (`🌌 宇宙星圖`)** |
 | `V` | toggle 30-World Procedural Soundscape (`♪ 聲景：開 / 靜音`) |
@@ -115,8 +72,8 @@ Any input hands control to you; after 12 s idle the camera rejoins the current a
 | M | calm mode (less roll, FOV, scatter, and particle drift; the default with `prefers-reduced-motion`) |
 | H | HUD |
 
-URL flags: `?painting=potato|weaver|tower|skull|shoes|galette|paris|seine|plum|tanguy|selfportrait|yellowhouse|sunflowers|harvest|sower|cafe|nightcafe|rhone|bedroom|starry|irises|olive|wheat|roadcypress|almond|cottages|church|gachet|daubigny|crows`, `?mode=odyssey|theme|atlas`, `?path=odyssey|nights|roads|dwellings|flora|gaze|woven|single`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay`, `?seed=`, `?freeze`, `?boot=<sec>&freeze`.
+URL flags: `?painting=potato|weaver|tower|skull|shoes|galette|paris|seine|plum|tanguy|selfportrait|yellowhouse|sunflowers|harvest|sower|cafe|nightcafe|rhone|bedroom|starry|irises|olive|wheat|roadcypress|almond|cottages|church|gachet|daubigny|crows`, `?mode=witness|odyssey|theme|atlas`, `?path=odyssey|nights|roads|dwellings|flora|gaze|woven|single`, `?odyssey=1|0`, `?t=<sec>`, `?free`, `?tier=high|medium|low`, `?calm`, `?hud`, `?overlay`, `?seed=`, `?freeze`, `?boot=<sec>&freeze`.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The page bundles [three.js](https://github.com/mrdoob/three.js) r186 (MIT); its notice ships as `THIRD_PARTY_NOTICES.md` next to the built page and in a comment at the top of `index.html` and `single.html`.
+MIT, see [LICENSE](LICENSE). The page bundles [three.js](https://github.com/mrdoob/three.js) r186 (MIT) and David Hoskins's GLSL "Hash without Sine" functions (MIT); their notices ship as `THIRD_PARTY_NOTICES.md` next to the built page and in a comment at the top of `index.html` and `single.html`.

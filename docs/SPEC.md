@@ -20,7 +20,7 @@ These are dropped:
 
 **Name:** PUNCTUM: The Starry Night & The Van Gogh World System, 250 km Deep (5 Chapters · 30 Iconic Worlds).
 
-**Logline.** From one exact point, about **181,400** sculpted brushstrokes in *The Starry Night* (budget 181,600; roughly 47,000–130,000 in each of the 29 companion worlds, per the CI `verification-report.json`) scattered across 250 km line up into the painting. Step away and the painting tears open. Opening `/` launches the **644-second, 5-Chapter Biographical Witness Journey** (`?mode=witness`, as recorded by CI 39243503566). The signature **96-second, 10-shot standalone *The Starry Night*** remains available at `?path=single` (`mode = 'theme'`, `pathId = 'single'`); in that standalone route, the camera:
+**Logline.** From one exact point, about **181,400** sculpted brushstrokes in *The Starry Night* (budget 181,600; roughly 47,000–130,000 in each of the 29 companion worlds, per the CI `verification-report.json`) scattered across 250 km line up into the painting. Step away and the painting tears open. Opening `/` launches the signature **96-second, 10-shot standalone *The Starry Night*** (same as `?path=single`: `mode = 'theme'`, `pathId = 'single'`). The **644-second, 5-Chapter Biographical Witness Journey** (as recorded by CI 39243503566) is at `?mode=witness`. In the standalone route, the camera:
 1. climbs a 145 m black-flame cypress;
 2. rides its tip as it turns into wind;
 3. punches through Venus into a tunnel of counter-rotating halo rings;
@@ -28,7 +28,7 @@ These are dropped:
 5. falls down one of them;
 6. from the calm eye, sees the tiny lit village of Saint-Rémy framed in the throat.
 
-In the standalone route, a storm then tears everything apart. The painting can only reassemble as the camera backs into the painter's eye $E$. The last frame is the first frame, where an invitation pill (`✦ 進入梵谷 30 個世界 · 五章三十幕旅程`) opens the 900-second, 5-Chapter, 30-Act Odyssey (§10).
+In the standalone route, a storm then tears everything apart. The painting can only reassemble as the camera backs into the painter's eye $E$. The last frame is the first frame, where an invitation pill (`✦ 陪他走過一生 · 進入五章人生見證旅程`) opens the 644-second, 5-Chapter Witness Journey (`?mode=witness`, §10) from Chapter I.
 
 **Single central mechanism: anamorphic invariance.**
 - Every stroke is authored in canvas space as (u, v, Δu, Δv, width, colours), plus **one free parameter, its depth d from the eye E**.
@@ -1331,10 +1331,10 @@ Conventions:
 
 ### 10.1 Default Opening vs. Multi-Act Odyssey Choreography
 
-- **Default Opening (`/` or `?mode=witness`):** the 644-second, 5-Chapter Biographical Witness Journey with 23 variable-cadence beats (CI 39243503566 recorded summary).
-- **Standalone *The Starry Night* (`?path=single` or `?mode=theme&path=single`):**
+- **Witness Journey (`?mode=witness`):** the 644-second, 5-Chapter Biographical Witness Journey with 23 variable-cadence beats (CI 39243503566 recorded summary). Its letter cards show a one-line summary written for this piece, not a quotation, and link to the letter in the Van Gogh Museum / Huygens ING edition (`src/chapters/letters.ts`); the epilogue card, from Jo van Gogh-Bonger's diary, has no online source link.
+- **Default Opening, standalone *The Starry Night* (`/`, `?path=single` or `?mode=theme&path=single`):**
   - The 96-second, 10-shot track (`painting = 'starry'`, `pathId = 'single'`) retains its 4-second radial lay-in (`uLayIn`) and impasto inflation (`uInflate`).
-  - The 30-painting strip is collapsed behind `🎨 30 幅畫作 ▾` so the opening screen stays uncluttered; from `t ≥ 84 s` of the first loop on, the golden invitation pill `✦ 進入梵谷 30 個世界 · 五章三十幕旅程` is offered, but like the rest of the chrome it is hidden while the painting is registered at $E$ (`data-clean-eye="1"`).
+  - The 30-painting strip is collapsed behind `🎨 30 幅畫作 ▾` so the opening screen stays uncluttered; from `t ≥ 84 s` of the first loop on, the golden invitation pill `✦ 陪他走過一生 · 進入五章人生見證旅程` (to the Witness Journey, starting at Chapter I; entering it from the single route always starts there) is offered, but like the rest of the chrome it is hidden while the painting is registered at $E$ (`data-clean-eye="1"`).
 - **Multi-Act Odyssey (`?mode=odyssey`, `900 s` = 30 acts × `30 s`) & Thematic Paths (`compilePathTrack`):**
   - Each 30-second act (`ACT_SECONDS = 30`, timings from the `odysseyAct` CompanionTrack built in `makeChapterTracks` (loop 30 s, hold 1.6, home 21.0, home end 25.0) and from `evalOdysseyMorph`) follows a 5-stage arc. In free mode the act clock holds before 26.8 and never rewinds:
     1. `τ ∈ [0.0, 1.6)`: Canvas lock at $E$ (with the incoming snap ripple settling).

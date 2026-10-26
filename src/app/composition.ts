@@ -124,10 +124,10 @@ function readFlags(): Flags {
   const modeParam = p.get('mode')?.toLowerCase();
   const pathParam = p.get('path')?.toLowerCase();
 
-  // Default public entry point (/) enters the 5-Chapter Biographical Witness Journey ("陪他走過一生").
-  // Explicit single-painting showcase (?path=single, ?odyssey=0, ?witness=0, ?painting=<id>) or harness pin (?t=...) enters single mode.
-  let mode: ViewMode = 'witness';
-  let pathId = 'witness';
+  // Default public entry point (/) is the standalone 96 s Starry Night (same as ?path=single).
+  // The 5-Chapter Witness Journey stays at ?mode=witness, the 30-act Odyssey at ?mode=odyssey.
+  let mode: ViewMode = 'theme';
+  let pathId = 'single';
 
   if (witnessParam === '1' || modeParam === 'witness' || pathParam === 'witness') {
     mode = 'witness';
@@ -140,7 +140,7 @@ function readFlags(): Flags {
     pathId = 'single';
   } else if (modeParam === 'atlas') {
     mode = 'atlas';
-    pathId = pathParam ?? 'witness';
+    pathId = pathParam ?? 'single';
   } else if (modeParam === 'theme' || (pathParam && pathParam !== 'odyssey' && pathParam !== 'single' && pathParam !== 'witness')) {
     mode = 'theme';
     pathId = pathParam ?? 'nights';
@@ -516,7 +516,8 @@ export async function boot(container: HTMLElement): Promise<void> {
         viewMode = 'witness';
         pathId = 'witness';
         activeSequence = WITNESS_PAINTING_SEQUENCE;
-        if (!activeSequence.includes(activeId)) {
+        // The standalone painting is the opening, so the life journey entered from it starts at Chapter I.
+        if (!activeSequence.includes(activeId) || prevPath === 'single') {
           activeId = activeSequence[0];
         }
         getOrBuildWorld(activeId);
