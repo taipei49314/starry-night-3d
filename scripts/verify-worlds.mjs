@@ -145,11 +145,11 @@ async function main() {
     const page = await context.newPage();
     watch(page);
 
-    // 1. Default opening (/): 5-Chapter Biographical Witness Journey ("陪他走過一生"), plus standalone 96 s Starry Night (?path=single)
-    console.log('[verify-worlds] 1/5 Checking default opening experience (/) and standalone Starry Night (?path=single)...');
-    await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+    // 1. Witness Journey entry (?mode=witness), then the default opening (/): standalone 96 s Starry Night
+    console.log('[verify-worlds] 1/5 Checking the Witness entry (?mode=witness) and the default opening (/)...');
+    await page.goto(`${baseUrl}/?mode=witness`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__ready === true, null, { timeout: 60_000 });
-    const defaultWitnessRootState = await page.evaluate(() => {
+    const witnessEntryState = await page.evaluate(() => {
       const p = window.__punctum;
       return {
         activeId: p.activeId,
@@ -161,24 +161,23 @@ async function main() {
         overlayGone: !document.getElementById('loading-overlay') || document.getElementById('loading-overlay').getAttribute('data-ready') === '1',
       };
     });
-    console.log('[verify-worlds] Default (/) Witness opening state:', defaultWitnessRootState);
-    if (defaultWitnessRootState.viewMode !== 'witness' || defaultWitnessRootState.pathId !== 'witness' || defaultWitnessRootState.activeId !== 'potato') {
-      throw new Error(`Expected default (/) to enter 5-Chapter Witness Journey ('witness' / 'potato'), got viewMode=${defaultWitnessRootState.viewMode}, pathId=${defaultWitnessRootState.pathId}, activeId=${defaultWitnessRootState.activeId}`);
+    console.log('[verify-worlds] Witness entry (?mode=witness) state:', witnessEntryState);
+    if (witnessEntryState.viewMode !== 'witness' || witnessEntryState.pathId !== 'witness' || witnessEntryState.activeId !== 'potato') {
+      throw new Error(`Expected ?mode=witness to enter 5-Chapter Witness Journey ('witness' / 'potato'), got viewMode=${witnessEntryState.viewMode}, pathId=${witnessEntryState.pathId}, activeId=${witnessEntryState.activeId}`);
     }
-    if (defaultWitnessRootState.suiteCount !== 30 || defaultWitnessRootState.act4Id !== 'skull' || defaultWitnessRootState.act5Id !== 'shoes') {
-      throw new Error(`Expected 30 worlds with Act IV=skull and Act V=shoes, got count=${defaultWitnessRootState.suiteCount}, IV=${defaultWitnessRootState.act4Id}, V=${defaultWitnessRootState.act5Id}`);
+    if (witnessEntryState.suiteCount !== 30 || witnessEntryState.act4Id !== 'skull' || witnessEntryState.act5Id !== 'shoes') {
+      throw new Error(`Expected 30 worlds with Act IV=skull and Act V=shoes, got count=${witnessEntryState.suiteCount}, IV=${witnessEntryState.act4Id}, V=${witnessEntryState.act5Id}`);
     }
-    if (!defaultWitnessRootState.overlayGone) {
+    if (!witnessEntryState.overlayGone) {
       throw new Error('Loading overlay still shown after the first frames');
     }
 
-    // Verify standalone 96 s, 10-shot Starry Night (?path=single) with lay-in animation
-    await page.goto(`${baseUrl}/?path=single`, { waitUntil: 'domcontentloaded' });
+    // Default opening (/): standalone 96 s, 10-shot Starry Night with lay-in animation
+    await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__ready === true, null, { timeout: 60_000 });
     const openingState = await page.evaluate(() => {
       const p = window.__punctum;
       return {
-        defaultRootMode: 'witness',
         activeId: p.activeId,
         pathId: p.pathId,
         viewMode: p.viewMode,
@@ -188,9 +187,9 @@ async function main() {
         suiteCount: p.suite.length,
       };
     });
-    console.log('[verify-worlds] Standalone Starry Night (?path=single) state:', openingState);
-    if (openingState.activeId !== 'starry' || openingState.pathId !== 'single') {
-      throw new Error(`Expected ?path=single to be standalone 'starry' ('single'), got activeId=${openingState.activeId}, pathId=${openingState.pathId}`);
+    console.log('[verify-worlds] Default (/) Starry Night opening state:', openingState);
+    if (openingState.activeId !== 'starry' || openingState.pathId !== 'single' || openingState.viewMode !== 'theme') {
+      throw new Error(`Expected default (/) to be standalone 'starry' ('theme' / 'single'), got activeId=${openingState.activeId}, viewMode=${openingState.viewMode}, pathId=${openingState.pathId}`);
     }
     if (openingState.loopSeconds !== 96 || openingState.shotCount !== 10) {
       throw new Error(`Expected standalone Starry Night to use 96s 10-shot choreography, got ${openingState.loopSeconds}s / ${openingState.shotCount} shots`);

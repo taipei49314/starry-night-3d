@@ -90,9 +90,11 @@ const CSS = `
 .pn-letter-head{font-size:11px;color:rgba(244,236,220,.78);margin-bottom:8px;border-bottom:1px solid rgba(232,198,128,.18);padding-bottom:5px;
   display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
 .pn-letter-src{color:#d8b46a;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.5px}
-.pn-letter-quote{font-size:14px;line-height:1.65;color:#fbf6ec;letter-spacing:.02em;margin-bottom:6px;text-shadow:0 1px 2px rgba(0,0,0,.85)}
-.pn-letter-orig{font-size:11.5px;line-height:1.45;color:rgba(244,236,220,.68);font-style:italic;margin-bottom:7px;
+.pn-letter-summary{font-size:14px;line-height:1.65;color:#fbf6ec;letter-spacing:.02em;margin-bottom:6px;text-shadow:0 1px 2px rgba(0,0,0,.85)}
+.pn-letter-summary-en{font-size:11.5px;line-height:1.45;color:rgba(244,236,220,.68);margin-bottom:6px;
   font-family:Georgia,"Times New Roman",serif}
+.pn-letter-links{font-size:10.5px;line-height:1.4;margin-bottom:7px}
+.pn-letter-links a{color:#e8c268;pointer-events:auto;text-decoration:underline;text-underline-offset:2px;margin-right:12px}
 .pn-letter-note{font-size:11.5px;line-height:1.5;color:rgba(236,214,162,.88)}
 .pn-letter-recon{margin-top:8px;padding-top:6px;border-top:1px dashed rgba(232,198,128,.20);font-size:10px;line-height:1.4;color:rgba(232,222,202,.62)}
 .pn-enter-odyssey{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);pointer-events:auto;display:none;
@@ -486,8 +488,9 @@ export class DirectorUI {
   private readonly letterHead: HTMLDivElement;
   private readonly letterRecipient: HTMLSpanElement;
   private readonly letterSrc: HTMLSpanElement;
-  private readonly letterQuote: HTMLDivElement;
-  private readonly letterOrig: HTMLDivElement;
+  private readonly letterSummary: HTMLDivElement;
+  private readonly letterSummaryEn: HTMLDivElement;
+  private readonly letterLinks: HTMLDivElement;
   private readonly letterNote: HTMLDivElement;
   private readonly letterRecon: HTMLDivElement;
   private readonly tlRoot: HTMLDivElement;
@@ -1029,10 +1032,12 @@ export class DirectorUI {
     this.letterSrc = doc.createElement('span');
     this.letterSrc.className = 'pn-letter-src';
     this.letterHead.append(this.letterRecipient, this.letterSrc);
-    this.letterQuote = doc.createElement('div');
-    this.letterQuote.className = 'pn-letter-quote';
-    this.letterOrig = doc.createElement('div');
-    this.letterOrig.className = 'pn-letter-orig';
+    this.letterSummary = doc.createElement('div');
+    this.letterSummary.className = 'pn-letter-summary';
+    this.letterSummaryEn = doc.createElement('div');
+    this.letterSummaryEn.className = 'pn-letter-summary-en';
+    this.letterLinks = doc.createElement('div');
+    this.letterLinks.className = 'pn-letter-links';
     this.letterNote = doc.createElement('div');
     this.letterNote.className = 'pn-letter-note';
     this.letterRecon = doc.createElement('div');
@@ -1041,8 +1046,9 @@ export class DirectorUI {
     this.letterBox.append(
       this.letterBeat,
       this.letterHead,
-      this.letterQuote,
-      this.letterOrig,
+      this.letterSummary,
+      this.letterSummaryEn,
+      this.letterLinks,
       this.letterNote,
       this.letterRecon,
     );
@@ -1524,8 +1530,22 @@ export class DirectorUI {
     this.letterBeat.textContent = `${w.beatTitleZh} · ${w.beatSubtitleZh}`;
     this.letterRecipient.textContent = `✉ ${w.letter.citationZh}`;
     this.letterSrc.textContent = w.letter.citationEn;
-    this.letterQuote.textContent = w.letter.quoteZh;
-    this.letterOrig.textContent = w.letter.quoteEn;
+    this.letterSummary.textContent = w.letter.summaryZh;
+    this.letterSummaryEn.textContent = w.letter.summaryEn;
+    if (this.letterLinks.dataset.letterId !== w.letter.id) {
+      this.letterLinks.dataset.letterId = w.letter.id;
+      this.letterLinks.replaceChildren(
+        ...w.letter.sources.map((s) => {
+          const a = this.letterLinks.ownerDocument.createElement('a');
+          a.href = s.url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = `原信 · ${s.label} · vangoghletters.org ↗`;
+          return a;
+        }),
+      );
+      this.letterLinks.style.display = w.letter.sources.length > 0 ? 'block' : 'none';
+    }
     this.letterNote.textContent = w.letter.contextNoteZh;
     this.letterRecon.style.display = w.showReconstructionNote ? 'block' : 'none';
     st.display = 'block';

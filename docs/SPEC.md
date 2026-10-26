@@ -20,7 +20,7 @@ These are dropped:
 
 **Name:** PUNCTUM: The Starry Night & The Van Gogh World System, 250 km Deep (5 Chapters · 30 Iconic Worlds).
 
-**Logline.** From one exact point, about **181,400** sculpted brushstrokes in *The Starry Night* (budget 181,600; roughly 47,000–130,000 in each of the 29 companion worlds, per the CI `verification-report.json`) scattered across 250 km line up into the painting. Step away and the painting tears open. Opening `/` launches the **644-second, 5-Chapter Biographical Witness Journey** (`?mode=witness`, as recorded by CI 39243503566). The signature **96-second, 10-shot standalone *The Starry Night*** remains available at `?path=single` (`mode = 'theme'`, `pathId = 'single'`); in that standalone route, the camera:
+**Logline.** From one exact point, about **181,400** sculpted brushstrokes in *The Starry Night* (budget 181,600; roughly 47,000–130,000 in each of the 29 companion worlds, per the CI `verification-report.json`) scattered across 250 km line up into the painting. Step away and the painting tears open. Opening `/` launches the signature **96-second, 10-shot standalone *The Starry Night*** (same as `?path=single`: `mode = 'theme'`, `pathId = 'single'`). The **644-second, 5-Chapter Biographical Witness Journey** (as recorded by CI 39243503566) is at `?mode=witness`. In the standalone route, the camera:
 1. climbs a 145 m black-flame cypress;
 2. rides its tip as it turns into wind;
 3. punches through Venus into a tunnel of counter-rotating halo rings;
@@ -1331,8 +1331,8 @@ Conventions:
 
 ### 10.1 Default Opening vs. Multi-Act Odyssey Choreography
 
-- **Default Opening (`/` or `?mode=witness`):** the 644-second, 5-Chapter Biographical Witness Journey with 23 variable-cadence beats (CI 39243503566 recorded summary).
-- **Standalone *The Starry Night* (`?path=single` or `?mode=theme&path=single`):**
+- **Witness Journey (`?mode=witness`):** the 644-second, 5-Chapter Biographical Witness Journey with 23 variable-cadence beats (CI 39243503566 recorded summary). Its letter cards show a one-line summary written for this piece, not a quotation, and link to the letter in the Van Gogh Museum / Huygens ING edition (`src/chapters/letters.ts`).
+- **Default Opening, standalone *The Starry Night* (`/`, `?path=single` or `?mode=theme&path=single`):**
   - The 96-second, 10-shot track (`painting = 'starry'`, `pathId = 'single'`) retains its 4-second radial lay-in (`uLayIn`) and impasto inflation (`uInflate`).
   - The 30-painting strip is collapsed behind `🎨 30 幅畫作 ▾` so the opening screen stays uncluttered; from `t ≥ 84 s` of the first loop on, the golden invitation pill `✦ 進入梵谷 30 個世界 · 五章三十幕旅程` is offered, but like the rest of the chrome it is hidden while the painting is registered at $E$ (`data-clean-eye="1"`).
 - **Multi-Act Odyssey (`?mode=odyssey`, `900 s` = 30 acts × `30 s`) & Thematic Paths (`compilePathTrack`):**
