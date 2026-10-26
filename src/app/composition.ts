@@ -140,7 +140,7 @@ function readFlags(): Flags {
     pathId = 'single';
   } else if (modeParam === 'atlas') {
     mode = 'atlas';
-    pathId = pathParam ?? 'witness';
+    pathId = pathParam ?? 'single';
   } else if (modeParam === 'theme' || (pathParam && pathParam !== 'odyssey' && pathParam !== 'single' && pathParam !== 'witness')) {
     mode = 'theme';
     pathId = pathParam ?? 'nights';

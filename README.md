@@ -10,9 +10,9 @@ About 181,000 brushstrokes are scattered through 3D space, up to 250 km deep. Fr
 
 ## What you are looking at
 
-| At the eye *E* | A few metres aside | Inside the sky |
+| At the eye *E* | Stepping aside | Inside the sky |
 |---|---|---|
-| <img src="docs/media/at-eye.webp" alt="At the painter's eye the strokes form the painting"> | <img src="docs/media/step-aside.webp" alt="Moving aside, the two swirls separate and the cypress stands in front of the sky"> | <img src="docs/media/twin-funnels.webp" alt="Inside the sky the swirl is a funnel of brushstrokes"> |
+| <img src="docs/media/at-eye.webp" alt="At the painter's eye the strokes form the painting"> | <img src="docs/media/step-aside.webp" alt="Some tens of metres aside, the cypress slides in front of the sky and hides one of the swirls, and the village shifts"> | <img src="docs/media/twin-funnels.webp" alt="Inside the sky the swirl is a funnel of brushstrokes"> |
 
 - Each stroke is drawn in canvas coordinates and given one free value, its distance from *E*. Its size in the world grows with that distance, so seen from *E* it covers the same pixels at any depth.
 - Paint order becomes depth: the last touches (the cypress, the village) are nearest, and the underpainting is 250 km away. Each flat motif is the end-on view of a 3D form; the swirl is a pair of funnels pointing at the eye.
@@ -26,7 +26,7 @@ The images above were rendered from this repository's code in headless Chrome on
 
 The same engine renders 29 other Van Gogh paintings. They are reachable from the top bar or by URL:
 
-- `?mode=witness`: a five-chapter journey through his life (Nuenen, Paris, Arles, Saint-Rémy, Auvers). Its letter cards show a short summary written for this piece, not a quotation, with a link to the letter in the Van Gogh Museum / Huygens ING edition at [vangoghletters.org](https://vangoghletters.org/).
+- `?mode=witness`: a five-chapter journey through his life (Nuenen, Paris, Arles, Saint-Rémy, Auvers). Its letter cards show a short summary written for this piece, not a quotation, with a link to the letter in the Van Gogh Museum / Huygens ING edition at [vangoghletters.org](https://vangoghletters.org/). The epilogue card, from Jo van Gogh-Bonger's diary, has no online link. Shortcut `J`; hold `Shift` to linger.
 - `?mode=odyssey`: all 30 paintings as one continuous 900-second flight, returning to each painting's eye before moving on.
 - `?mode=atlas`: a map of the 30 worlds and the paths between them.
 
@@ -43,7 +43,7 @@ npm run build:single        # one self-contained dist-single/index.html
 
 `scripts/verify-worlds.mjs` runs in CI on a GitHub-hosted runner after the build (it needs `dist/` and Playwright's Chromium). It fails the job on page or console errors, a world whose generator threw, a failed self-test or paint-order check, a camera not registered at E, an unclean Odyssey hold (Act I and *The Starry Night* act, each checked to show the right painting), or a blank frame among the 30 worlds at E and the holds (after one retry). Off-E frames and a high-tier set are recorded for people to look at, with their size and renderer state, but never fail the job. Every run uploads the screenshots as the `punctum-30-worlds-screenshots` artifact; `verification-report.json` is written on passing runs.
 
-Status: the headless checks pass, but they run on a software renderer. Human visual acceptance and the hardware performance targets in SPEC §9.3 have not been established.
+Status: CI runs these checks on every push and pull request, on a software renderer. Human visual acceptance and the hardware performance targets in SPEC §9.3 have not been established.
 
 ## Controls
 
@@ -60,6 +60,8 @@ Any input hands control to you; after 12 s idle the camera rejoins the current a
 | `P` or `⏸ 暫停` button | pause / resume the camera timeline and its automatic flights (return-to-eye, idle rejoin); you can still fly yourself, and the brushstrokes keep their gentle motion |
 | `Enter` or click 3D Portal Beacon | leap through the active painting's 3D Spatial Portal when the beacon is visible |
 | `[` / `]` or `PageUp` / `PageDown` | switch to previous / next painting in the active sequence via 6-Motif 3D Brushstroke Cross-Dissolve |
+| `J` | toggle the 5-Chapter Witness Journey (`?mode=witness`) vs. the single *Starry Night* |
+| Shift (hold) | in the Witness Journey, linger: the camera slows during contemplation windows |
 | `O` | toggle 5-Chapter 30-Act Odyssey (`∞ 五章三十幕`) vs. single-painting loop (`◎ 單幅沉浸循環`) |
 | `U` | toggle the interactive **Van Gogh World Graph Atlas (`🌌 宇宙星圖`)** |
 | `V` | toggle 30-World Procedural Soundscape (`♪ 聲景：開 / 靜音`) |
@@ -74,4 +76,4 @@ URL flags: `?painting=potato|weaver|tower|skull|shoes|galette|paris|seine|plum|t
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The page bundles [three.js](https://github.com/mrdoob/three.js) r186 (MIT); its notice ships as `THIRD_PARTY_NOTICES.md` next to the built page and in a comment at the top of `index.html` and `single.html`.
+MIT, see [LICENSE](LICENSE). The page bundles [three.js](https://github.com/mrdoob/three.js) r186 (MIT) and David Hoskins's GLSL "Hash without Sine" functions (MIT); their notices ship as `THIRD_PARTY_NOTICES.md` next to the built page and in a comment at the top of `index.html` and `single.html`.

@@ -675,7 +675,7 @@ export class DirectorUI {
     this.witnessBtn.type = 'button';
     this.witnessBtn.className = 'pn-odyssey-btn pn-witness-btn';
     this.witnessBtn.textContent = '✦ 陪他走過一生';
-    this.witnessBtn.title = '五章見證模式（預設首頁）：跟隨寫實梵谷走過荷蘭、巴黎、亞爾、聖雷米、奧維爾五大人生章節、四段幕間留白與書信痕跡 (快捷鍵 J)';
+    this.witnessBtn.title = '五章見證模式（?mode=witness）：跟隨寫實梵谷走過荷蘭、巴黎、亞爾、聖雷米、奧維爾五大人生章節、四段幕間留白與書信痕跡 (快捷鍵 J)';
     this.witnessBtn.dataset.on = '1';
     this.witnessBtn.addEventListener('click', (e) => {
       e.stopPropagation();
