@@ -12,7 +12,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -121,10 +121,8 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
   const nFront = new Vector3(0, 0, 1);
   const nLeft = new Vector3(0.82, 0, 0.57).normalize();
   const nRight = new Vector3(-0.82, 0, 0.57).normalize();
-  const nUp = new Vector3(0, 1, 0.15).normalize();
   const tHoriz = new Vector3(1, 0, 0);
   const tVert = new Vector3(0, 1, 0);
-  const tDepth = new Vector3(0, 0.12, -1).normalize();
 
   // 1. Interior Lavender-Blue Walls (HOUSE [180..1,800 m])
   for (let i = 0; i < 16500; i++) {
@@ -173,59 +171,71 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
     const v = rng.range(0.47, 0.81);
     const d = rng.range(515, 548);
     const isSillGlow = v < 0.54;
-    const cA = isSillGlow ? P.lemon : mixHex(P.cerulean, P.lemon, rng.range(0.25, 0.75));
-    const cB = isSillGlow ? P.chrome : P.cobalt;
+    const cA = isSillGlow ? P.lemon : mixHex(SHUTTER_LIGHT, P.lemon, rng.range(0.25, 0.75));
+    const cB = isSillGlow ? P.chrome : P.cerulean;
     emitCanvasStroke(
       sink, BEDROOM_ASPECT, StrokeClass.WINDOW, uP, v, d,
       rng.range(0.010, 0.022), rng.range(-0.3, 0.3), rng.range(0.0035, 0.0065),
-      cA, cB, rng, { emissive: isSillGlow ? 3.2 : 1.8 },
+      cA, cB, rng, { emissive: isSillGlow ? 0.35 : 0.22 },
     );
   }
+  // Casement window frame & horizontal muntin bars
+  emitPathStrokes(
+    sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+    [[0.30, 0.46], [0.30, 0.83], [0.50, 0.83], [0.50, 0.46], [0.30, 0.46]],
+    502, 160, 0.013, 0.0042, WOOD_DARK, SHUTTER_GREEN, rng, { spread: 0.0025 },
+  );
+  emitPathStrokes(
+    sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+    [[0.365, 0.64], [0.435, 0.64]],
+    504, 45, 0.012, 0.0038, WOOD_DARK, P.lemon, rng, { spread: 0.002 },
+  );
 
-  // 3. The Famous Scarlet & Golden-Oak Bed on the Right (uP = 0.56..0.96, v = 0.08..0.64, d = 190..485 m)
-  // 3a. Scarlet blanket & mattress (HOUSE class)
+  // 3. The Famous Scarlet & Golden-Oak Bed on the Right (uP = 0.56..0.96, v = 0.06..0.64, d = 176..485 m)
+  // 3a. Scarlet blanket & pale-yellow pillows (HOUSE class, d = 188..368 m, strictly in front of floorboards 208..515 m)
+  const tBlanket = new Vector3(0.95, 0.31, 0).normalize();
   for (let i = 0; i < 9500; i++) {
-    const tD = rng.next(); // 0 = near footboard (215 m), 1 = near headboard (455 m)
-    const d = 215 + 240 * tD + rng.range(-6, 6);
-    const uP = rng.range(0.58, 0.93);
-    const vBase = 0.16 + 0.22 * tD;
-    const v = vBase + rng.range(0.0, 0.15);
-    const isPillow = tD > 0.74 && v > vBase + 0.06;
+    const tD = rng.next(); // 0 = near footboard (188 m), 1 = near headboard (368 m)
+    const d = 188 + 180 * tD + rng.range(-4, 4);
+    const uP = rng.range(0.59, 0.93);
+    const vBase = 0.22 + 0.24 * tD;
+    const v = vBase + rng.range(0.0, 0.09);
+    const isPillow = tD > 0.78 && v > 0.45;
     const cA = isPillow
       ? shadeHex(mixHex(P.lemon, P.zincWhite, rng.range(0.35, 0.75)), rng.range(0.92, 1.08))
-      : shadeHex(SCARLET_A, rng.range(0.86, 1.14));
+      : shadeHex(SCARLET_A, rng.range(0.88, 1.15));
     const cB = isPillow
       ? P.chrome
-      : shadeHex(SCARLET_B, rng.range(0.85, 1.10));
+      : shadeHex(SCARLET_B, rng.range(0.86, 1.12));
     emitSurfaceStroke(
       sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.014, 0.028), rng.range(0.0045, 0.0085),
-      isPillow ? tHoriz : tDepth, nUp, cA, cB, rng,
-      { emissive: isPillow ? 0.35 : 0.18 },
+      rng.range(0.016, 0.032), rng.range(0.0052, 0.0092),
+      isPillow ? tHoriz : tBlanket, nFront, cA, cB, rng,
+      { emissive: isPillow ? 0.16 : 0.14 },
     );
   }
-  // 3b. Golden-oak headboard (d ~ 465 m), footboard (d ~ 214 m), and side rail (GROVE/HOUSE class)
+  // 3b. Golden-oak headboard (d ~ 465 m), lower footboard (v = 0.05..0.24, d ~ 180 m), and side rail
   for (let i = 0; i < 6200; i++) {
     const part = rng.next();
     let uP: number, v: number, d: number;
     if (part < 0.42) {
-      // Foreground footboard
+      // Foreground footboard (kept below v = 0.24 so the scarlet blanket blazes above it!)
       uP = rng.range(0.60, 0.95);
-      const arch = 0.04 * Math.sin(Math.PI * ((uP - 0.60) / 0.35));
-      v = rng.range(0.06, 0.34 + arch);
-      d = rng.range(208, 224);
+      const arch = 0.025 * Math.sin(Math.PI * ((uP - 0.60) / 0.35));
+      v = rng.range(0.05, 0.23 + arch);
+      d = rng.range(178, 185);
     } else if (part < 0.78) {
       // Back headboard
       uP = rng.range(0.57, 0.91);
       const arch = 0.05 * Math.sin(Math.PI * ((uP - 0.57) / 0.34));
-      v = rng.range(0.36, 0.62 + arch);
+      v = rng.range(0.46, 0.63 + arch);
       d = rng.range(455, 485);
     } else {
       // Left wooden side rail connecting footboard to headboard
       const t = rng.next();
       uP = 0.58 + 0.02 * (1 - t) + rng.range(-0.012, 0.012);
-      v = 0.14 + 0.22 * t + rng.range(-0.03, 0.04);
-      d = 210 + 250 * t;
+      v = 0.14 + 0.22 * t + rng.range(-0.02, 0.03);
+      d = 180 + 210 * t;
     }
     const isPost = uP < 0.61 || uP > 0.91;
     const cA = shadeHex(mixHex(P.chrome, P.ochre, rng.range(0.25, 0.75)), rng.range(0.88, 1.12));
@@ -234,43 +244,90 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
       sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, d,
       rng.range(0.013, 0.026), rng.range(0.0040, 0.0075),
       isPost ? tVert : tHoriz, nFront, cA, cB, rng,
-      { flags: isPost ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.22 },
+      { flags: isPost ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.10 },
     );
   }
+  // Cloisonnist dark wood contours on bed footboard, headboard & side rail
+  emitPathStrokes(
+    sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+    [[0.60, 0.05], [0.60, 0.25], [0.775, 0.27], [0.95, 0.24], [0.95, 0.05]],
+    176, 180, 0.014, 0.0048, WOOD_DARK, P.ochre, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+    [[0.57, 0.44], [0.57, 0.63], [0.74, 0.67], [0.91, 0.62], [0.91, 0.44]],
+    452, 160, 0.014, 0.0048, WOOD_DARK, P.ochre, rng, { spread: 0.003 },
+  );
 
-  // 4. Two Yellow Cane Bistro Chairs (left foreground d ~ 245 m, mid-room d ~ 395 m)
+  // 4. Two Sculpted Yellow Cane Bistro Chairs (left foreground d ~ 215 m, mid-room d ~ 295 m, in front of floorboards)
   const chairs = [
-    { u0: 0.07, u1: 0.21, v0: 0.14, v1: 0.44, d: 245 },
-    { u0: 0.45, u1: 0.56, v0: 0.27, v1: 0.50, d: 395 },
+    { u0: 0.07, u1: 0.21, v0: 0.14, v1: 0.44, d: 215 },
+    { u0: 0.45, u1: 0.56, v0: 0.27, v1: 0.50, d: 295 },
   ];
   for (const ch of chairs) {
-    for (let i = 0; i < 1800; i++) {
+    const vSeat = ch.v0 + 0.45 * (ch.v1 - ch.v0);
+    // Woven yellow straw seat pad
+    for (let i = 0; i < 420; i++) {
       const uP = rng.range(ch.u0, ch.u1);
-      const v = rng.range(ch.v0, ch.v1);
-      const isSeat = Math.abs(v - (ch.v0 + 0.45 * (ch.v1 - ch.v0))) < 0.035;
-      const cA = isSeat ? P.lemon : mixHex(P.chrome, P.ochre, rng.range(0.2, 0.7));
-      const cB = isSeat ? P.ochre : WOOD_DARK;
+      const v = vSeat + rng.range(-0.025, 0.025);
       emitSurfaceStroke(
-        sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, ch.d + rng.range(-10, 10),
-        rng.range(0.010, 0.020), rng.range(0.0032, 0.0058),
-        isSeat ? tHoriz : tVert, nFront, cA, cB, rng,
-        { emissive: 0.25 },
+        sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, ch.d,
+        0.014, 0.0045, tHoriz, nFront, P.lemon, P.ochre, rng, { flags: StrokeFlag.OUTLINE, emissive: 0.12 },
+      );
+    }
+    // 4 chair legs & ladder-back uprights + horizontal back slats (open frame, not a solid rectangle!)
+    emitPathStrokes(
+      sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+      [[ch.u0 + 0.01, ch.v0], [ch.u0 + 0.01, ch.v1]],
+      ch.d - 3, 95, 0.013, 0.0045, P.ochre, WOOD_DARK, rng, { spread: 0.004 },
+    );
+    emitPathStrokes(
+      sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+      [[ch.u1 - 0.01, ch.v0], [ch.u1 - 0.01, vSeat]],
+      ch.d - 3, 55, 0.013, 0.0045, P.ochre, WOOD_DARK, rng, { spread: 0.004 },
+    );
+    emitPathStrokes(
+      sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+      [[ch.u0 + 0.035, ch.v0 + 0.02], [ch.u0 + 0.035, ch.v1 - 0.01]],
+      ch.d + 3, 85, 0.013, 0.0042, WOOD_DARK, P.ochre, rng, { spread: 0.004 },
+    );
+    for (const sv of [ch.v1 - 0.02, ch.v1 - 0.07, vSeat - 0.05]) {
+      emitPathStrokes(
+        sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+        [[ch.u0 + 0.01, sv], [ch.u0 + 0.045, sv + 0.01]],
+        ch.d - 2, 35, 0.012, 0.004, P.chrome, WOOD_DARK, rng, { spread: 0.003 },
       );
     }
   }
 
-  // 5. Wooden Washstand Table & White Ceramic Pitcher (uP = 0.21..0.35, v = 0.24..0.52, d = 445 m)
-  for (let i = 0; i < 2200; i++) {
+  // 5. Sculpted Wooden Washstand Table on 4 Legs & White Ceramic Pitcher/Basin (uP = 0.21..0.35, v = 0.24..0.52, d = 305 m)
+  // Tabletop (v = 0.39..0.43)
+  for (let i = 0; i < 520; i++) {
     const uP = rng.range(0.21, 0.35);
-    const v = rng.range(0.24, 0.52);
-    const isPitcher = v > 0.43 && uP > 0.24 && uP < 0.32;
-    const cA = isPitcher ? P.zincWhite : mixHex(P.ochre, WOOD_DARK, rng.range(0.2, 0.65));
-    const cB = isPitcher ? P.cerulean : P.chrome;
+    const v = rng.range(0.39, 0.435);
     emitSurfaceStroke(
-      sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, 445 + rng.range(-12, 12),
-      rng.range(0.010, 0.020), rng.range(0.0032, 0.0058),
-      isPitcher ? tVert : tHoriz, nFront, cA, cB, rng,
-      { emissive: isPitcher ? 0.35 : 0.12 },
+      sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, 305 + rng.range(-5, 5),
+      0.014, 0.0045, tHoriz, nFront, mixHex(P.ochre, WOOD_DARK, rng.range(0.2, 0.6)), P.chrome, rng,
+      { flags: StrokeFlag.OUTLINE },
+    );
+  }
+  // 4 washstand legs descending to v = 0.24
+  for (const lu of [0.22, 0.25, 0.31, 0.34]) {
+    emitPathStrokes(
+      sink, BEDROOM_ASPECT, StrokeClass.HOUSE,
+      [[lu, 0.24], [lu, 0.40]],
+      302, 55, 0.013, 0.0042, WOOD_DARK, P.ochre, rng, { spread: 0.003 },
+    );
+  }
+  // White ceramic washbasin & pitcher + bottles on tabletop (uP = 0.24..0.32, v = 0.43..0.52)
+  for (let i = 0; i < 420; i++) {
+    const th = rng.range(0, Math.PI * 2);
+    const r = rng.range(0, 1);
+    const uP = 0.28 + 0.032 * Math.cos(th) * r;
+    const v = 0.47 + 0.042 * Math.sin(th) * r;
+    emitSurfaceStroke(
+      sink, BEDROOM_ASPECT, StrokeClass.HOUSE, uP, v, 298,
+      0.011, 0.0038, tVert, nFront, P.zincWhite, P.cerulean, rng, { flags: StrokeFlag.OUTLINE, emissive: 0.14 },
     );
   }
 
@@ -303,37 +360,57 @@ function genBedroomFurnitureAndWalls(sink: StrokeSink, rng: Rng): void {
 function buildBedroomUnderlays(mat: UnderlayMaterialFactory): Group {
   const g = new Group();
   g.name = 'underlays:bedroom';
-  // Floor quad
+  // Floor quad (behind GROUND floorboards 205..515 m)
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
     [[-0.04, 0.0, 208], [1.04, 0.0, 208], [0.80, 0.36, 520], [0.16, 0.36, 520]],
     mat,
-    0x6e4c30,
+    0x9e6c44,
     'bedroom-floor',
+    530,
   ));
-  // Left wall quad (pale lilac-violet backing)
+  // Pale lilac-violet plaster walls placed at d = 5850 m (behind HILL 2,200..4,800 m and HOUSE 220..535 m wall strokes,
+  // leaving the window portal uP = 0.35..0.45, v = 0.48..0.80 open to the starry sky)
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
-    [[-0.04, 0.16, 215], [0.18, 0.35, 525], [0.18, 0.98, 525], [-0.04, 0.98, 215]],
+    [[-0.06, 0.16, 5850], [0.35, 0.35, 5850], [0.35, 1.02, 5850], [-0.06, 1.02, 5850]],
     mat,
-    0x68548c,
+    0x8e78ba,
     'bedroom-wall-left',
+    5850,
   ));
-  // Right wall quad (pale lilac-violet backing)
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
-    [[0.76, 0.35, 525], [1.04, 0.16, 215], [1.04, 0.98, 215], [0.76, 0.98, 525]],
+    [[0.45, 0.35, 5850], [1.06, 0.16, 5850], [1.06, 1.02, 5850], [0.45, 1.02, 5850]],
     mat,
-    0x68548c,
+    0x8e78ba,
     'bedroom-wall-right',
+    5850,
   ));
-  // Scarlet bed core quad
+  g.add(buildCanvasQuadMesh(
+    BEDROOM_ASPECT,
+    [[0.34, 0.80, 5850], [0.46, 0.80, 5850], [0.46, 1.02, 5850], [0.34, 1.02, 5850]],
+    mat,
+    0x8e78ba,
+    'bedroom-wall-top',
+    5850,
+  ));
+  g.add(buildCanvasQuadMesh(
+    BEDROOM_ASPECT,
+    [[0.34, 0.35, 5850], [0.46, 0.35, 5850], [0.46, 0.48, 5850], [0.34, 0.48, 5850]],
+    mat,
+    0x8e78ba,
+    'bedroom-wall-sill',
+    5850,
+  ));
+  // Scarlet bed core quad (behind HOUSE bed strokes 215..465 m)
   g.add(buildCanvasQuadMesh(
     BEDROOM_ASPECT,
     [[0.58, 0.10, 210], [0.95, 0.10, 210], [0.92, 0.56, 470], [0.57, 0.56, 470]],
     mat,
-    0x7a1a12,
+    0xb52418,
     'bedroom-bed',
+    495,
   ));
   return g;
 }

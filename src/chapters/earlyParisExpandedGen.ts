@@ -15,7 +15,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, smoothstep, uFromPaint,
 } from './types';
 
@@ -158,7 +158,10 @@ export function generateWeaverChapter(
         cA = isFace
           ? shadeHex(mixHex(LINEN_CREAM, P.ochre, rng.range(0.35, 0.75)), rng.range(0.85, 1.10))
           : shadeHex(mixHex(P.prussian, LOOM_OAK, rng.range(0.20, 0.65)), rng.range(0.86, 1.14));
-        cB = isFace ? LOOM_WALNUT : LOOM_OAK;
+        cA = isFace
+          ? shadeHex(mixHex(LINEN_CREAM, P.ochre, rng.range(0.25, 0.65)), rng.range(0.92, 1.14))
+          : shadeHex(mixHex(0x28568e, P.prussian, rng.range(0.20, 0.65)), rng.range(0.90, 1.18));
+        cB = isFace ? LOOM_WALNUT : P.ochre;
         ang = Math.PI * 0.5 - 0.32 * uRel + rng.range(-0.18, 0.18);
       }
       T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
@@ -169,6 +172,21 @@ export function generateWeaverChapter(
       );
     }
   }
+  // Cottage window casement frame & 2x3 wooden mullions + loom chamfer highlights & pulley harness
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.68, 0.58], [0.86, 0.58], [0.86, 0.86], [0.68, 0.86]], 690, 18, 0.022, 0.006, LOOM_OAK, P.ochre, rng, { closed: true });
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.77, 0.58], [0.77, 0.86]], 688, 16, 0.020, 0.005, LOOM_OAK, P.ochre, rng);
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.68, 0.68], [0.86, 0.68]], 688, 14, 0.020, 0.005, LOOM_OAK, P.ochre, rng);
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.68, 0.77], [0.86, 0.77]], 688, 14, 0.020, 0.005, LOOM_OAK, P.ochre, rng);
+  // Loom frame ochre edge highlights, diagonal side rails & lower foot treadles
+  for (const uPost of posts) {
+    emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.CYPRESS, [[uPost + 0.012, 0.06], [uPost + 0.012, 0.90]], 158, 22, 0.024, 0.005, P.ochre, LOOM_WALNUT, rng);
+  }
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.14, 0.79], [0.86, 0.79]], 472, 28, 0.024, 0.0065, P.ochre, LOOM_OAK, rng);
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.14, 0.45], [0.86, 0.45]], 468, 28, 0.024, 0.0065, P.ochre, LOOM_OAK, rng);
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.16, 0.52], [0.36, 0.45]], 466, 14, 0.022, 0.006, P.ochre, LOOM_WALNUT, rng);
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.62, 0.45], [0.84, 0.52]], 466, 14, 0.022, 0.006, P.ochre, LOOM_WALNUT, rng);
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.34, 0.12], [0.58, 0.18]], 485, 16, 0.022, 0.006, P.ochre, LOOM_OAK, rng);
+  emitPathStrokes(sink, WEAVER_ASPECT, StrokeClass.HOUSE, [[0.36, 0.08], [0.60, 0.14]], 490, 16, 0.022, 0.006, P.ochre, LOOM_OAK, rng);
   // Luminous woven linen cloth, taut warp threads & wooden shuttle (WINDOW [465..560 m])
   for (let i = 0; i < 2000; i++) {
     const uP = rng.range(0.22, 0.62);
@@ -179,7 +197,7 @@ export function generateWeaverChapter(
     emitSurfaceStroke(
       sink, WEAVER_ASPECT, StrokeClass.WINDOW, uP, v, rng.range(468, 540),
       rng.range(0.013, 0.026), rng.range(0.0038, 0.0075), T_DIR, N_FRONT,
-      LINEN_CREAM, P.ochre, rng, { emissive: 0.75 },
+      LINEN_CREAM, P.ochre, rng, { emissive: 0.28 },
     );
   }
 
@@ -273,11 +291,19 @@ export function generateTowerChapter(
         STONE_BRICK, STONE_UMBER, rng, { flags: StrokeFlag.OUTLINE },
       );
     } else {
-      const side = (i & 1) === 0 ? 0.18 : 0.80;
-      const uP = side + rng.range(-0.12, 0.12);
-      const v = rng.range(0.32, 0.56);
+      const treeClusters = [
+        { u: 0.14, v: 0.42, rx: 0.08, ry: 0.09 },
+        { u: 0.24, v: 0.46, rx: 0.09, ry: 0.10 },
+        { u: 0.74, v: 0.44, rx: 0.08, ry: 0.09 },
+        { u: 0.84, v: 0.42, rx: 0.09, ry: 0.08 },
+      ];
+      const tc = treeClusters[i & 3];
+      const th = rng.range(0, Math.PI * 2);
+      const r = Math.pow(rng.next(), 0.65);
+      const uP = tc.u + r * tc.rx * Math.cos(th);
+      const v = tc.v + r * tc.ry * Math.sin(th);
       const d = rng.range(420, 780);
-      const ang = 1.25 + rng.range(-0.35, 0.35);
+      const ang = th + Math.PI * 0.5 + rng.range(-0.25, 0.25);
       T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
       emitSurfaceStroke(
         sink, TOWER_ASPECT, StrokeClass.GROVE, uP, v, d,
@@ -285,6 +311,11 @@ export function generateTowerChapter(
         mixHex(STONE_UMBER, P.cypressGreen, rng.range(0.25, 0.65)), TWILIGHT_OCHRE, rng,
       );
     }
+  }
+  // Gnarled churchyard tree trunks & branches on left and right
+  for (const tu of [0.16, 0.24, 0.75, 0.83]) {
+    emitPathStrokes(sink, TOWER_ASPECT, StrokeClass.HOUSE, [[tu, 0.31], [tu + 0.01, 0.42], [tu - 0.02, 0.50]], 490, 12, 0.020, 0.005, STONE_UMBER, TWILIGHT_OCHRE, rng);
+    emitPathStrokes(sink, TOWER_ASPECT, StrokeClass.HOUSE, [[tu + 0.01, 0.40], [tu + 0.04, 0.48]], 495, 8, 0.018, 0.0045, STONE_UMBER, TWILIGHT_OCHRE, rng);
   }
 
   // 4. Multi-depth Nuenen Romanesque Church Tower: stepped buttresses (585..635 m), brick tiers & belfry louvers (605..740 m), and slate spire
@@ -326,6 +357,10 @@ export function generateTowerChapter(
       cA, TWILIGHT_OCHRE, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
+  // Cloisonnist architectural contours of the stepped Romanesque tower, belfry arches & spire
+  emitPathStrokes(sink, TOWER_ASPECT, StrokeClass.CHURCH, [[0.355, 0.31], [0.37, 0.48], [0.382, 0.62], [0.39, 0.73], [0.48, 0.89], [0.57, 0.73], [0.578, 0.62], [0.59, 0.48], [0.605, 0.31]], 604, 14, 0.022, 0.006, 0x161210, STONE_BRICK, rng);
+  emitPathStrokes(sink, TOWER_ASPECT, StrokeClass.CHURCH, [[0.44, 0.58], [0.44, 0.68], [0.455, 0.705], [0.47, 0.68], [0.47, 0.58]], 604, 8, 0.018, 0.0055, 0x120e0c, TWILIGHT_OCHRE, rng);
+  emitPathStrokes(sink, TOWER_ASPECT, StrokeClass.CHURCH, [[0.49, 0.58], [0.49, 0.68], [0.505, 0.705], [0.52, 0.68], [0.52, 0.58]], 604, 8, 0.018, 0.0055, 0x120e0c, TWILIGHT_OCHRE, rng);
 
   // 5. Flock of 34 Circling Black Jackdaws (寒鴉) wheeling around the belfry and twilight sky (d = 460..760 m)
   for (let b = 0; b < 34; b++) {
@@ -454,50 +489,103 @@ export function generateSkullChapter(
     );
   }
 
-  // 2. Sculptural Bone-Ivory Cranium, Zygomatic Arch, Jaw, and Clavicles (HOUSE [470..820 m] & CYPRESS sockets)
+  // 2. Sculptural Bone-Ivory Cranium, Zygomatic Arch, Tapered Mandible Jaw, Cervical Spine & Curved Ribs (HOUSE [470..820 m])
   for (let i = 0; i < 16500; i++) {
-    const part = i % 4;
+    const part = i % 5;
     let uP: number, v: number, d: number, ang: number;
+    let tone = rng.range(0.15, 0.72);
     if (part < 2) {
-      // Cranium dome centered at (0.44, 0.66)
+      // Cranium dome centered at (0.44, 0.67) + prominent zygomatic cheekbone flare at v in 0.52..0.60
       const th = rng.range(0, Math.PI * 2);
-      const r = Math.pow(rng.next(), 0.65);
-      uP = 0.44 + r * 0.22 * Math.cos(th);
-      v = 0.66 + r * 0.19 * Math.sin(th);
+      const r = Math.pow(rng.next(), 0.62);
+      const cheekFlare = Math.sin(th) < -0.15 && Math.sin(th) > -0.85 ? 1.14 : 1.0;
+      uP = 0.44 + r * 0.21 * cheekFlare * Math.cos(th);
+      v = 0.67 + r * 0.18 * Math.sin(th);
       d = clamp(485 + 160 * r * r, 470, 690);
-      ang = th + Math.PI * 0.5 + rng.range(-0.2, 0.2);
+      ang = th + Math.PI * 0.5 + rng.range(-0.18, 0.18);
+      if (uP < 0.36 || v < 0.55) tone += 0.22;
     } else if (part === 2) {
-      // Jaw & teeth around (0.48, 0.44)
-      uP = 0.48 + rng.range(-0.13, 0.14);
-      v = 0.44 + rng.range(-0.09, 0.08);
-      d = rng.range(475, 580);
-      ang = rng.range(-0.3, 0.3);
+      // Tapered maxilla & U-curved mandible jaw (v in 0.34..0.54)
+      const sV = rng.next(); // 0 = chin (0.34), 1 = upper maxilla (0.54)
+      v = 0.34 + 0.20 * sV;
+      const jawHalfW = 0.068 + 0.055 * Math.sin(sV * Math.PI * 0.85);
+      const uRel = rng.range(-1, 1);
+      uP = 0.47 + 0.015 * (1 - sV) + uRel * jawHalfW;
+      // Hollow dark sub-zygomatic shadow on left cheek
+      const inCheekHollow = sV > 0.48 && uRel < -0.35;
+      if (inCheekHollow) tone = 0.88;
+      d = clamp(475 + 95 * (uRel * uRel), 472, 585);
+      ang = sV < 0.35 ? 0.35 * uRel : (Math.abs(uRel) > 0.6 ? Math.PI * 0.5 - 0.25 * uRel : rng.range(-0.15, 0.15));
+    } else if (part === 3) {
+      // Cervical spine column descending from skull base (uP ~ 0.39..0.44, v in 0.18..0.36)
+      const sV = rng.next();
+      v = 0.16 + 0.20 * sV;
+      const vertIdx = Math.floor(sV * 5);
+      const uSpine = 0.41 - 0.025 * (1 - sV);
+      uP = uSpine + rng.range(-0.042, 0.042);
+      d = rng.range(525, 620);
+      ang = (vertIdx & 1) ? 0.12 : -0.12;
+      tone = rng.range(0.35, 0.82);
     } else {
-      // Cervical vertebrae & rib/clavicle cage below (v in 0.06..0.34)
-      uP = 0.44 + rng.range(-0.28, 0.28);
-      v = rng.range(0.06, 0.34);
-      d = rng.range(520, 790);
-      ang = (uP < 0.44 ? -0.45 : 0.45) + rng.range(-0.25, 0.25);
+      // 4 pairs of curved thoracic ribs + S-curved clavicles with dark intercostal gaps (v in 0.05..0.31)
+      const ribIdx = i % 4; // 0..3 from top (clavicle/1st rib) to bottom
+      const side = (i & 4) ? 1 : -1;
+      const s = rng.next(); // 0 = spine/sternum center, 1 = outer shoulder/rib cage flank
+      const vRibBase = 0.28 - ribIdx * 0.058;
+      const ribSpan = (0.24 - ribIdx * 0.018) * side;
+      uP = 0.43 + s * ribSpan + rng.range(-0.012, 0.012);
+      const arch = 0.028 * Math.sin(s * Math.PI) * (ribIdx === 0 ? 0.6 : -1.0);
+      v = vRibBase + arch + rng.range(-0.011, 0.011);
+      d = clamp(510 + 180 * s * s, 505, 760);
+      ang = Math.atan2(arch, ribSpan * SKULL_ASPECT) + rng.range(-0.14, 0.14);
     }
-    const cA = shadeHex(mixHex(BONE_IVORY, BONE_OCHRE, rng.range(0.15, 0.75)), rng.range(0.86, 1.14));
+    const cA = shadeHex(mixHex(BONE_IVORY, BONE_OCHRE, clamp(tone, 0, 1)), rng.range(0.86, 1.14));
     T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
     emitSurfaceStroke(
       sink, SKULL_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.015, 0.032), rng.range(0.005, 0.010), T_DIR, N_FRONT,
+      rng.range(0.014, 0.028), rng.range(0.0048, 0.0092), T_DIR, N_FRONT,
       cA, VOID_BLACK, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Hollow eye sockets & nasal cavity (CYPRESS [155..225 m]) + White cigarette stick & glowing ember tip (WINDOW [462..510 m])
-  for (let i = 0; i < 2400; i++) {
-    const isLeft = (i & 1) === 0;
-    const th = rng.range(0, Math.PI * 2);
-    const uP = (isLeft ? 0.38 : 0.55) + 0.055 * Math.cos(th) * rng.range(0.3, 1.0);
-    const v = 0.58 + 0.050 * Math.sin(th) * rng.range(0.3, 1.0);
-    emitCanvasStroke(
-      sink, SKULL_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 220),
-      rng.range(0.014, 0.026), th + Math.PI * 0.5, rng.range(0.0045, 0.0085),
-      VOID_BLACK, BONE_OCHRE, rng, { flags: StrokeFlag.OUTLINE },
-    );
+  // Individual upper & lower teeth clamping the cigarette + anatomical skull contours
+  for (let tIdx = 0; tIdx < 7; tIdx++) {
+    const uTooth = 0.42 + tIdx * 0.019;
+    for (const vTooth of [0.435, 0.462]) {
+      for (let k = 0; k < 18; k++) {
+        T_DIR.set(0, 1, 0);
+        emitSurfaceStroke(
+          sink, SKULL_ASPECT, StrokeClass.HOUSE, uTooth + rng.range(-0.006, 0.006), vTooth + rng.range(-0.010, 0.010), 471,
+          0.013, 0.0045, T_DIR, N_FRONT, BONE_IVORY, VOID_BLACK, rng, { flags: StrokeFlag.OUTLINE },
+        );
+      }
+    }
+  }
+  emitPathStrokes(sink, SKULL_ASPECT, StrokeClass.HOUSE, [[0.24, 0.66], [0.27, 0.78], [0.44, 0.85], [0.61, 0.78], [0.64, 0.64], [0.59, 0.53], [0.56, 0.37], [0.47, 0.34], [0.39, 0.38], [0.34, 0.52]], 470, 12, 0.020, 0.0055, VOID_BLACK, BONE_OCHRE, rng, { closed: true });
+  emitPathStrokes(sink, SKULL_ASPECT, StrokeClass.HOUSE, [[0.19, 0.27], [0.32, 0.30], [0.43, 0.27], [0.56, 0.29], [0.68, 0.25]], 502, 16, 0.022, 0.0065, BONE_IVORY, VOID_BLACK, rng);
+  // Hollow eye sockets & triangular pyriform nasal cavity (CYPRESS [155..225 m]) + White cigarette stick & glowing ember tip (WINDOW [462..510 m])
+  for (let i = 0; i < 2700; i++) {
+    const isNose = i >= 2100;
+    if (isNose) {
+      const sV = rng.next();
+      const v = 0.49 + 0.065 * sV;
+      const uP = 0.485 + rng.range(-0.028 * (1 - 0.7 * sV), 0.028 * (1 - 0.7 * sV));
+      emitCanvasStroke(
+        sink, SKULL_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 215),
+        0.016, Math.PI * 0.5 + rng.range(-0.2, 0.2), 0.0055,
+        VOID_BLACK, BONE_OCHRE, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    } else {
+      const isLeft = (i & 1) === 0;
+      const th = rng.range(0, Math.PI * 2);
+      const r = Math.pow(rng.next(), 0.55);
+      const uP = (isLeft ? 0.38 : 0.55) + 0.056 * r * Math.cos(th);
+      const v = 0.59 + 0.048 * r * Math.sin(th);
+      emitCanvasStroke(
+        sink, SKULL_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 220),
+        rng.range(0.014, 0.026), th + Math.PI * 0.5, rng.range(0.005, 0.009),
+        VOID_BLACK, r > 0.82 ? BONE_OCHRE : VOID_BLACK, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
   }
   for (let i = 0; i < 1200; i++) {
     const s = rng.next();
@@ -618,13 +706,23 @@ export function generateGaletteChapter(
   }
 
   // 4. Autumn Montmartre Trees (GROVE [320..680 m]), Radet Mill House & Viewing Terrace (HOUSE [510..660 m])
+  const galetteTreeCrowns = [
+    { u: 0.12, v: 0.43, rx: 0.075, ry: 0.085 },
+    { u: 0.24, v: 0.44, rx: 0.080, ry: 0.090 },
+    { u: 0.64, v: 0.45, rx: 0.085, ry: 0.095 },
+    { u: 0.78, v: 0.43, rx: 0.090, ry: 0.085 },
+    { u: 0.88, v: 0.40, rx: 0.070, ry: 0.075 },
+  ];
   for (let i = 0; i < 3600; i++) {
     const isTree = i < 1800;
     if (isTree) {
-      const uP = (i < 900 ? rng.range(0.06, 0.34) : rng.range(0.56, 0.92));
-      const v = rng.range(0.32, 0.58);
+      const tc = galetteTreeCrowns[i % galetteTreeCrowns.length];
+      const th = rng.range(0, Math.PI * 2);
+      const r = Math.pow(rng.next(), 0.68);
+      const uP = tc.u + r * tc.rx * Math.cos(th);
+      const v = tc.v + r * tc.ry * Math.sin(th);
       const d = rng.range(340, 620);
-      const ang = rng.range(0, Math.PI * 2);
+      const ang = th + Math.PI * 0.5 + rng.range(-0.25, 0.25);
       T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
       emitSurfaceStroke(
         sink, GALETTE_ASPECT, StrokeClass.GROVE, uP, v, d,
@@ -632,16 +730,19 @@ export function generateGaletteChapter(
         mixHex(0x6e8c48, P.ochre, rng.range(0.2, 0.75)), MILL_TIMBER, rng,
       );
     } else {
-      // Adjoining Radet building & wooden viewing deck on the left of the windmill (uP = 0.16..0.38)
-      const uP = rng.range(0.16, 0.38);
-      const v = rng.range(0.38, 0.66);
+      // Adjoining Radet building & gabled red roof on the left of the windmill (uP = 0.18..0.38)
+      const uP = rng.range(0.18, 0.38);
+      const roofTop = 0.66 - 0.32 * Math.abs(uP - 0.28);
+      const v = rng.range(0.38, roofTop);
       const d = rng.range(520, 650);
-      const isRoof = v > 0.58;
-      T_DIR.set(isRoof ? 1 : 0, isRoof ? 0 : 1, 0);
+      const isRoof = v > 0.56;
+      const isWin = !isRoof && (Math.abs(uP - 0.24) < 0.018 || Math.abs(uP - 0.32) < 0.018) && v > 0.45 && v < 0.53;
+      const ang = isRoof ? (uP < 0.28 ? 0.32 : -0.32) : Math.PI * 0.5;
+      T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
       emitSurfaceStroke(
         sink, GALETTE_ASPECT, StrokeClass.HOUSE, uP, v, d,
         rng.range(0.014, 0.026), rng.range(0.0045, 0.0082), T_DIR, N_FRONT,
-        isRoof ? TRICOLOR_RED : RADET_PLASTER, MILL_TIMBER, rng, { flags: StrokeFlag.OUTLINE },
+        isWin ? P.prussian : isRoof ? TRICOLOR_RED : RADET_PLASTER, MILL_TIMBER, rng, { flags: StrokeFlag.OUTLINE },
       );
     }
   }
@@ -662,7 +763,6 @@ export function generateGaletteChapter(
       const v = rng.range(0.71, 0.79) + wave;
       const bandColor = sU < 0.33 ? TRICOLOR_BLUE : sU < 0.66 ? P.zincWhite : TRICOLOR_RED;
       T_DIR.set(1, 0.18 * Math.cos(sU * 6.0), 0).normalize();
-      // A daylight flag is cloth, not a lamp: a static solid (HOUSE) in its own colours, no emissive flicker.
       emitSurfaceStroke(
         sink, GALETTE_ASPECT, StrokeClass.HOUSE, uP, v, rng.range(548, 568),
         0.012, 0.0042, T_DIR, N_FRONT,
@@ -671,20 +771,24 @@ export function generateGaletteChapter(
     }
   }
 
-  // 6. Blute-Fin Timber Windmill Body & Trestle Base (CHURCH [615..745 m]) + 4 Lattice Windmill Sails (CYPRESS [155..238 m])
+  // 6. Blute-Fin Timber Windmill Body, Pitched Cap & Trestle Base (CHURCH [615..745 m]) + 4 Lattice Windmill Sails (CYPRESS [155..238 m])
   for (let i = 0; i < 5800; i++) {
-    const v = rng.range(0.40, 0.79);
-    const halfW = v < 0.52 ? 0.12 : 0.095;
+    const v = rng.range(0.40, 0.84);
+    const inCap = v > 0.75;
+    const halfW = inCap ? Math.max(0.01, 0.095 * (0.845 - v) / 0.095) : (v < 0.52 ? 0.115 : 0.090);
     const uP = 0.46 + rng.range(-halfW, halfW);
     const isTrestle = v < 0.52;
-    const ang = isTrestle ? ((i & 1) ? 1.15 : -1.15) : Math.PI * 0.5;
+    const ang = inCap ? (uP < 0.46 ? 0.65 : -0.65) : isTrestle ? ((i & 1) ? 1.15 : -1.15) : Math.PI * 0.5;
     T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
     emitSurfaceStroke(
       sink, GALETTE_ASPECT, StrokeClass.CHURCH, uP, v, rng.range(620, 740),
       rng.range(0.015, 0.028), rng.range(0.005, 0.009), T_DIR, N_FRONT,
-      shadeHex(MILL_TIMBER, rng.range(0.85, 1.15)), P.ochre, rng, { flags: StrokeFlag.OUTLINE },
+      inCap ? shadeHex(MILL_TIMBER, 0.72) : shadeHex(MILL_TIMBER, rng.range(0.85, 1.15)), P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
+  emitPathStrokes(sink, GALETTE_ASPECT, StrokeClass.CHURCH, [[0.37, 0.52], [0.37, 0.75], [0.46, 0.845], [0.55, 0.75], [0.55, 0.52]], 616, 14, 0.020, 0.0055, 0x22140a, P.ochre, rng, { closed: true });
+  emitPathStrokes(sink, GALETTE_ASPECT, StrokeClass.CHURCH, [[0.35, 0.40], [0.55, 0.52]], 616, 12, 0.020, 0.005, 0x22140a, FENCE_OCHRE, rng);
+  emitPathStrokes(sink, GALETTE_ASPECT, StrokeClass.CHURCH, [[0.57, 0.40], [0.37, 0.52]], 616, 12, 0.020, 0.005, 0x22140a, FENCE_OCHRE, rng);
   // 4 great wooden lattice sails radiating from hub (0.46, 0.76)
   for (let arm = 0; arm < 4; arm++) {
     const baseAng = 0.68 + arm * (Math.PI * 0.5);
@@ -792,7 +896,7 @@ export function generateSeineChapter(
         ? rng.range(0.36, 0.68)
         : rng.range(-0.02, 1.02);
     const v = isPier
-      ? rng.range(0.36, 0.59)
+      ? rng.range(0.32, 0.59)
       : isBackBridge
         ? rng.range(0.46, 0.51)
         : rng.range(0.51, 0.58);
@@ -801,15 +905,20 @@ export function generateSeineChapter(
       : isBackBridge
         ? rng.range(960, 1220)
         : rng.range(560, 880);
-    const ang = isPier ? Math.PI * 0.5 : 0;
+    const isStoneCourse = isPier && (Math.abs((v * 28) % 1 - 0.5) < 0.14);
+    const ang = isPier ? (isStoneCourse ? 0 : Math.PI * 0.5) : 0;
     T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
     emitSurfaceStroke(
       sink, SEINE_ASPECT, StrokeClass.HOUSE, uP, v, d,
       rng.range(0.014, 0.028), rng.range(0.0045, 0.0085), T_DIR, N_FRONT,
-      isPier ? PIER_CREAM : isBackBridge ? mixHex(PIER_CREAM, SEINE_AQUA, 0.35) : IRON_CRIMSON,
+      isPier ? (v > 0.50 ? shadeHex(PIER_CREAM, 0.72) : PIER_CREAM) : isBackBridge ? mixHex(PIER_CREAM, SEINE_AQUA, 0.35) : IRON_CRIMSON,
       P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
+  // Iron truss bridge deck chords, X-lattice girders & left stone embankment quay edge
+  emitPathStrokes(sink, SEINE_ASPECT, StrokeClass.HOUSE, [[-0.02, 0.58], [1.02, 0.58]], 545, 36, 0.024, 0.0055, LOCO_IRON, IRON_CRIMSON, rng);
+  emitPathStrokes(sink, SEINE_ASPECT, StrokeClass.HOUSE, [[-0.02, 0.51], [1.02, 0.51]], 545, 36, 0.024, 0.0055, LOCO_IRON, IRON_CRIMSON, rng);
+  emitPathStrokes(sink, SEINE_ASPECT, StrokeClass.HOUSE, [[0.0, 0.36], [0.30, 0.12], [0.16, 0.02]], 280, 22, 0.024, 0.0065, 0x5c462c, PIER_CREAM, rng);
 
   // 4. Steam Locomotive & Carriages on the Railway Bridge (uP = 0.44..0.66, v = 0.57..0.64, d = 575..660 m)
   //    + Volumetric White Steam Plume rising into the summer sky (uP = 0.48..0.64, v = 0.62..0.82, d = 560..920 m)
@@ -832,7 +941,7 @@ export function generateSeineChapter(
       emitSurfaceStroke(
         sink, SEINE_ASPECT, StrokeClass.WINDOW, uP, v, d,
         0.012, 0.0045, T_DIR, N_FRONT,
-        P.lemon, IRON_CRIMSON, rng, { emissive: 1.5 },
+        P.lemon, IRON_CRIMSON, rng, { emissive: 0.85 },
       );
     } else {
       emitSurfaceStroke(
@@ -842,33 +951,51 @@ export function generateSeineChapter(
       );
     }
   }
-  // Billowing white-and-pearl locomotive steam cloud (GROVE [560..920 m])
+  // Billowing pearl-and-sky locomotive steam cloud (GROVE [560..920 m], zero washout glare)
   for (let i = 0; i < 2400; i++) {
-    const s = Math.pow(rng.next(), 0.85); // 0 = smokestack (0.51, 0.64), 1 = high drifting puff (0.61, 0.80)
+    const s = Math.pow(rng.next(), 0.85);
     const th = rng.range(0, Math.PI * 2);
     const rad = (0.018 + 0.055 * s) * Math.sqrt(rng.next());
     const uP = 0.51 + 0.09 * s + rad * Math.cos(th);
     const v = 0.64 + 0.15 * s + rad * Math.sin(th) * 0.78;
     const d = 580 + 320 * s + rng.range(-20, 20);
     T_DIR.set(-Math.sin(th), Math.cos(th), 0).normalize();
-    const cA = shadeHex(mixHex(STEAM_WHITE, P.lemon, rng.range(0.05, 0.25)), rng.range(0.95, 1.08));
-    const cB = mixHex(SEINE_AQUA, STEAM_WHITE, 0.65);
+    const isRim = rad > (0.018 + 0.055 * s) * 0.72;
+    const cA = isRim
+      ? mixHex(SEINE_AQUA, P.cobalt, 0.35)
+      : shadeHex(mixHex(STEAM_WHITE, P.ochre, rng.range(0.08, 0.25)), rng.range(0.92, 1.05));
+    const cB = mixHex(SEINE_AQUA, STEAM_WHITE, 0.55);
     emitSurfaceStroke(
       sink, SEINE_ASPECT, StrokeClass.GROVE, uP, v, d,
       rng.range(0.014, 0.028), rng.range(0.005, 0.0095), T_DIR, N_FRONT,
-      cA, cB, rng, { emissive: 0.35 },
+      cA, cB, rng, { flags: isRim ? StrokeFlag.OUTLINE : StrokeFlag.NONE },
     );
   }
 
-  // 5. Woman in white-pink dress with glowing red parasol on left embankment (CYPRESS [160..215 m]) + Moored Rowboat (GROVE [245..320 m])
-  for (let i = 0; i < 1200; i++) {
-    const uP = 0.22 + rng.range(-0.025, 0.025);
-    const v = rng.range(0.24, 0.42);
-    emitCanvasStroke(
-      sink, SEINE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(160, 215),
-      rng.range(0.012, 0.022), v > 0.36 ? rng.range(-0.4, 0.4) : Math.PI * 0.5, rng.range(0.004, 0.0075),
-      v > 0.36 ? IRON_CRIMSON : PIER_CREAM, P.zincWhite, rng,
-    );
+  // 5. Contoured Woman in white-rose dress with domed red parasol on left embankment (CYPRESS [160..215 m]) + Moored Rowboat (GROVE [245..320 m])
+  for (let i = 0; i < 1400; i++) {
+    const isParasol = i >= 900;
+    if (isParasol) {
+      const th = rng.range(0.15, Math.PI - 0.15);
+      const r = rng.range(0.005, 0.036);
+      const uP = 0.215 + r * Math.cos(th);
+      const v = 0.36 + r * 0.68 * Math.sin(th);
+      emitCanvasStroke(
+        sink, SEINE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(160, 195),
+        0.014, th + Math.PI * 0.5, 0.0048,
+        IRON_CRIMSON, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    } else {
+      const sV = rng.next(); // 0 = hem (0.21), 1 = shoulders (0.36)
+      const v = 0.21 + 0.15 * sV;
+      const halfW = 0.024 * (1 - 0.58 * sV);
+      const uP = 0.21 + rng.range(-halfW, halfW);
+      emitCanvasStroke(
+        sink, SEINE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(165, 212),
+        rng.range(0.012, 0.022), Math.PI * 0.5 + rng.range(-0.15, 0.15), rng.range(0.004, 0.0075),
+        mixHex(PIER_CREAM, 0xe8a8a0, 0.35), P.zincWhite, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
   }
   for (let i = 0; i < 850; i++) {
     const uP = 0.78 + rng.range(-0.065, 0.065);
@@ -959,7 +1086,19 @@ export function generatePlumChapter(
     );
   }
 
-  // 3. Arched Wooden Bridge on Stilts & Umbrella Wayfarers (HOUSE & WINDOW [465..960 m]) + Japonisme Border (CYPRESS)
+  // 3. Arched Wooden Bridge on Stilts, Far-Bank Pine Groves & Umbrella Wayfarers (HOUSE & WINDOW [465..960 m]) + Japonisme Border (CYPRESS)
+  // Dark indigo-green pine & willow silhouette along far Sumida riverbank (v in 0.44..0.60)
+  for (let i = 0; i < 1600; i++) {
+    const uP = rng.range(0.05, 0.95);
+    const vMax = 0.50 + 0.08 * Math.max(0, Math.sin(uP * 5.2 + 0.4));
+    const v = rng.range(0.42, vMax);
+    T_DIR.set(Math.cos(1.2), Math.sin(1.2), 0);
+    emitSurfaceStroke(
+      sink, PLUM_ASPECT, StrokeClass.GROVE, uP, v, rng.range(880, 1280),
+      rng.range(0.015, 0.028), rng.range(0.005, 0.009), T_DIR, N_FRONT,
+      mixHex(HIRO_INDIGO, P.cypressGreen, rng.range(0.25, 0.65)), HIRO_AQUA, rng, { flags: StrokeFlag.OUTLINE },
+    );
+  }
   for (let i = 0; i < 6800; i++) {
     const isStilt = i >= 4200;
     const s = rng.next();
@@ -975,16 +1114,34 @@ export function generatePlumChapter(
       isStilt ? 0x6e4822 : HIRO_WOOD, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Glowing paper umbrellas on bridge (WINDOW [470..820 m])
-  for (let uIdx = 0; uIdx < 6; uIdx++) {
-    const s = 0.18 + uIdx * 0.12;
-    const vUmb = 0.21 + 0.28 * s + 0.07 * Math.sin(s * Math.PI);
-    for (let j = 0; j < 180; j++) {
-      T_DIR.set(1, 0, 0);
+  // Curved wooden bridge balustrade rails
+  emitPathStrokes(sink, PLUM_ASPECT, StrokeClass.HOUSE, [[0.04, 0.22], [0.28, 0.33], [0.52, 0.42], [0.76, 0.48], [0.96, 0.50]], 472, 14, 0.022, 0.0055, 0x3b2210, HIRO_WOOD, rng);
+  emitPathStrokes(sink, PLUM_ASPECT, StrokeClass.HOUSE, [[0.04, 0.16], [0.28, 0.27], [0.52, 0.36], [0.76, 0.42], [0.96, 0.44]], 472, 14, 0.022, 0.0055, 0x3b2210, HIRO_WOOD, rng);
+  // 5 Wayfarers in rain cloaks under domed Japanese wagasa paper umbrellas crossing the bridge (HOUSE & WINDOW [470..820 m])
+  for (let uIdx = 0; uIdx < 5; uIdx++) {
+    const s = 0.18 + uIdx * 0.15;
+    const vDeck = 0.19 + 0.28 * s + 0.07 * Math.sin(s * Math.PI);
+    const dWay = 472 + uIdx * 60;
+    // Indigo/straw rain-cloak body below umbrella
+    for (let j = 0; j < 75; j++) {
+      T_DIR.set(0, 1, 0);
       emitSurfaceStroke(
-        sink, PLUM_ASPECT, StrokeClass.WINDOW, s + rng.range(-0.022, 0.022), vUmb + rng.range(0, 0.028), 475 + uIdx * 55,
-        0.014, 0.005, T_DIR, N_FRONT,
-        (uIdx & 1) ? P.lemon : 0xd84828, P.zincWhite, rng, { emissive: 0.9 },
+        sink, PLUM_ASPECT, StrokeClass.HOUSE, s + rng.range(-0.012, 0.012), vDeck + rng.range(0.004, 0.038), dWay + 3,
+        0.013, 0.0045, T_DIR, N_FRONT,
+        (uIdx & 1) ? HIRO_INDIGO : 0x5c4224, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+    // Domed wagasa bamboo umbrella canopy
+    for (let j = 0; j < 130; j++) {
+      const th = rng.range(0.12, Math.PI - 0.12);
+      const r = rng.range(0.006, 0.032);
+      const uU = s + r * Math.cos(th);
+      const vU = vDeck + 0.032 + r * 0.58 * Math.sin(th);
+      T_DIR.set(-Math.sin(th), Math.cos(th) * 0.58, 0).normalize();
+      emitSurfaceStroke(
+        sink, PLUM_ASPECT, StrokeClass.WINDOW, uU, vU, dWay,
+        0.013, 0.0048, T_DIR, N_FRONT,
+        (uIdx % 3 === 0) ? P.lemon : (uIdx % 3 === 1) ? 0xd84828 : P.zincWhite, HIRO_WOOD, rng, { emissive: 0.35 },
       );
     }
   }
@@ -1128,6 +1285,15 @@ export function generateTanguyChapter(
       cA, cB, rng, { flags: Math.abs(uRel) > 0.82 ? StrokeFlag.OUTLINE : StrokeFlag.NONE },
     );
   }
+  // Cloisonnist portrait contours of Père Tanguy's straw hat, face, shoulders & background ukiyo-e motifs
+  emitPathStrokes(sink, TANGUY_ASPECT, StrokeClass.HOUSE, [[0.29, 0.70], [0.40, 0.68], [0.50, 0.675], [0.60, 0.68], [0.71, 0.70]], 466, 14, 0.020, 0.0055, P.prussian, HAT_STRAW, rng);
+  emitPathStrokes(sink, TANGUY_ASPECT, StrokeClass.HOUSE, [[0.38, 0.70], [0.41, 0.80], [0.50, 0.82], [0.59, 0.80], [0.62, 0.70]], 466, 12, 0.018, 0.005, P.prussian, HAT_STRAW, rng);
+  emitPathStrokes(sink, TANGUY_ASPECT, StrokeClass.HOUSE, [[0.16, 0.04], [0.22, 0.28], [0.34, 0.44], [0.42, 0.46]], 466, 16, 0.022, 0.006, P.prussian, COAT_COBALT, rng);
+  emitPathStrokes(sink, TANGUY_ASPECT, StrokeClass.HOUSE, [[0.58, 0.46], [0.66, 0.44], [0.78, 0.28], [0.84, 0.04]], 466, 16, 0.022, 0.006, P.prussian, COAT_COBALT, rng);
+  // Ukiyo-e motifs in left/right background prints (sakura branch upper-left, courtesan kimono upper-right, kabuki lower-left)
+  emitPathStrokes(sink, TANGUY_ASPECT, StrokeClass.SKY_BAND, [[0.04, 0.62], [0.16, 0.76], [0.26, 0.88]], 96000, 14, 0.022, 0.006, 0x3a2418, SAKURA_PINK, rng);
+  emitPathStrokes(sink, TANGUY_ASPECT, StrokeClass.SKY_BAND, [[0.78, 0.58], [0.82, 0.76], [0.86, 0.88], [0.90, 0.74], [0.92, 0.58]], 96000, 14, 0.022, 0.006, 0xc83428, P.cobalt, rng);
+  emitPathStrokes(sink, TANGUY_ASPECT, StrokeClass.SKY_BAND, [[0.08, 0.14], [0.14, 0.36], [0.20, 0.46], [0.26, 0.34]], 96000, 14, 0.022, 0.006, P.prussian, 0xd84830, rng);
 
   // Père Tanguy's kind eyes & double-breasted coat buttons (WINDOW [458..466 m])
   const tanguyAccents = [

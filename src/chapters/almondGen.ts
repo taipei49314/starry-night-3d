@@ -158,7 +158,7 @@ function genAlmondBlossoms(sink: StrokeSink, rng: Rng): void {
       const isBud = rng.next() < 0.22;
 
       if (isBud) {
-        // Unopened pink-blush almond bud
+        // Unopened pink-blush almond bud with dark sepal base
         for (let k = 0; k < 12; k++) {
           const ang = rng.range(0, TAU);
           emitCanvasStroke(
@@ -166,49 +166,55 @@ function genAlmondBlossoms(sink: StrokeSink, rng: Rng): void {
             uCenter + rng.range(-0.005, 0.005), vCenter + rng.range(-0.005, 0.005),
             dCluster + rng.range(-3, 3),
             0.011 * flowerScale, ang, 0.0045 * flowerScale,
-            PETAL_BLUSH, STAMEN_CRIMSON, rng, { emissive: 0.35 },
+            k < 4 ? STAMEN_CRIMSON : PETAL_BLUSH, BARK_DARK, rng, { emissive: 0.08, flags: StrokeFlag.OUTLINE },
           );
         }
         continue;
       }
 
-      // 5 rounded petals arranged radially around (uCenter, vCenter)
+      // 5 distinct rounded petals arranged radially around (uCenter, vCenter) with delicate Ukiyo-e rim contours
       const phase0 = rng.range(0, TAU);
       for (let p = 0; p < 5; p++) {
-        const pAng = phase0 + (p * TAU) / 5 + rng.range(-0.12, 0.12);
-        const uPetal = uCenter + (Math.cos(pAng) * petalRadius * 0.72) / ALMOND_ASPECT;
-        const vPetal = vCenter + Math.sin(pAng) * petalRadius * 0.72;
-        // 8 overlapping thick impasto strokes per petal
+        const pAng = phase0 + (p * TAU) / 5 + rng.range(-0.08, 0.08);
+        const uPetal = uCenter + (Math.cos(pAng) * petalRadius * 0.78) / ALMOND_ASPECT;
+        const vPetal = vCenter + Math.sin(pAng) * petalRadius * 0.78;
+        // 8 overlapping thick impasto strokes per petal, plus outer rim contour on s === 7
         for (let s = 0; s < 8; s++) {
-          const jAng = pAng + rng.range(-0.38, 0.38);
-          const rOff = petalRadius * rng.range(-0.22, 0.28);
-          const uS = uPetal + (Math.cos(jAng) * rOff) / ALMOND_ASPECT;
-          const vS = vPetal + Math.sin(jAng) * rOff;
+          const isRim = s === 7;
+          const jAng = isRim ? pAng + Math.PI * 0.5 : pAng + rng.range(-0.26, 0.26);
+          const rOff = isRim ? petalRadius * 0.32 : petalRadius * rng.range(-0.18, 0.24);
+          const uS = uPetal + (Math.cos(pAng) * rOff) / ALMOND_ASPECT;
+          const vS = vPetal + Math.sin(pAng) * rOff;
           const isBlush = s < 2 || rng.next() < 0.28;
-          const cA = isBlush ? mixHex(PETAL_WHITE, PETAL_BLUSH, rng.range(0.35, 0.85)) : PETAL_WHITE;
-          const cB = isBlush ? PETAL_BLUSH : PETAL_CREAM;
+          const cA = isRim
+            ? 0x7e6458
+            : isBlush
+              ? mixHex(PETAL_WHITE, PETAL_BLUSH, rng.range(0.35, 0.85))
+              : PETAL_WHITE;
+          const cB = isRim ? BARK_DARK : isBlush ? PETAL_BLUSH : PETAL_CREAM;
           tVec.set(Math.cos(jAng), Math.sin(jAng), 0).normalize();
           emitSurfaceStroke(
             sink, ALMOND_ASPECT, StrokeClass.HOUSE,
-            uS, vS, dCluster + rng.range(-4, 4),
-            petalRadius * rng.range(0.75, 1.10), petalRadius * rng.range(0.36, 0.54),
+            uS, vS, dCluster + rng.range(-3, 3),
+            petalRadius * (isRim ? 0.72 : rng.range(0.70, 0.98)), petalRadius * (isRim ? 0.24 : rng.range(0.34, 0.48)),
             tVec, nFront, cA, cB, rng,
-            { emissive: 0.42 },
+            { flags: isRim ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.08 },
           );
         }
       }
 
-      // Glowing crimson-and-lemon stamen heart in WINDOW class ([250..1,450 m])
+      // Crisp crimson-and-golden stamen heart in HOUSE/WINDOW class (zero bloom glare)
       const dStamen = clamp(dCluster - 3, 250, 1440);
-      for (let st = 0; st < 6; st++) {
-        const sAng = rng.range(0, TAU);
+      for (let st = 0; st < 7; st++) {
+        const sAng = (st * TAU) / 7 + rng.range(-0.15, 0.15);
+        const rSt = 0.0035 * flowerScale;
         emitCanvasStroke(
           sink, ALMOND_ASPECT, StrokeClass.WINDOW,
-          uCenter + rng.range(-0.003, 0.003), vCenter + rng.range(-0.003, 0.003),
+          uCenter + (Math.cos(sAng) * rSt) / ALMOND_ASPECT, vCenter + Math.sin(sAng) * rSt,
           dStamen,
-          0.007 * flowerScale, sAng, 0.0028 * flowerScale,
-          st < 3 ? P.lemon : STAMEN_CRIMSON, P.chrome, rng,
-          { emissive: 1.8 },
+          0.0075 * flowerScale, sAng, 0.0028 * flowerScale,
+          st < 4 ? STAMEN_CRIMSON : P.chrome, BARK_DARK, rng,
+          { emissive: 0.18 },
         );
       }
     }
@@ -224,7 +230,7 @@ function genAlmondBlossoms(sink: StrokeSink, rng: Rng): void {
     emitCanvasStroke(
       sink, ALMOND_ASPECT, StrokeClass.GROUND, uP, v, d,
       rng.range(0.007, 0.014), rng.range(0, TAU), rng.range(0.0032, 0.0055),
-      cA, cB, rng, { emissive: 0.45 },
+      cA, cB, rng, { emissive: 0.08 },
     );
   }
 }

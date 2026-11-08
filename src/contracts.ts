@@ -302,6 +302,7 @@ export interface DirectorFrame {
 export interface PostFrame {
   bloom: number; exposure: number; matte: number; align: number; smear: number;
   fade: number; time: number; canvasRectPx: [number, number, number, number]; // x, y, w, h in drawing-buffer px, y from bottom
+  pigmentPull?: number;
 }
 export interface PostChain {
   render(scene: Scene, camera: PerspectiveCamera, f: PostFrame): void;

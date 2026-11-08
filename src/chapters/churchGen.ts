@@ -11,7 +11,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -182,7 +182,7 @@ function genAuversChurchBody(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // 3b. Glowing Gothic Lancet Stained-Glass Windows (WINDOW [300..480 m])
+  // 3b. Gothic Lancet Stained-Glass Windows in Deep Ultramarine/Viridian with Pointed Stone Arch Frames (WINDOW & HOUSE)
   const windows = [
     { uP: 0.34, v0: 0.32, v1: 0.46, d: 345 },
     { uP: 0.44, v0: 0.31, v1: 0.46, d: 318 },
@@ -192,17 +192,25 @@ function genAuversChurchBody(sink: StrokeSink, rng: Rng): void {
     { uP: 0.47, v0: 0.58, v1: 0.69, d: 520 },
   ];
   for (const w of windows) {
-    for (let i = 0; i < 420; i++) {
-      const uP = w.uP + rng.range(-0.022, 0.022);
-      const v = rng.range(w.v0, w.v1);
-      const cA = rng.next() < 0.6 ? P.cerulean : P.blueGreen;
-      const cB = P.cobalt;
+    for (let i = 0; i < 380; i++) {
+      const s = rng.next();
+      const v = w.v0 + (w.v1 - w.v0) * s;
+      const archTap = s > 0.72 ? Math.max(0.004, 0.022 * (1 - (s - 0.72) / 0.28)) : 0.022;
+      const uP = w.uP + rng.range(-archTap, archTap);
+      const cA = (i % 3 === 0) ? P.ultramarine : (i % 3 === 1) ? P.cobalt : P.blueGreen;
+      const cB = P.prussian;
       emitCanvasStroke(
-        sink, CHURCH_ASPECT, StrokeClass.WINDOW, uP, v, w.d + rng.range(-4, 4),
-        0.011, 1.57 + rng.range(-0.15, 0.15), 0.0038,
-        cA, cB, rng, { emissive: 2.1 },
+        sink, CHURCH_ASPECT, StrokeClass.WINDOW, uP, v, w.d + rng.range(-3, 3),
+        0.011, 1.57 + rng.range(-0.12, 0.12), 0.0038,
+        cA, cB, rng, { emissive: 0.22 },
       );
     }
+    // Pointed Gothic arch stone frame around each lancet window
+    emitPathStrokes(
+      sink, CHURCH_ASPECT, StrokeClass.HOUSE,
+      [[w.uP - 0.024, w.v0], [w.uP - 0.024, w.v1 - 0.03], [w.uP, w.v1 + 0.008], [w.uP + 0.024, w.v1 - 0.03], [w.uP + 0.024, w.v0]],
+      w.d - 4, 85, 0.013, 0.0042, P.prussian, STONE_WARM, rng, { spread: 0.002 },
+    );
   }
 
   // 3c. Terracotta-Orange & Cobalt Tiled Roofs (HOUSE [310..590 m])
@@ -218,9 +226,20 @@ function genAuversChurchBody(sink: StrokeSink, rng: Rng): void {
       sink, CHURCH_ASPECT, StrokeClass.HOUSE, uP, v, d,
       rng.range(0.013, 0.025), rng.range(0.0040, 0.0072),
       tHoriz, nFront, cA, cB, rng,
-      { emissive: isOrangeTile ? 0.25 : 0.08 },
+      { emissive: isOrangeTile ? 0.12 : 0.05 },
     );
   }
+  // Cloisonnist dark Prussian-blue outlines along the writhing apse eaves, roof ridges & buttresses
+  emitPathStrokes(
+    sink, CHURCH_ASPECT, StrokeClass.HOUSE,
+    [[0.21, 0.46], [0.35, 0.495], [0.50, 0.51], [0.65, 0.495], [0.79, 0.46]],
+    315, 160, 0.015, 0.0048, P.prussian, TERRACOTTA, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, CHURCH_ASPECT, StrokeClass.HOUSE,
+    [[0.25, 0.56], [0.47, 0.63], [0.75, 0.56]],
+    330, 140, 0.015, 0.0048, P.prussian, TERRACOTTA, rng, { spread: 0.003 },
+  );
 
   // 3d. Soaring Gothic Bell-Tower & Spire (CHURCH class [580..750 m])
   for (let i = 0; i < 5400; i++) {
@@ -230,15 +249,26 @@ function genAuversChurchBody(sink: StrokeSink, rng: Rng): void {
     const uP = 0.47 + rng.range(-halfW, halfW);
     const d = clamp(620 + 65 * t + rng.range(-8, 8), 590, 740);
     const isEdge = Math.abs(uP - 0.47) > halfW * 0.74;
-    const cA = isEdge ? P.outline : shadeHex(mixHex(STONE_BLUE, STONE_WARM, rng.range(0.25, 0.75)), rng.range(0.88, 1.12));
+    const inBelfryWindow = v > 0.61 && v < 0.70 && (Math.abs(uP - 0.445) < 0.014 || Math.abs(uP - 0.495) < 0.014);
+    const cA = inBelfryWindow
+      ? P.prussian
+      : isEdge
+        ? P.outline
+        : shadeHex(mixHex(STONE_BLUE, STONE_WARM, rng.range(0.25, 0.75)), rng.range(0.88, 1.12));
     const cB = isEdge ? P.prussian : P.cobalt;
     emitSurfaceStroke(
       sink, CHURCH_ASPECT, StrokeClass.CHURCH, uP, v, d,
       rng.range(0.012, 0.024), rng.range(0.0035, 0.0065),
       tVert, nFront, cA, cB, rng,
-      { flags: isEdge ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: t > 0.75 ? 0.35 : 0.12 },
+      { flags: (isEdge || inBelfryWindow) ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.08 },
     );
   }
+  // Iron cross at spire apex (0.47, 0.89..0.93)
+  emitPathStrokes(
+    sink, CHURCH_ASPECT, StrokeClass.CHURCH,
+    [[0.47, 0.88], [0.47, 0.935]],
+    680, 35, 0.012, 0.0038, P.prussian, STONE_WARM, rng, { spread: 0.002 },
+  );
 }
 
 function buildChurchUnderlays(mat: UnderlayMaterialFactory): Group {

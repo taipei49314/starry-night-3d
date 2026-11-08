@@ -45,13 +45,15 @@ function genGardenMeadowBackdrop(sink: StrokeSink, rng: Rng): void {
   // Sun-drenched upper garden marigold & wildflower meadow (SKY_BAND [98..166 km])
   for (let i = 0; i < 16500; i++) {
     const uP = rng.range(-0.06, 1.06);
-    const v = rng.range(0.62, 1.04);
+    const v = rng.range(0.58, 1.04);
     const d = rng.range(98000, 166000);
-    const isMarigold = uP < 0.65;
+    // Organic diagonal garden wave instead of a straight vertical split at uP = 0.65
+    const marigoldBoundary = 0.72 - 0.35 * (v - 0.60) + 0.09 * Math.sin(v * 14.0 + uP * 6.0);
+    const isMarigold = uP + rng.range(-0.08, 0.08) < marigoldBoundary;
     const cA = isMarigold
       ? shadeHex(mixHex(MARIGOLD_MEADOW, P.lemon, rng.range(0.25, 0.85)), rng.range(0.92, 1.12))
       : shadeHex(mixHex(LEAF_SAGE, IRIS_LAVENDER, rng.range(0.25, 0.75)), rng.range(0.90, 1.12));
-    const cB = isMarigold ? SOIL_TERRACOTTA : P.zincWhite;
+    const cB = isMarigold ? SOIL_TERRACOTTA : MARIGOLD_MEADOW;
 
     emitCanvasStroke(
       sink, IRISES_ASPECT, StrokeClass.SKY_BAND, uP, v, d,
@@ -66,12 +68,12 @@ function genGardenMeadowBackdrop(sink: StrokeSink, rng: Rng): void {
 function genTerracottaSoilAndLeaves(sink: StrokeSink, rng: Rng): void {
   const nUp = new Vector3(0, 1, 0.14).normalize();
 
-  // Red-ochre and terracotta Provençal garden earth (GROUND [155..880 m])
+  // Red-ochre and terracotta Provençal garden earth (GROUND [515..1020 m], behind iris blossoms at 460..820 m)
   for (let i = 0; i < 16000; i++) {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.12);
-    const v = 0.002 + 0.64 * t;
-    const d = clamp(156 + 680 * t + rng.range(-8, 8), 154, 880);
+    const v = 0.002 + 0.68 * t;
+    const d = clamp(520 + 480 * t + rng.range(-8, 8), 515, 1020);
     // Left-foreground exposed terracotta soil path vs right-side dense leaf bed
     const isExposedSoil = uP < 0.42 - 0.28 * t || v < 0.14;
     const cA = isExposedSoil
@@ -149,29 +151,34 @@ function genIrisBlossoms(sink: StrokeSink, rng: Rng): void {
       const d = fl.d + rng.range(-6, 6);
 
       const isBeard = !isStandard && s < 0.36;
-      let cA: number, cB: number, em = 0.42;
+      const isPetalOutline = s > 0.84;
+      let cA: number, cB: number, em = 0.12;
       if (isBeard) {
         cA = P.chrome;
-        cB = P.lemon;
-        em = 1.65;
+        cB = SOIL_TERRACOTTA;
+        em = 0.22;
       } else if (fl.isWhite) {
-        cA = shadeHex(mixHex(P.zincWhite, IRIS_LAVENDER, rng.range(0.08, 0.28)), rng.range(0.96, 1.12));
-        cB = P.lemon;
-        em = 1.95;
+        cA = isPetalOutline
+          ? 0x5c7298
+          : shadeHex(mixHex(P.zincWhite, IRIS_LAVENDER, rng.range(0.08, 0.32)), rng.range(0.94, 1.08));
+        cB = isPetalOutline ? P.prussian : LEAF_SAGE;
+        em = 0.16;
       } else {
-        cA = shadeHex(
-          mixHex(isStandard ? IRIS_COBALT : IRIS_VIOLET, IRIS_LAVENDER, rng.range(0.15, 0.65)),
-          rng.range(0.88, 1.15),
-        );
+        cA = isPetalOutline
+          ? P.prussian
+          : shadeHex(
+            mixHex(isStandard ? IRIS_COBALT : IRIS_VIOLET, IRIS_LAVENDER, rng.range(0.15, 0.65)),
+            rng.range(0.88, 1.15),
+          );
         cB = P.ultramarine;
-        em = 0.48;
+        em = 0.12;
       }
 
       emitSurfaceStroke(
-        sink, IRISES_ASPECT, fl.isWhite || isBeard ? StrokeClass.WINDOW : StrokeClass.HOUSE, uP, v, d,
+        sink, IRISES_ASPECT, StrokeClass.HOUSE, uP, v, d,
         rng.range(0.010, 0.022), rng.range(0.0038, 0.0072),
         new Vector3(Math.cos(lobeAng), Math.sin(lobeAng), 0), nFront, cA, cB, rng,
-        { flags: s > 0.82 ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: em },
+        { flags: isPetalOutline ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: em },
       );
     }
   }
@@ -182,10 +189,11 @@ function buildIrisesUnderlays(mat: UnderlayMaterialFactory): Group {
   g.name = 'underlays:irises';
   g.add(buildCanvasQuadMesh(
     IRISES_ASPECT,
-    [[-0.04, 0.0, 158], [1.04, 0.0, 158], [1.02, 0.68, 860], [-0.02, 0.68, 860]],
+    [[-0.04, 0.0, 520], [1.04, 0.0, 520], [1.02, 0.62, 1040], [-0.02, 0.62, 1040]],
     mat,
     0x385e42,
     'irises-garden',
+    1080,
   ));
   return g;
 }

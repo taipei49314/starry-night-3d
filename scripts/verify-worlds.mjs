@@ -37,6 +37,11 @@ function startStaticServer(rootDir) {
       try {
         const url = new URL(req.url ?? '/', 'http://127.0.0.1');
         const relPath = url.pathname === '/' ? '/index.html' : url.pathname;
+        if (relPath === '/favicon.ico') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
         const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, '');
         const fullPath = path.join(rootDir, safePath);
         const data = await fs.readFile(fullPath);
@@ -111,6 +116,7 @@ async function main() {
 
   const browser = await chromium.launch({
     headless: true,
+    executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined,
     args: [
       '--use-gl=angle',
       '--use-angle=swiftshader',

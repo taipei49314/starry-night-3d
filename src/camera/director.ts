@@ -214,6 +214,18 @@ export class Director {
     return this.track.aspectAt ? this.track.aspectAt(t) : this.track.aspect;
   }
 
+  /** Exhibition display playback multiplier:
+   *  - Standalone Starry Night (96s track): 5.333x -> 18s crisp exhibition opening
+   *  - Standalone Companion painting (48s track): 4.0x -> 12s per painting
+   *  - 30-Act Odyssey / Theme Exhibition (30s/act): 3.75x -> 8s per painting (4:00 total for all 30 paintings, 1:20 for 10-painting theme)
+   *  - 5-Chapter Witness Journey (644s track): 3.6x -> 2m59s total (~7.5s per painting) */
+  private trackPaceScale(): number {
+    if (this._witnessMode) return 3.6;
+    if (this.track.actSeconds && this.track.loopSeconds > this.track.actSeconds) return 3.75;
+    if (this.track.loopSeconds >= 90) return 5.3333;
+    return 4.0;
+  }
+
   setCalm(on: boolean): void { this._calm = on; }
   setPaused(on: boolean): void { this._paused = on; }
   setWitnessMode(on: boolean): void {
@@ -394,14 +406,15 @@ export class Director {
     let analyticVel = false;
     switch (this._mode) {
       case 'cinematic': {
-        const dwellTimeScale = this.effectiveDwell ? 0.16 : 1.0;
+        const basePace = this.trackPaceScale();
+        const dwellTimeScale = this.effectiveDwell ? 0.22 : basePace;
         if (!cut && !this._paused) this.advanceLoop(dt * dwellTimeScale);
         this.cinematicPose(this.loopTime, dt, cut);
         if (this._paused) this.vel.set(0, 0, 0);
         else this.track.velocity(this.loopTime, this.vel).multiplyScalar(dwellTimeScale);
         analyticVel = true;
         this.track.env(this.loopTime, this.pos.distanceTo(EYE), this._calm, this.env);
-        if (!this.firstBoot && this.loopTime < 2) this.env.impastoGain = 1 + 0.15 * Math.sin((Math.PI * this.loopTime) / 2);
+        if (!this.firstBoot && this.loopTime < 2) this.env.impastoGain = 1 + 0.06 * Math.sin((Math.PI * this.loopTime) / 2);
         break;
       }
       case 'free': {
@@ -509,12 +522,15 @@ export class Director {
     const align = alignOf(this.pos, this.quat, this.fov, aspect, cAspect);
     if (this._mode === 'free') this.env.matte = align;
 
-    // stir the sky
+    // stir the sky only on intentional right-drag / Alt-drag in free mode
     const sa = this.input?.stirAt ?? null;
-    if (sa && this._mode === 'free') this.updateStir(sa.x, sa.y);
-    else this.stirStrength *= Math.exp(-dt / 1.5);
+    if (sa && this._mode === 'free') {
+      this.updateStir(sa.x, sa.y, 0.8);
+    } else {
+      this.stirStrength *= Math.exp(-dt / 1.5);
+    }
     const stir: [number, number, number, number] | null =
-      this.stirEver && this.stirStrength > 1e-3 ? [this.stirU, this.stirV, this.stirStrength, 0.08] : null;
+      this.stirEver && this.stirStrength > 1e-3 ? [this.stirU, this.stirV, this.stirStrength, 0.09] : null;
 
     const fade = this.fadeValue();
     const env: ShotEnvelope = { ...this.env, fade };
@@ -782,7 +798,7 @@ export class Director {
     e.dust += (smooth(0.5, 40, dist) - e.dust) * k;
   }
 
-  private updateStir(clientX: number, clientY: number): void {
+  private updateStir(clientX: number, clientY: number, strength = 1.0): void {
     const r = this.inputEl.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
     const nx = ((clientX - r.left) / r.width) * 2 - 1;
@@ -792,7 +808,7 @@ export class Director {
     if (!(c.d > 0)) return;
     this.stirU = c.u * CANVAS_ASPECT;
     this.stirV = c.v;
-    this.stirStrength = 1;
+    this.stirStrength = Math.max(this.stirStrength, strength);
     this.stirEver = true;
   }
 
@@ -814,7 +830,10 @@ export class Director {
       ? projectEyeRing(this.camera, w, h, f.align)
       : { x: 0, y: 0, r: 0, visible: false, opacity: 0 };
     const shotName = this.track.shots[f.shot]?.name ?? '';
-    const hudLine = `${f.mode}${this._paused ? ' (paused)' : ''}${this.freeLock ? ' (locked)' : ''} · t ${f.loopTime.toFixed(1)} s · shot ${f.shot + 1} (${shotName}) · fov ${this.fov.toFixed(1)}°` +
+    const pace = this.trackPaceScale();
+    const dispTime = f.loopTime / pace;
+    const dispTotal = loopLen / pace;
+    const hudLine = `${f.mode}${this._paused ? ' (paused)' : ''}${this.freeLock ? ' (locked)' : ''} · t ${dispTime.toFixed(1)} s · shot ${f.shot + 1} (${shotName}) · fov ${this.fov.toFixed(1)}°` +
       `${f.calm ? ' · calm' : ''}${f.warpK !== 1 ? ` · warp ${f.warpK.toFixed(1)}` : ''}` +
       `${this._mode === 'free' ? ` · speed 2^${this.input?.speedExp ?? 0}` : ''}`;
     this.ui.render({
@@ -822,8 +841,8 @@ export class Director {
       hudLine,
       hintOpacity: hint,
       ring,
-      loopTime: f.loopTime,
-      loopSeconds: loopLen,
+      loopTime: dispTime,
+      loopSeconds: dispTotal,
       shotName,
       shotIndex: f.shot,
       mode: f.mode,

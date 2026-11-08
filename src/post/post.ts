@@ -107,6 +107,7 @@ export function createPost(renderer: WebGLRenderer, u: SharedUniforms, q: Qualit
       lu.uLensSmear.value = f.smear;
       lu.uLensFade.value = f.fade;
       lu.uLensExposure.value = f.exposure;
+      if (lu.uLensPigmentPull) lu.uLensPigmentPull.value = f.pigmentPull ?? 1;
       const r = f.canvasRectPx;
       lu.uCanvasRect.value.set(r[0], r[1], r[2], r[3]);
 

@@ -76,17 +76,19 @@ void main() {
   float minWpx = emisFoot ? 1.5 : (cls == CLS_CHURCH ? 1.6 : 0.0);
   float minLpx = emisFoot ? 2.0 : (cls == CLS_CHURCH ? 2.2 : 0.0);
 
-  // ---- 2. animate in canvas space (all periods divide 96 s)
+  // ---- 2. animate in canvas space (ultra-serene museum clock: 8x slower, subtle breathing amplitude to prevent any dizziness)
+  float tBreath = uTime * 0.12;
+  float ampCalm = 0.25 * mix(0.25, 1.0, uAlign);
   if (kind == ANIM_VORTEX) {
     if (abs(a1.y) > 1e-7) {
       // Canvas-placed eddy stroke (companion worlds: church, crows, skull): swirl tangentially along its stroke vector
-      float k = 0.35 * sin(SN_TAU * uTime / 12.0 + SN_TAU * seed);
+      float k = 0.35 * ampCalm * sin(SN_TAU * tBreath / 12.0 + SN_TAU * seed);
       uv += vec2(a1.x / CANVAS_ASPECT, a1.y) * k;
     } else {
       float q1h = floor(a3.y * 0.5);
       int vi = clamp(int(q1h), 0, N_VORT - 1);
       float arm = a3.y - 2.0 * q1h;
-      float sig = fract(a3.z - uTime / 24.0);
+      float sig = fract(a3.z - tBreath / 24.0);
       vec2 tH; float dlS;
       armPoint(vi, arm, sig, a3.w, uv, d, tH, dlS);
       d *= 1.0 + 0.02 * (seed - 0.5);
@@ -106,9 +108,8 @@ void main() {
     vec2 cH; float rho; float dr;
     ringGeom(si, float(ki), cH, rho, dr);
     float spinDir = (ki - (ki / 2) * 2) == 0 ? 1.0 : -1.0;
-    float turns = float(1 + ki - (ki / 3) * 3);
     vec2 rel = vec2(a0.x * CANVAS_ASPECT - cH.x, a0.y - cH.y);
-    float ang = atan(rel.y, rel.x) + spinDir * SN_TAU * turns * uTime / LOOP_SECONDS;
+    float ang = atan(rel.y, rel.x) + spinDir * SN_TAU * 0.25 * uTime / LOOP_SECONDS;
     float rr = rho * (1.0 + 0.04 * a3.w);
     vec2 cs = vec2(cos(ang), sin(ang));
     uv = hToUv(cH + rr * cs);
@@ -122,18 +123,18 @@ void main() {
     dlnd = 0.0;
   } else if (kind == ANIM_BAND) {
     int bandIdx = clamp(int(a3.z + 0.5), 0, 3);
-    float k = 0.5 * a3.y * sin(SN_TAU * uTime / STK_BAND_T[bandIdx] + SN_TAU * a3.w);
+    float k = 0.5 * ampCalm * a3.y * sin(SN_TAU * tBreath / STK_BAND_T[bandIdx] + SN_TAU * a3.w);
     uv += vec2(a1.x / CANVAS_ASPECT, a1.y) * k;
   } else if (kind == ANIM_CYPRESS) {
-    uv.x += 0.004 * sin(SN_TAU * uTime / 6.0 + 5.0 * a0.y + SN_TAU * seed) * clamp(a0.y, 0.0, 1.0);
-    if (a3.w != 0.0) uv.y += a3.w * sin(SN_TAU * uTime / 1.5 + SN_TAU * a3.z);
+    uv.x += 0.004 * ampCalm * sin(SN_TAU * tBreath / 6.0 + 5.0 * a0.y + SN_TAU * seed) * clamp(a0.y, 0.0, 1.0);
+    if (a3.w != 0.0) uv.y += a3.w * ampCalm * sin(SN_TAU * tBreath / 2.5 + SN_TAU * a3.z);
   } else if (kind == ANIM_JET) {
     if (abs(a1.y) > 1e-7) {
       // Canvas-placed rain / wind filament (e.g. Hiroshige Bridge in the Rain): slide along stroke tangent
-      float rainPhase = fract(seed + uTime / 2.0) - 0.5;
-      uv += vec2(a1.x / CANVAS_ASPECT, a1.y) * (rainPhase * 0.85);
+      float rainPhase = fract(seed + tBreath / 2.0) - 0.5;
+      uv += vec2(a1.x / CANVAS_ASPECT, a1.y) * (rainPhase * 0.45 * ampCalm);
     } else {
-      float sig = fract(a3.y + uTime / 8.0);
+      float sig = fract(a3.y + tBreath / 8.0);
       vec2 tH;
       jetPoint(sig, a3.z, uv, d, tH);
       d *= 1.0 + a3.w;
@@ -148,13 +149,14 @@ void main() {
       alphaMul *= smoothstep(0.0, 0.05, sig) * smoothstep(1.0, 0.95, sig);
     }
   } else if (kind == ANIM_FLICKER) {
-    emissive *= 0.85 + 0.15 * sin(SN_TAU * uTime / 4.0 + 6.283 * seed);
+    emissive *= 0.92 + 0.08 * sin(SN_TAU * tBreath / 4.0 + 6.283 * seed);
   }
 
-  // ---- 3. stir the sky (h-units about uStir.xy)
-  if (CLASS_SKY[cls] > 0.5 && uStir.z > 0.0) {
+  // ---- 3. stir the sky & organic foliage (h-units about uStir.xy)
+  float stirW = CLASS_SKY[cls] > 0.5 ? 1.0 : ((cls == CLS_CYPRESS || cls == CLS_GROVE || cls == CLS_GROUND) ? 0.38 : 0.0);
+  if (stirW > 0.0 && uStir.z > 0.0) {
     vec2 q = uvToH(uv) - uStir.xy;
-    float ang = 1.2 * uStir.z * exp(-dot(q, q) / max(uStir.w * uStir.w, 1e-8));
+    float ang = 1.2 * stirW * uStir.z * exp(-dot(q, q) / max(uStir.w * uStir.w, 1e-8));
     mat2 R = rot2(ang);
     uv = hToUv(uStir.xy + R * q);
     dH = R * dH;
@@ -169,13 +171,15 @@ void main() {
   float Lw = length(Tv);
   vec3 T = Tv / max(Lw, 1e-9);
 
-  // ---- 5. storm (uniform branch)
+  // ---- 5. storm & spiral constellation transition (uniform branch)
   if (uScatter != 0.0 || (uSnapTime >= 0.0 && uScatterAtSnap != 0.0)) {
     vec2 snapOrigin = uSkyMode < 0.05 ? STAR[0].xy : uvToH(worldToCanvas(uMoonPos).xy);
     float amp = uSnapTime < 0.0 ? uScatter
       : uScatterAtSnap * spring(uTime - uSnapTime - 0.9 * length(uvToH(uv) - snapOrigin), seed);
     vec3 Pc = stkC2W(uv, d);
-    vec3 D = amp * 0.05 * d * stormField(Pc / (0.15 * d) + 7.0 * seed, uTime);
+    vec2 relC = uvToH(uv) - vec2(0.5 * CANVAS_ASPECT, 0.5);
+    vec3 swirlVec = uEyeBasis * vec3(-relC.y, relC.x, 0.0);
+    vec3 D = amp * 0.05 * d * (stormField(Pc / (0.15 * d) + 7.0 * seed, uTime) + 0.42 * swirlVec);
     float dl = length(D);
     if (dl > 1e-9) T = normalize(T + 0.8 * amp * D / dl);
     vec3 Pm0 = 0.5 * (PA + PB) + D;
@@ -239,16 +243,7 @@ void main() {
   vec3 PvU = Pv;
   Pv = stkWarp(Pv);
 
-  // ---- 8. velocity stretch
-  if (uVelStretch > 0.5) {
-    float vl = length(uCamVel);
-    if (vl > 1e-4) {
-      float stretch = min(vl * (1.0 / 60.0) * 1.5, 3.0 * LwW);
-      if (sv < 0.5) Pv -= uCamVel / vl * stretch * (0.5 - sv) * 2.0;
-      // thin the stretched streak to keep its energy, but never let near solids or the cypress turn see-through
-      if (cls != CLS_CYPRESS && CLASS_SOLID[cls] < 0.5) alphaMul *= max(0.5, 1.0 / (1.0 + stretch / LwW));
-    }
-  }
+  // ---- 8. velocity stretch (disabled for gallery viewing comfort: strokes stay crisp without motion-blur streaking)
 
   // ---- 9. overdraw guards
   float kpx = uViewportH / 1080.0;
@@ -258,9 +253,10 @@ void main() {
     : kind == ANIM_VORTEX ? 1.0 - smoothstep(0.35 * uViewportH, 0.8 * uViewportH, Lpx)
     : 1.0 - smoothstep(180.0 * kpx, 320.0 * kpx, Lpx);
   bool minFoot = minLpx > 0.0;                 // already at least minLpx long: no low-end fade, no sub-pixel cull
-  // near-lens guard: a stroke closer than a few of its own lengths dissolves (wider window for the streaming vortex
-  // walls, whose strokes otherwise pass the lens as long translucent planks)
-  vec2 nearG = kind == ANIM_VORTEX ? (under ? vec2(4.0, 10.0) : vec2(2.5, 6.0)) : vec2(0.8, 2.5);
+  // near-lens guard: widen softly when off-E so foreground strokes dissolve before flashing past the viewer's peripheral vision
+  vec2 nearG = kind == ANIM_VORTEX
+    ? (under ? vec2(4.0, 10.0) : vec2(2.5, 6.0))
+    : mix(vec2(2.4, 5.8), vec2(0.8, 2.5), uAlign);
   alphaMul *= (minFoot ? 1.0 : smoothstep(1.5, 4.0, Lpx)) * upper * smoothstep(nearG.x, nearG.y, dist / max(Lw, 1e-9));
   // extended sky (SKY_GEN_EXT): dissolve toward the generated extent's edge so wide shots never see its rectangle
   // the wind jet is a 3D-only motif in Starry Night: from the painter's eye it would read as a scratch across the canvas

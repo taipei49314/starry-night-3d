@@ -420,10 +420,10 @@ export function generateCafeChapter(
     [[-0.06, 0.16, 470], [0.43, 0.22, 1020], [0.41, 0.62, 1020], [-0.06, 0.86, 470]],
     mat, 0x8a5a18, 'cafeWallCore',
   ));
-  // Right street wall backing quad
+  // Right street wall backing quad (aligned outside the central sky canyon and distant corridor)
   underlays.add(buildCanvasQuadMesh(
     CAFE_ASPECT,
-    [[0.56, 0.20, 1450], [1.06, 0.14, 525], [1.06, 0.88, 525], [0.58, 0.72, 1450]],
+    [[0.62, 0.20, 1450], [1.06, 0.14, 525], [1.06, 0.88, 525], [0.80, 0.84, 1450]],
     mat, 0x162244, 'cafeRightCore',
   ));
   // Cobblestone & terrace ground backing quad

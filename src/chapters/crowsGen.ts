@@ -64,25 +64,34 @@ function genStormSky(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // Three bruised white-and-cerulean storm cloud eddies (EDDY class [42..92 km])
+  // Nine interconnected rolling storm-cloud banks across the entire 2:1 horizon (EDDY class [42..92 km])
   const cloudCenters = [
-    { uP: 0.22, v: 0.78, rx: 0.14, ry: 0.09, d: 52000 },
-    { uP: 0.58, v: 0.72, rx: 0.16, ry: 0.10, d: 46000 },
-    { uP: 0.84, v: 0.82, rx: 0.13, ry: 0.08, d: 58000 },
+    { uP: 0.08, v: 0.82, rx: 0.24, ry: 0.085, d: 54000, dark: false },
+    { uP: 0.24, v: 0.74, rx: 0.26, ry: 0.095, d: 50000, dark: false },
+    { uP: 0.40, v: 0.84, rx: 0.25, ry: 0.085, d: 48000, dark: true },
+    { uP: 0.56, v: 0.72, rx: 0.28, ry: 0.095, d: 45000, dark: false },
+    { uP: 0.72, v: 0.80, rx: 0.26, ry: 0.090, d: 52000, dark: true },
+    { uP: 0.88, v: 0.76, rx: 0.24, ry: 0.085, d: 56000, dark: false },
+    { uP: 0.16, v: 0.60, rx: 0.26, ry: 0.075, d: 62000, dark: true },
+    { uP: 0.50, v: 0.58, rx: 0.28, ry: 0.075, d: 60000, dark: true },
+    { uP: 0.82, v: 0.62, rx: 0.26, ry: 0.075, d: 64000, dark: false },
   ];
   for (const cl of cloudCenters) {
-    for (let i = 0; i < 2200; i++) {
-      const r = Math.pow(rng.next(), 0.7);
+    for (let i = 0; i < 950; i++) {
+      const r = Math.pow(rng.next(), 0.72);
       const th = rng.range(0, Math.PI * 2);
       const uP = cl.uP + r * cl.rx * Math.cos(th);
       const v = cl.v + r * cl.ry * Math.sin(th);
+      if (v < crowsHorizonV(uP) + 0.02) continue;
       const d = cl.d + rng.range(-3500, 3500);
-      const tang = th + Math.PI * 0.5 + rng.range(-0.25, 0.25);
-      const cA = mixHex(P.zincWhite, P.cerulean, 0.25 + 0.55 * r);
-      const cB = mixHex(P.cobalt, P.ultramarine, rng.range(0.2, 0.7));
+      const tang = 0.28 * Math.sin(uP * 9.0 + v * 6.0) + 0.35 * Math.cos(th);
+      const cA = cl.dark
+        ? shadeHex(mixHex(STORM_BLACK, P.cobalt, rng.range(0.25, 0.75)), rng.range(0.86, 1.12))
+        : shadeHex(mixHex(P.cobalt, 0x9cb4d8, (1 - r * 0.65) * 0.65), rng.range(0.88, 1.12));
+      const cB = cl.dark ? P.prussian : P.ultramarine;
       emitCanvasStroke(
         sink, CROWS_ASPECT, StrokeClass.EDDY, uP, v, d,
-        rng.range(0.016, 0.032), tang, rng.range(0.005, 0.0095),
+        rng.range(0.018, 0.036), tang, rng.range(0.0055, 0.010),
         cA, cB, rng,
       );
     }
@@ -122,21 +131,24 @@ function genWheatAndPaths(sink: StrokeSink, rng: Rng): void {
     // Left path: uL(v) = 0.22 - 0.56 * v (for v < 0.34)
     // Center path: uC(v) = 0.49 + 0.045 * Math.sin(v * 11.0) (for v < 0.43)
     // Right path: uR(v) = 0.78 + 0.52 * v (for v < 0.35)
-    const wScale = Math.max(0.18, 1 - t * 0.78);
+    const wScale = Math.max(0.42, 1 - t * 0.52);
     const dL = v < 0.34 ? Math.abs(uP - (0.22 - 0.56 * v)) / (0.065 * wScale) : 99;
     const dC = v < 0.43 ? Math.abs(uP - (0.49 + 0.045 * Math.sin(v * 11.0))) / (0.075 * wScale) : 99;
     const dR = v < 0.35 ? Math.abs(uP - (0.78 + 0.52 * v)) / (0.065 * wScale) : 99;
     const minP = Math.min(dL, dC, dR);
 
     let cA: number, cB: number, ang: number;
+    let dStroke = d;
     if (minP < 0.68) {
-      // Crimson-sienna dirt track
+      // Crimson-sienna dirt track (placed in front of wheat stalks at d = 154..195 m so all 3 paths cut boldly up the field)
+      dStroke = 154 + 40 * t + rng.range(-2, 2);
       const pathDir = dL === minP ? 2.15 : dR === minP ? 0.98 : 1.57 - 0.35 * Math.cos(v * 11.0);
       ang = pathDir + rng.range(-0.16, 0.16);
       cA = shadeHex(mixHex(PATH_CRIMSON, PATH_SIENNA, rng.range(0.2, 0.8)), rng.range(0.88, 1.15));
       cB = mixHex(P.ochre, GRASS_VIRIDIAN, rng.range(0.2, 0.6));
     } else if (minP < 1.18) {
       // Viridian-emerald grass shoulder bordering each path
+      dStroke = 160 + 48 * t + rng.range(-2, 2);
       ang = 1.35 + rng.range(-0.35, 0.35);
       cA = shadeHex(mixHex(GRASS_VIRIDIAN, GRASS_LIME, rng.range(0.2, 0.8)), rng.range(0.88, 1.14));
       cB = mixHex(P.cypressGreen, P.ochre, rng.range(0.2, 0.6));
@@ -155,7 +167,7 @@ function genWheatAndPaths(sink: StrokeSink, rng: Rng): void {
 
     const scale = clamp(1.22 - 0.52 * t, 0.48, 1.22);
     emitCanvasStroke(
-      sink, CROWS_ASPECT, StrokeClass.GROUND, uP, v, d,
+      sink, CROWS_ASPECT, StrokeClass.GROUND, uP, v, dStroke,
       rng.range(0.013, 0.027) * scale, ang, rng.range(0.0036, 0.0068) * scale,
       cA, cB, rng,
       { q1: N.x, q2: N.y, q3: N.z },
@@ -197,8 +209,8 @@ function genFlockOfCrows(sink: StrokeSink, rng: Rng): void {
         const vS = vCenter + ry;
         const slope = side * 0.42 * Math.cos(f * Math.PI * 0.82);
         const strokeAng = Math.atan2(slope, side) + tilt + rng.range(-0.08, 0.08);
-        const wStroke = wingSpan * (0.22 - 0.10 * f);
-        const lStroke = wingSpan * 0.36;
+        const wStroke = wingSpan * (0.28 - 0.11 * f);
+        const lStroke = wingSpan * 0.42;
 
         if (isNear) {
           emitCanvasStroke(

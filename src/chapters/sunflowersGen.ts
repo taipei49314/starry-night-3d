@@ -13,7 +13,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -134,9 +134,30 @@ function genTableAndVase(sink: StrokeSink, rng: Rng): void {
       sink, SUNFLOWERS_ASPECT, StrokeClass.WINDOW, uP, v, 462,
       0.008, 0.0030,
       tHoriz, nFront, P.cobalt, P.prussian, rng,
-      { emissive: 0.85 },
+      { emissive: 0.25 },
     );
   }
+  // Bold Cloisonnist cobalt-blue & sienna contours framing the two-toned vase and table horizon
+  emitPathStrokes(
+    sink, SUNFLOWERS_ASPECT, StrokeClass.HOUSE,
+    [[0.365, 0.08], [0.305, 0.22], [0.295, 0.30], [0.345, 0.41]],
+    460, 120, 0.015, 0.0052, P.cobalt, P.prussian, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, SUNFLOWERS_ASPECT, StrokeClass.HOUSE,
+    [[0.635, 0.08], [0.695, 0.22], [0.705, 0.30], [0.655, 0.41]],
+    460, 120, 0.015, 0.0052, 0x8e4218, P.cobalt, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, SUNFLOWERS_ASPECT, StrokeClass.HOUSE,
+    [[0.30, 0.255], [0.50, 0.245], [0.70, 0.255]],
+    458, 110, 0.015, 0.005, P.cobalt, STEM_EMERALD, rng, { spread: 0.0025 },
+  );
+  emitPathStrokes(
+    sink, SUNFLOWERS_ASPECT, StrokeClass.HOUSE,
+    [[0.365, 0.08], [0.50, 0.072], [0.635, 0.08]],
+    458, 90, 0.015, 0.005, 0x5c2412, P.cobalt, rng, { spread: 0.0025 },
+  );
 }
 
 /** 3. Fifteen Sculptural 3D Sunflowers & Viridian Stems (GROVE, HOUSE & WINDOW). */
@@ -180,53 +201,67 @@ function genFifteenSunflowers(sink: StrokeSink, rng: Rng): void {
         sink, SUNFLOWERS_ASPECT, StrokeClass.GROVE, uP, v, d,
         rng.range(0.011, 0.022), ang, rng.range(0.0038, 0.0068),
         cA, CHROME_DEEP, rng,
-        { emissive: 0.22 },
+        { emissive: 0.08 },
       );
     }
   }
 
   // Sculptural Sunflower Seed Discs & Flaming Ray Petals (HOUSE & WINDOW [456..645 m])
+  const GOLDEN_ANGLE = 2.399963229728653;
   for (const bl of blooms) {
-    // 1) Central seed disc
-    const nDisc = 520;
+    // 1) Central seed disc arranged in a Fibonacci phyllotaxis spiral (zero blowout, rich mahogany/amber/emerald relief)
+    const nDisc = 620;
     for (let i = 0; i < nDisc; i++) {
-      const ang = rng.range(0, Math.PI * 2);
-      const rad = Math.sqrt(rng.next()) * bl.r * 0.54;
+      const f = (i + 0.5) / nDisc;
+      const ang = i * GOLDEN_ANGLE + rng.range(-0.08, 0.08);
+      const rad = Math.sqrt(f) * bl.r * 0.56;
       const uP = bl.u + Math.cos(ang) * rad;
       const v = bl.v + Math.sin(ang) * rad * 0.88;
       const d = bl.d - 4 + rng.range(-4, 4);
+      const isOuterRing = f > 0.72;
       const cA = bl.darkCore
-        ? shadeHex(mixHex(SEED_MAHOGANY, AMBER_ORANGE, rng.range(0.15, 0.65)), rng.range(0.88, 1.15))
-        : shadeHex(mixHex(AMBER_ORANGE, CHROME_DEEP, rng.range(0.25, 0.75)), rng.range(0.92, 1.14));
-      const cB = bl.darkCore ? AMBER_ORANGE : STEM_EMERALD;
-
-      emitSurfaceStroke(
-        sink, SUNFLOWERS_ASPECT, StrokeClass.WINDOW, uP, v, d,
-        rng.range(0.009, 0.018), rng.range(0.0038, 0.0068),
-        tRad, nFront, cA, cB, rng,
-        { emissive: bl.darkCore ? 1.35 : 1.75 },
-      );
-    }
-
-    // 2) Flaming outer ray petals radiating around the seed disc
-    const nPetals = 760;
-    for (let i = 0; i < nPetals; i++) {
-      const petalIdx = i % 22;
-      const baseAng = (petalIdx / 22) * Math.PI * 2 + rng.range(-0.09, 0.09);
-      const rFrac = rng.range(0.45, 1.12);
-      const rad = bl.r * rFrac;
-      const droop = bl.hanging ? -0.015 * rFrac : 0;
-      const uP = bl.u + Math.cos(baseAng) * rad;
-      const v = bl.v + Math.sin(baseAng) * rad * 0.88 + droop;
-      const d = bl.d + rng.range(-6, 8);
-      const cA = shadeHex(mixHex(CHROME_DEEP, P.lemon, rng.range(0.25, 0.85)), rng.range(0.92, 1.14));
-      const cB = AMBER_ORANGE;
+        ? (isOuterRing
+          ? shadeHex(mixHex(AMBER_ORANGE, SEED_MAHOGANY, rng.range(0.25, 0.75)), rng.range(0.88, 1.12))
+          : shadeHex(mixHex(SEED_MAHOGANY, 0x2e1208, rng.range(0.2, 0.65)), rng.range(0.84, 1.12)))
+        : (isOuterRing
+          ? shadeHex(mixHex(STEM_EMERALD, AMBER_ORANGE, rng.range(0.3, 0.75)), rng.range(0.88, 1.12))
+          : shadeHex(mixHex(AMBER_ORANGE, 0xb85814, rng.range(0.25, 0.75)), rng.range(0.88, 1.12)));
+      const cB = bl.darkCore ? AMBER_ORANGE : SEED_MAHOGANY;
+      const swirlTang = ang + Math.PI * 0.35;
+      tRad.set(Math.cos(swirlTang), Math.sin(swirlTang), 0).normalize();
 
       emitSurfaceStroke(
         sink, SUNFLOWERS_ASPECT, StrokeClass.HOUSE, uP, v, d,
-        rng.range(0.012, 0.024), rng.range(0.0040, 0.0075),
-        new Vector3(Math.cos(baseAng), Math.sin(baseAng), 0), nFront, cA, cB, rng,
-        { flags: rFrac > 0.92 ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.55 },
+        rng.range(0.009, 0.018), rng.range(0.0040, 0.0072),
+        tRad, nFront, cA, cB, rng,
+        { flags: isOuterRing ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.08, kappa: 0.28 },
+      );
+    }
+
+    // 2) Flaming outer ray petals radiating around the seed disc with S-curve twist & warm sienna/amber Cloisonnist tips
+    const nPetals = 880;
+    for (let i = 0; i < nPetals; i++) {
+      const petalIdx = i % 24;
+      const rFrac = rng.range(0.42, 1.14);
+      const sTwist = 0.22 * Math.sin((rFrac - 0.42) * 4.2 + petalIdx * 0.7);
+      const baseAng = (petalIdx / 24) * Math.PI * 2 + sTwist + rng.range(-0.07, 0.07);
+      const rad = bl.r * rFrac;
+      const droop = bl.hanging ? -0.016 * rFrac * rFrac : 0;
+      const uP = bl.u + Math.cos(baseAng) * rad;
+      const v = bl.v + Math.sin(baseAng) * rad * 0.88 + droop;
+      const d = bl.d + rng.range(-6, 8);
+      const isTip = rFrac > 0.88;
+      const cA = isTip
+        ? shadeHex(mixHex(AMBER_ORANGE, 0xb85414, rng.range(0.25, 0.7)), rng.range(0.88, 1.10))
+        : shadeHex(mixHex(CHROME_DEEP, AMBER_ORANGE, rng.range(0.15, 0.55)), rng.range(0.90, 1.12));
+      const cB = isTip ? SEED_MAHOGANY : P.lemon;
+      const tangAng = baseAng + 0.28 * Math.cos((rFrac - 0.42) * 4.2);
+
+      emitSurfaceStroke(
+        sink, SUNFLOWERS_ASPECT, StrokeClass.HOUSE, uP, v, d,
+        rng.range(0.013, 0.026), rng.range(0.0044, 0.0082),
+        new Vector3(Math.cos(tangAng), Math.sin(tangAng), 0), nFront, cA, cB, rng,
+        { flags: isTip ? StrokeFlag.OUTLINE : StrokeFlag.NONE, emissive: 0.10, kappa: 0.34 },
       );
     }
   }
@@ -235,12 +270,32 @@ function genFifteenSunflowers(sink: StrokeSink, rng: Rng): void {
 function buildSunflowersUnderlays(mat: UnderlayMaterialFactory): Group {
   const g = new Group();
   g.name = 'underlays:sunflowers';
+  // Radiant sulfur-lemon wall backing placed behind SKY_BAND (98-166 km) so the 18,500 basket-weave wall strokes shine
   g.add(buildCanvasQuadMesh(
     SUNFLOWERS_ASPECT,
-    [[-0.04, 0.0, 160], [1.04, 0.0, 160], [0.96, 0.88, 560], [0.04, 0.88, 560]],
+    [[-0.08, 0.22, 220000], [1.08, 0.22, 220000], [1.08, 1.06, 220000], [-0.08, 1.06, 220000]],
     mat,
-    0xdba628,
-    'sunflowers-backing',
+    SULFUR_WALL,
+    'sunflowers-wall-backing',
+    220000,
+  ));
+  // Golden-ochre tabletop backing quad below the horizon line (v <= 0.25)
+  g.add(buildCanvasQuadMesh(
+    SUNFLOWERS_ASPECT,
+    [[-0.06, -0.02, 160], [1.06, -0.02, 160], [1.06, 0.25, 520], [-0.06, 0.25, 520]],
+    mat,
+    VASE_OCHRE,
+    'sunflowers-table-backing',
+    540,
+  ));
+  // Warm cream-gold ceramic vase core backing (confined strictly inside the vase body so no dark trapezoid protrudes behind the blooms)
+  g.add(buildCanvasQuadMesh(
+    SUNFLOWERS_ASPECT,
+    [[0.38, 0.16, 515], [0.62, 0.16, 515], [0.64, 0.42, 535], [0.36, 0.42, 535]],
+    mat,
+    0xf4e478,
+    'sunflowers-bouquet-backing',
+    545,
   ));
   return g;
 }

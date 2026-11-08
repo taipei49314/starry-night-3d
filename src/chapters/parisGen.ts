@@ -11,7 +11,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -171,37 +171,55 @@ function genHaussmannAndTrees(sink: StrokeSink, rng: Rng): void {
     const uP = side < 0 ? 0.06 + 0.32 * tRecede : 0.94 - 0.38 * tRecede;
     const v = rng.range(0.30 + 0.12 * tRecede, 0.72 - 0.22 * tRecede);
     const d = 465 + 980 * tRecede;
-    const cA = rng.next() < 0.6 ? P.lemon : SKY_PASTEL_BLUE;
+    const cA = rng.next() < 0.6 ? HAUSSMANN_SLATE : SKY_PASTEL_BLUE;
     emitCanvasStroke(
       sink, PARIS_ASPECT, StrokeClass.WINDOW, uP, v, d,
       0.010, 1.57, 0.0035,
-      cA, P.zincWhite, rng, { emissive: 1.6 },
+      cA, P.zincWhite, rng, { emissive: 0.22 },
     );
   }
+  // Haussmannian roof cornices & wrought-iron balcony perspective lines
+  emitPathStrokes(
+    sink, PARIS_ASPECT, StrokeClass.HOUSE,
+    [[0.02, 0.78], [0.38, 0.54]],
+    520, 140, 0.013, 0.0042, HAUSSMANN_SLATE, P.prussian, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, PARIS_ASPECT, StrokeClass.HOUSE,
+    [[0.98, 0.78], [0.56, 0.54]],
+    520, 140, 0.013, 0.0042, HAUSSMANN_SLATE, P.prussian, rng, { spread: 0.003 },
+  );
 
-  // Rows of budding spring boulevard trees lining both sidewalks (GROVE [240..1,450 m])
+  // Rows of budding spring boulevard trees lining both sidewalks with rounded organic crowns (GROVE [240..1,450 m])
   for (let i = 0; i < 9500; i++) {
     const side = rng.next() < 0.5 ? -1 : 1;
-    const tRecede = rng.next();
-    const uCenter = side < 0 ? 0.16 + 0.24 * tRecede : 0.82 - 0.28 * tRecede;
-    const vBase = 0.22 + 0.19 * tRecede;
+    const treeIdx = i % 6;
+    const tRecede = (treeIdx + 0.15 * rng.range(-1, 1)) / 5.5;
+    const tClamped = clamp(tRecede, 0.02, 0.98);
+    const uCenter = side < 0 ? 0.16 + 0.24 * tClamped : 0.82 - 0.28 * tClamped;
+    const vBase = 0.22 + 0.19 * tClamped;
     const isCrown = rng.next() < 0.76;
-    const uP = uCenter + rng.range(-0.055, 0.055) * (1 - 0.55 * tRecede) * (isCrown ? 1 : 0.18);
+    const scale = 1 - 0.48 * tClamped;
+    const th = rng.range(0, Math.PI * 2);
+    const r = Math.pow(rng.next(), 0.7);
+    const uP = isCrown
+      ? uCenter + r * 0.058 * scale * Math.cos(th)
+      : uCenter + rng.range(-0.008, 0.008) * scale;
     const v = isCrown
-      ? vBase + rng.range(0.10, 0.34) * (1 - 0.45 * tRecede)
-      : vBase + rng.range(0.0, 0.12) * (1 - 0.45 * tRecede);
-    const d = 260 + 1080 * tRecede + rng.range(-10, 10);
+      ? vBase + (0.21 + r * 0.12 * Math.sin(th)) * scale
+      : vBase + rng.range(0.0, 0.14) * scale;
+    const d = 260 + 1080 * tClamped + rng.range(-10, 10);
     const cA = isCrown
       ? shadeHex(mixHex(SPRING_BUD, P.lemon, rng.range(0.15, 0.55)), rng.range(0.90, 1.14))
-      : HAUSSMANN_SLATE;
+      : 0x3b2c22;
     const cB = isCrown ? SKY_PASTEL_BLUE : P.ochre;
-    const ang = isCrown ? rng.range(0, Math.PI * 2) : 1.57 + rng.range(-0.1, 0.1);
+    const ang = isCrown ? th + Math.PI * 0.5 : 1.57 + rng.range(-0.08, 0.08);
 
     emitCanvasStroke(
       sink, PARIS_ASPECT, StrokeClass.GROVE, uP, v, d,
       rng.range(0.010, 0.020), ang, rng.range(0.0035, 0.0065),
       cA, cB, rng,
-      { emissive: isCrown ? 0.28 : 0.08 },
+      { emissive: 0.08 },
     );
   }
 }

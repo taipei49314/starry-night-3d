@@ -108,6 +108,38 @@ export function pushChapterStroke(sink: StrokeSink, r: StrokeRecord): void {
   sink.push(r);
 }
 
+function shouldAutoUnderlayer(cls: StrokeClass, flags: number, strokeIdx: number): boolean {
+  if (flags !== StrokeFlag.NONE) return false;
+  if (
+    cls !== StrokeClass.SKY_BAND
+    && cls !== StrokeClass.HILL
+    && cls !== StrokeClass.GROUND
+    && cls !== StrokeClass.GROVE
+    && cls !== StrokeClass.HOUSE
+    && cls !== StrokeClass.CYPRESS
+  ) {
+    return false;
+  }
+  return (strokeIdx % 6) === 0;
+}
+
+function stabilizeGalleryNormal(qx: number, qy: number, qz: number): [number, number, number] {
+  if (qx === 0 && qy === 0 && qz === 0) return [0, 0, 0];
+  const nx = qx * 0.24;
+  const ny = qy * 0.24 + 0.10;
+  const nz = Math.abs(qz) * 0.24 + 0.88;
+  const inv = 1 / (Math.hypot(nx, ny, nz) || 1);
+  return [nx * inv, ny * inv, nz * inv];
+}
+
+function clampDaylightEmissive(cls: StrokeClass, rawEmissive: number): number {
+  if (rawEmissive <= 0.42) return rawEmissive;
+  if (cls === StrokeClass.WINDOW || cls === StrokeClass.STAR_CORE || cls === StrokeClass.MOON) {
+    return Math.min(rawEmissive, 2.2);
+  }
+  return 0.42 + 0.25 * (rawEmissive - 0.42);
+}
+
 /** Emit a canvas-space stroke (non-solid or CYPRESS/BAND/STAR_CORE/UNDERPAINT) at painting coordinate (uP, v). */
 export function emitCanvasStroke(
   sink: StrokeSink,
@@ -134,23 +166,30 @@ export function emitCanvasStroke(
 ): void {
   const effCls = nearSolidClass(cls, d);
   const [d0, d1] = CLASS_INFO[effCls].dRange;
+  const rawFlags = opts?.flags ?? StrokeFlag.NONE;
+  const autoUnder = shouldAutoUnderlayer(effCls, rawFlags, sink.count);
+  const dTarget = autoUnder ? d * 1.004 + 1.5 : d;
+  const isOutline = (rawFlags & StrokeFlag.OUTLINE) !== 0;
+  const lGain = isOutline ? 1.06 : 1.15;
+  const wGain = isOutline ? 1.12 : (effCls === StrokeClass.GROUND ? 1.42 : 1.28);
+  const [nq1, nq2, nq3] = stabilizeGalleryNormal(opts?.q1 ?? 0, opts?.q2 ?? 0, opts?.q3 ?? 0);
   _rec.u = uFromPaint(uP, aspect);
   _rec.v = v;
-  _rec.d = clamp(d, d0 + 2, d1 - 2);
+  _rec.d = clamp(dTarget, d0 + 2, d1 - 2);
   _rec.cls = effCls;
-  _rec.flags = opts?.flags ?? StrokeFlag.NONE;
-  _rec.du = L * Math.cos(ang);
-  _rec.dv = L * Math.sin(ang);
+  _rec.flags = autoUnder ? (rawFlags | StrokeFlag.UNDERLAYER) : rawFlags;
+  _rec.du = L * lGain * Math.cos(ang);
+  _rec.dv = L * lGain * Math.sin(ang);
   _rec.dlnd = opts?.dlnd ?? 0;
-  _rec.w = w;
+  _rec.w = w * wGain;
   _rec.colA = packSrgb(colA);
   _rec.colB = packSrgb(colB);
-  _rec.emissive = opts?.emissive ?? 0;
+  _rec.emissive = clampDaylightEmissive(effCls, opts?.emissive ?? 0);
   _rec.seed = rng.next();
   _rec.kappa = opts?.kappa ?? rng.range(-0.22, 0.22);
-  _rec.q1 = opts?.q1 ?? 0;
-  _rec.q2 = opts?.q2 ?? 0;
-  _rec.q3 = opts?.q3 ?? 0;
+  _rec.q1 = nq1;
+  _rec.q2 = nq2;
+  _rec.q3 = nq3;
   sink.push(_rec);
 }
 
@@ -179,34 +218,41 @@ export function emitSurfaceStroke(
 ): void {
   const effCls = nearSolidClass(cls, d);
   const [d0, d1] = CLASS_INFO[effCls].dRange;
-  const dc = clamp(d, d0 + 8, d1 - 8);
+  const rawFlags = opts?.flags ?? StrokeFlag.NONE;
+  const autoUnder = shouldAutoUnderlayer(effCls, rawFlags, sink.count);
+  const dTarget = autoUnder ? d * 1.004 + 1.5 : d;
+  const dc = clamp(dTarget, d0 + 8, d1 - 8);
+  const isOutline = (rawFlags & StrokeFlag.OUTLINE) !== 0;
+  const lGain = isOutline ? 1.06 : 1.15;
+  const wGain = isOutline ? 1.12 : (effCls === StrokeClass.GROUND ? 1.42 : 1.28);
   const u = uFromPaint(uP, aspect);
   canvasToWorld(u, v, dc, _c);
   _t.copy(tangentWorld).normalize();
   _n.copy(normalWorld).normalize();
-  const Lw = Lh * K_D * dc;
+  const [nq1, nq2, nq3] = stabilizeGalleryNormal(_n.x, _n.y, _n.z);
+  const Lw = Lh * lGain * K_D * dc;
   _a.copy(_c).addScaledVector(_t, -0.5 * Lw);
   _b.copy(_c).addScaledVector(_t, 0.5 * Lw);
   const s = segmentToStroke(_a, _b);
   const dA = s.d * Math.exp(-0.5 * s.dlnd);
   const dB = s.d * Math.exp(0.5 * s.dlnd);
   _rec.cls = effCls;
-  _rec.flags = opts?.flags ?? StrokeFlag.NONE;
-  _rec.w = wh;
+  _rec.flags = autoUnder ? (rawFlags | StrokeFlag.UNDERLAYER) : rawFlags;
+  _rec.w = wh * wGain;
   _rec.colA = packSrgb(colA);
   _rec.colB = packSrgb(colB);
-  _rec.emissive = opts?.emissive ?? 0;
+  _rec.emissive = clampDaylightEmissive(effCls, opts?.emissive ?? 0);
   _rec.seed = rng.next();
   _rec.kappa = opts?.kappa ?? rng.range(-0.18, 0.18);
-  _rec.q1 = _n.x;
-  _rec.q2 = _n.y;
-  _rec.q3 = _n.z;
+  _rec.q1 = nq1;
+  _rec.q2 = nq2;
+  _rec.q3 = nq3;
   if (dA < d0 + 1 || dB < d0 + 1 || dA > d1 - 1 || dB > d1 - 1 || !Number.isFinite(s.u + s.v + s.du + s.dv)) {
     _rec.u = u;
     _rec.v = v;
     _rec.d = dc;
-    _rec.du = Lh * _t.x;
-    _rec.dv = Lh * _t.y;
+    _rec.du = Lh * lGain * _t.x;
+    _rec.dv = Lh * lGain * _t.y;
     _rec.dlnd = 0;
     sink.push(_rec);
     return;
@@ -218,6 +264,42 @@ export function emitSurfaceStroke(
   _rec.dv = s.dv;
   _rec.dlnd = s.dlnd;
   sink.push(_rec);
+}
+
+/** Emit a multi-stroke Van Gogh Cloisonnist contour or impasto path along a polyline of painting coordinates (uP, v). */
+export function emitPathStrokes(
+  sink: StrokeSink,
+  aspect: number,
+  cls: StrokeClass,
+  pts: readonly (readonly [number, number])[],
+  d: number,
+   strokesPerSeg: number,
+  L: number,
+  w: number,
+  colA: number,
+  colB: number,
+  rng: Rng,
+  opts?: { jitter?: number; spread?: number; flags?: number; emissive?: number; closed?: boolean },
+): void {
+  const nSeg = opts?.closed ? pts.length : pts.length - 1;
+  const jit = opts?.spread ?? opts?.jitter ?? 0.004;
+  const flags = opts?.flags ?? StrokeFlag.OUTLINE;
+  for (let i = 0; i < nSeg; i++) {
+    const [u0, v0] = pts[i];
+    const [u1, v1] = pts[(i + 1) % pts.length];
+    const ang = Math.atan2(v1 - v0, (u1 - u0) * aspect);
+    for (let j = 0; j < strokesPerSeg; j++) {
+      const t = (j + rng.range(0.15, 0.85)) / strokesPerSeg;
+      const uP = u0 + (u1 - u0) * t + rng.range(-jit, jit);
+      const v = v0 + (v1 - v0) * t + rng.range(-jit, jit);
+      emitCanvasStroke(
+        sink, aspect, cls, uP, v, d + rng.range(-4, 4),
+        L * rng.range(0.86, 1.16), ang + rng.range(-0.09, 0.09), w * rng.range(0.88, 1.14),
+        shadeHex(colA, rng.range(0.92, 1.08)), colB, rng,
+        { flags, emissive: opts?.emissive ?? 0 },
+      );
+    }
+  }
 }
 
 /** Emit a multi-ring star horn at custom painting coordinate (uP, v) using STAR_CORE (12-16 km) + SKY_BAND outer rings. */
@@ -236,7 +318,8 @@ export function emitCustomStar(
 ): void {
   const cx = uFromPaint(uP, aspect) * CANVAS_ASPECT;
   const cy = v;
-  // 1. White-hot radial core spikes in STAR_CORE
+  const effGain = Math.min(gain, 1.15);
+  // 1. White-hot radial core spikes in STAR_CORE (controlled emissive so concentric brushstroke rings stay crisp)
   const nSpikes = Math.round(140 * gain);
   for (let j = 0; j < nSpikes; j++) {
     const th = (TAU * (j + rng.next())) / nSpikes;
@@ -245,8 +328,8 @@ export function emitCustomStar(
     const len = r1 - r0;
     const mid = 0.5 * (r0 + r1);
     const t = clamp01((r1 / rhoCore - 0.55) / 0.5);
-    const ca = mixHex(PALETTE.zincWhite, tintHex, 0.08 + 0.45 * t);
-    const cb = mixHex(PALETTE.zincWhite, PALETTE.chrome, 0.25 * t);
+    const ca = mixHex(PALETTE.zincWhite, tintHex, 0.16 + 0.52 * t);
+    const cb = mixHex(tintHex, PALETTE.chrome, 0.35 * t);
     pushChapterStroke(sink, {
       u: (cx + mid * Math.cos(th)) / CANVAS_ASPECT,
       v: cy + mid * Math.sin(th),
@@ -259,7 +342,7 @@ export function emitCustomStar(
       w: rhoCore * rng.range(0.28, 0.46),
       colA: packSrgb(ca),
       colB: packSrgb(cb),
-      emissive: 5.5 * gain,
+      emissive: 1.65 * effGain,
       seed: rng.next(),
       kappa: rng.range(-0.18, 0.18),
       q1: 0, q2: 0, q3: 0,
@@ -271,7 +354,7 @@ export function emitCustomStar(
     ? [PALETTE.lemon, PALETTE.chrome, tintHex, mixHex(tintHex, gapHex, 0.35)]
     : [PALETTE.lemon, PALETTE.chrome, tintHex, PALETTE.blueGreen];
   const gapColorA = gapHex !== undefined
-    ? shadeHex(gapHex, 0.92)
+    ? shadeHex(gapHex, 0.88)
     : mixHex(PALETTE.ultramarine, PALETTE.prussian, 0.35);
   const gapColorB = gapHex !== undefined
     ? mixHex(gapHex, tintHex, 0.28)
@@ -316,7 +399,7 @@ export function emitCustomStar(
         const ang = (TAU * (j + 0.35 * (rng.next() - 0.5))) / m;
         const tang = ang + Math.PI * 0.5;
         const L = Math.min(0.7 * rr, ((TAU * rr) / m) * 2.1);
-        const ca = shadeHex(mixHex(baseCol, PALETTE.zincWhite, k === 0 ? 0.35 : 0.1), rng.range(0.9, 1.08));
+        const ca = shadeHex(mixHex(baseCol, PALETTE.zincWhite, k === 0 ? 0.28 : 0.08), rng.range(0.9, 1.08));
         const cb = shadeHex(partnerCol, rng.range(0.88, 1.04));
         pushChapterStroke(sink, {
           u: (cx + rr * Math.cos(ang)) / CANVAS_ASPECT,
@@ -327,10 +410,10 @@ export function emitCustomStar(
           du: L * Math.cos(tang),
           dv: L * Math.sin(tang),
           dlnd: 0,
-          w: dRho * (0.36 + 0.16 * st) * rng.range(0.88, 1.14),
+          w: dRho * (0.38 + 0.16 * st) * rng.range(0.88, 1.14),
           colA: packSrgb(ca),
           colB: packSrgb(cb),
-          emissive: (0.42 + 0.35 * st) * gain,
+          emissive: (0.20 + 0.16 * st) * effGain,
           seed: rng.next(),
           kappa: rng.range(-0.25, 0.25),
           q1: 0, q2: 0, q3: 0,
@@ -347,13 +430,15 @@ export function buildCanvasQuadMesh(
   mat: UnderlayMaterialFactory,
   colorHex: number,
   name: string,
+  dBackOverride?: number,
 ): Mesh {
   // Place all 4 corners at a uniform backing depth behind the motif's foreground/architecture strokes
   // so harmonic 1/d perspective interpolation across a 2-triangle quad never bows in front of strokes from E,
   // while anamorphic ray projection preserves the exact 2D canvas footprint (uP, v) from E.
-  // (A slope-keeping 8x8 grid at the authored depths was tried and reverted: several worlds author strokes behind
-  // their quad corners, so it covered them at E, e.g. the lower Sunflowers heads. Off E these backings are flat.)
-  const dBack = Math.max(corners[0][2], corners[1][2], corners[2][2], corners[3][2], 680) + 160;
+  // Terrain/ground backings (maxC >= 1200) sit at 17,500 m behind HILL [1600..6100] and STAR_CORE [11800..16100]
+  // so they never slice across low-horizon suns or distant ridges.
+  const maxC = Math.max(corners[0][2], corners[1][2], corners[2][2], corners[3][2], 680);
+  const dBack = dBackOverride ?? (maxC >= 1200 ? 17500 : maxC + 160);
   const pts = corners.map(([uP, v]) => canvasToWorld(uFromPaint(uP, aspect), v, dBack));
   const pos = new Float32Array([
     pts[0].x, pts[0].y, pts[0].z,

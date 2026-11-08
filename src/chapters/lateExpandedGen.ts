@@ -12,7 +12,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -72,7 +72,18 @@ export function generateOliveChapter(
   }
   emitCustomStar(sink, OLIVE_ASPECT, 0.54, 0.80, 12400, 0.034, 7, 1.35, rng, P.lemon, P.chrome);
 
-  // 2. Undulating Rose-Ochre Earth & Cobalt Tree Shadows (GROUND [205..1650 m])
+  // 2. Distant Undulating Alpilles Ridge & Rose-Ochre Earth with Cobalt Tree Shadows (HILL & GROUND)
+  for (let i = 0; i < 1800; i++) {
+    const uP = rng.range(-0.04, 1.04);
+    const vTop = 0.61 + 0.025 * Math.sin(uP * 9.0 + 0.8);
+    const v = rng.range(0.55, vTop);
+    T_DIR.set(1, 0.22 * Math.cos(uP * 9.0 + 0.8), 0).normalize();
+    emitSurfaceStroke(
+      sink, OLIVE_ASPECT, StrokeClass.HILL, uP, v, rng.range(1850, 3200),
+      rng.range(0.015, 0.030), rng.range(0.005, 0.009), T_DIR, N_FRONT,
+      mixHex(P.ochre, 0x8e6878, rng.range(0.25, 0.7)), P.lemon, rng, { flags: StrokeFlag.OUTLINE },
+    );
+  }
   for (let i = 0; i < 19500; i++) {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.15);
@@ -99,31 +110,40 @@ export function generateOliveChapter(
     { u: 0.50, v0: 0.34, v1: 0.64, d: 680, near: false },
   ];
   for (const tr of trees) {
-    // Gnarled trunk
-    for (let j = 0; j < 750; j++) {
-      const s = rng.next();
-      const v = tr.v0 + (tr.v1 - tr.v0) * 0.55 * s;
-      const uP = tr.u + 0.03 * Math.sin(s * 5.5) + rng.range(-0.022, 0.022);
-      const ang = 1.52 + 0.35 * Math.cos(s * 5.5);
-      if (tr.near) {
-        emitCanvasStroke(
-          sink, OLIVE_ASPECT, StrokeClass.CYPRESS, uP, v, tr.d + rng.range(-8, 8),
-          0.022, ang, 0.006, 0x3b2c22, EARTH_ROSE, rng, { flags: StrokeFlag.OUTLINE },
-        );
-      } else {
-        T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
-        emitSurfaceStroke(
-          sink, OLIVE_ASPECT, StrokeClass.HOUSE, uP, v, tr.d + rng.range(-15, 15),
-          0.020, 0.0055, T_DIR, N_FRONT, 0x3b2c22, EARTH_ROSE, rng, { flags: StrokeFlag.OUTLINE },
-        );
-      }
-    }
+    const cls = tr.near ? StrokeClass.CYPRESS : StrokeClass.HOUSE;
+    // Spreading gnarled roots, full writhing trunk up to canopy base, and forked branches
+    emitPathStrokes(
+      sink, OLIVE_ASPECT, cls,
+      [
+        [tr.u - 0.035, tr.v0 - 0.03],
+        [tr.u, tr.v0 + 0.02],
+        [tr.u + 0.024, (tr.v0 + tr.v1) * 0.5],
+        [tr.u - 0.012, tr.v1 - 0.04],
+      ],
+      tr.d, 260, 0.020, 0.0065, 0x3b2c22, EARTH_ROSE, rng, { spread: 0.016 },
+    );
+    emitPathStrokes(
+      sink, OLIVE_ASPECT, cls,
+      [[tr.u + 0.032, tr.v0 - 0.025], [tr.u, tr.v0 + 0.03]],
+      tr.d - 2, 65, 0.018, 0.0055, 0x2e2018, EARTH_ROSE, rng, { spread: 0.008 },
+    );
+    // Forked limbs reaching into the olive foliage
+    emitPathStrokes(
+      sink, OLIVE_ASPECT, cls,
+      [[tr.u - 0.012, tr.v1 - 0.05], [tr.u - 0.055, tr.v1 + 0.01], [tr.u - 0.085, tr.v1 + 0.045]],
+      tr.d + 4, 95, 0.017, 0.0052, 0x3b2c22, OLIVE_SAGE, rng, { spread: 0.008 },
+    );
+    emitPathStrokes(
+      sink, OLIVE_ASPECT, cls,
+      [[tr.u - 0.008, tr.v1 - 0.05], [tr.u + 0.045, tr.v1 + 0.015], [tr.u + 0.078, tr.v1 + 0.05]],
+      tr.d + 4, 95, 0.017, 0.0052, 0x3b2c22, OLIVE_SAGE, rng, { spread: 0.008 },
+    );
     // Swirling silver-sage olive foliage canopy in GROVE [260..1200 m]
     for (let j = 0; j < 1850; j++) {
       const th = rng.range(0, Math.PI * 2);
       const r = Math.pow(rng.next(), 0.7);
-      const uP = tr.u + r * 0.14 * Math.cos(th);
-      const v = tr.v1 + r * 0.11 * Math.sin(th);
+      const uP = tr.u + r * 0.145 * Math.cos(th);
+      const v = tr.v1 + r * 0.115 * Math.sin(th);
       const tang = th + Math.PI * 0.5 + rng.range(-0.2, 0.2);
       T_DIR.set(Math.cos(tang), Math.sin(tang), 0).normalize();
       emitSurfaceStroke(
@@ -132,6 +152,18 @@ export function generateOliveChapter(
         shadeHex(mixHex(OLIVE_SAGE, OLIVE_SILVER, rng.range(0.2, 0.8)), rng.range(0.88, 1.12)), P.lemon, rng,
       );
     }
+    // Cloisonnist dark olive-emerald wave contour around top of each billowy crown
+    emitPathStrokes(
+      sink, OLIVE_ASPECT, StrokeClass.GROVE,
+      [
+        [tr.u - 0.13, tr.v1 - 0.01],
+        [tr.u - 0.07, tr.v1 + 0.085],
+        [tr.u, tr.v1 + 0.105],
+        [tr.u + 0.07, tr.v1 + 0.085],
+        [tr.u + 0.13, tr.v1 - 0.01],
+      ],
+      clamp(tr.d + 95, 260, 1160), 110, 0.016, 0.005, 0x243b24, OLIVE_SILVER, rng, { spread: 0.006 },
+    );
   }
 
   const underlays = new Group();
@@ -188,6 +220,17 @@ export function generateRoadCypressChapter(
   }
   emitCustomStar(sink, ROADCYPRESS_ASPECT, 0.76, 0.78, 12200, 0.026, 7, 1.3, rng, P.chrome);
   emitCustomStar(sink, ROADCYPRESS_ASPECT, 0.22, 0.74, 12800, 0.022, 6, 1.15, rng, P.lemon);
+  // Crisp golden-orange Crescent Moon arc at (0.76, 0.78) inside the moon halo
+  for (let j = 0; j < 180; j++) {
+    const th = rng.range(-1.85, 0.85);
+    const r = rng.range(0.016, 0.032);
+    const uP = 0.76 + (r / ROADCYPRESS_ASPECT) * Math.cos(th);
+    const v = 0.78 + r * Math.sin(th);
+    emitCanvasStroke(
+      sink, ROADCYPRESS_ASPECT, StrokeClass.STAR_CORE, uP, v, 11900,
+      0.014, th + Math.PI * 0.5, 0.0048, 0xf2781c, P.lemon, rng, { emissive: 0.75 },
+    );
+  }
 
   // 2. Distant Undulating Blue-Violet Alpilles Hills across Horizon (HILL [1850..3550 m])
   for (let i = 0; i < 2400; i++) {
@@ -221,6 +264,17 @@ export function generateRoadCypressChapter(
       cA, P.cobalt, rng, { q1: N_UP.x, q2: N_UP.y, q3: N_UP.z },
     );
   }
+  // Cloisonnist dark cobalt border edges along the winding road
+  emitPathStrokes(
+    sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE,
+    [[0.22, 0.01], [0.21, 0.12], [0.26, 0.24], [0.36, 0.33]],
+    420, 140, 0.015, 0.005, P.prussian, P.cobalt, rng, { spread: 0.005 },
+  );
+  emitPathStrokes(
+    sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE,
+    [[0.78, 0.01], [0.64, 0.12], [0.58, 0.24], [0.56, 0.33]],
+    420, 140, 0.015, 0.005, P.prussian, P.cobalt, rng, { spread: 0.005 },
+  );
 
   // 4. One Towering Cypress Flame at Center (CYPRESS [146..238 m]). The painting has a single cypress, which Van Gogh
   //    described as 'very tall, very straight, very dark'; it splits the sky between the star and the crescent moon.
@@ -259,32 +313,49 @@ export function generateRoadCypressChapter(
   }
 
   // 5. Two Nocturnal Wayfarers (d = 340 m), Horse-Drawn Yellow Carriage (d = 660 m) & Roadside Inn (d = 820 m)
-  // Two wayfarers walking side by side at uP = 0.34 & 0.39, v = 0.11..0.23, d = 340 m (promoted to GROVE)
-  for (const wu of [0.34, 0.39]) {
-    for (let j = 0; j < 320; j++) {
-      const s = rng.next();
-      const v = 0.11 + 0.12 * s;
-      const uP = wu + rng.range(-0.016, 0.016);
-      const isHat = s > 0.82;
-      T_DIR.set(0, 1, 0);
-      emitSurfaceStroke(
-        sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, uP, v, 340 + rng.range(-12, 12),
-        0.014, 0.0048, T_DIR, N_FRONT,
-        isHat ? P.chrome : P.cobalt, P.prussian, rng, { flags: StrokeFlag.OUTLINE },
-      );
-    }
+  // Two wayfarers walking side by side at uP = 0.335 & 0.39, v = 0.09..0.24, d = 340 m
+  for (const wu of [0.335, 0.39]) {
+    // Striding legs & cobalt jacket
+    emitPathStrokes(
+      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE,
+      [[wu - 0.01, 0.09], [wu, 0.15], [wu, 0.21]],
+      338, 120, 0.014, 0.005, P.cobalt, P.prussian, rng, { spread: 0.010 },
+    );
+    emitPathStrokes(
+      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE,
+      [[wu + 0.012, 0.09], [wu, 0.15]],
+      340, 45, 0.013, 0.0045, P.prussian, P.cobalt, rng, { spread: 0.006 },
+    );
+    // Wide-brimmed yellow hat
+    emitPathStrokes(
+      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE,
+      [[wu - 0.02, 0.225], [wu, 0.238], [wu + 0.02, 0.225]],
+      335, 55, 0.013, 0.0045, P.chrome, P.lemon, rng, { spread: 0.004 },
+    );
   }
-  // Yellow horse-drawn carriage at uP = 0.62..0.73, v = 0.20..0.31, d = 660 m
-  for (let i = 0; i < 1100; i++) {
-    const isHorse = i < 380;
-    const uP = isHorse ? rng.range(0.61, 0.66) : rng.range(0.66, 0.73);
-    const v = isHorse ? rng.range(0.20, 0.27) : rng.range(0.21, 0.31);
+  // Yellow horse-drawn carriage at uP = 0.60..0.74, v = 0.20..0.31, d = 660 m
+  for (let i = 0; i < 950; i++) {
+    const isHorse = i < 340;
+    const uP = isHorse ? rng.range(0.60, 0.655) : rng.range(0.66, 0.735);
+    const v = isHorse ? rng.range(0.20, 0.265) : rng.range(0.215, 0.305);
     T_DIR.set(isHorse ? 1 : 0, isHorse ? 0.2 : 1, 0).normalize();
     emitSurfaceStroke(
-      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, uP, v, 660 + rng.range(-18, 18),
-      0.015, 0.005, T_DIR, N_FRONT,
+      sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, uP, v, 660 + rng.range(-15, 15),
+      0.014, 0.0048, T_DIR, N_FRONT,
       isHorse ? 0xd8d4c8 : P.chrome, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
+  }
+  // Carriage wheels & dark contour
+  for (const [wu, wv] of [[0.672, 0.205], [0.72, 0.208]]) {
+    for (let j = 0; j < 75; j++) {
+      const th = rng.range(0, Math.PI * 2);
+      const r = 0.018;
+      T_DIR.set(-Math.sin(th), Math.cos(th), 0).normalize();
+      emitSurfaceStroke(
+        sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE, wu + (r / ROADCYPRESS_ASPECT) * Math.cos(th), wv + r * Math.sin(th), 648,
+        0.011, 0.0038, T_DIR, N_FRONT, P.prussian, P.chrome, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
   }
   // Roadside cottage/inn on right horizon (uP = 0.80..0.94, v = 0.28..0.44, d = 820 m) + glowing window
   for (let i = 0; i < 950; i++) {
@@ -298,11 +369,16 @@ export function generateRoadCypressChapter(
       isRoof ? 0xb85228 : 0xd8cfa8, P.cobalt, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  for (let j = 0; j < 220; j++) {
+  emitPathStrokes(
+    sink, ROADCYPRESS_ASPECT, StrokeClass.HOUSE,
+    [[0.795, 0.38], [0.87, 0.445], [0.945, 0.38]],
+    805, 85, 0.014, 0.0045, P.prussian, 0xb85228, rng, { spread: 0.003 },
+  );
+  for (let j = 0; j < 180; j++) {
     T_DIR.set(0, 1, 0);
     emitSurfaceStroke(
-      sink, ROADCYPRESS_ASPECT, StrokeClass.WINDOW, 0.85 + rng.range(-0.016, 0.016), 0.33 + rng.range(-0.02, 0.02), 805,
-      0.013, 0.0045, T_DIR, N_FRONT, P.lemon, P.chrome, rng, { emissive: 1.25 },
+      sink, ROADCYPRESS_ASPECT, StrokeClass.WINDOW, 0.85 + rng.range(-0.016, 0.016), 0.33 + rng.range(-0.02, 0.02), 802,
+      0.013, 0.0045, T_DIR, N_FRONT, P.lemon, P.chrome, rng, { emissive: 0.45 },
     );
   }
 
@@ -371,7 +447,10 @@ export function generateCottagesChapter(
     const t = Math.pow(rng.next(), 1.15);
     const v = 0.002 + 0.44 * t;
     const d = clamp(208 + 1350 * (t * t), 205, 1580);
-    const cA = shadeHex(mixHex(THATCH_MOSS, THATCH_GOLD, rng.range(0.2, 0.7)), rng.range(0.88, 1.12));
+    const onLane = Math.abs(uP - (0.48 - 0.14 * Math.sin(v * 6.5))) < 0.11 * (1 - 0.4 * t);
+    const cA = onLane
+      ? shadeHex(mixHex(0xd4b878, WALL_LIME, 0.35), rng.range(0.88, 1.12))
+      : shadeHex(mixHex(THATCH_MOSS, THATCH_GOLD, rng.range(0.2, 0.7)), rng.range(0.88, 1.12));
     emitCanvasStroke(
       sink, COTTAGES_ASPECT, StrokeClass.GROUND, uP, v, d,
       rng.range(0.015, 0.030), 1.15 + 0.35 * Math.sin(uP * 9.0) + rng.range(-0.15, 0.15), rng.range(0.0045, 0.0085),
@@ -379,41 +458,95 @@ export function generateCottagesChapter(
     );
   }
 
-  // 3. Heaving Moss-Covered Thatched Cottage Roofs & Walls (HOUSE, WINDOW) + Wind-Tossed Trees (CYPRESS)
-  for (let i = 0; i < 8200; i++) {
-    const uP = rng.range(0.14, 0.88);
-    const roofTop = 0.64 + 0.06 * Math.sin(uP * 9.5) - 0.12 * Math.max(0, uP - 0.58);
-    const v = rng.range(0.36, roofTop);
-    const isRoof = v > 0.48;
-    const d = clamp(510 + 380 * (uP - 0.14), 480, 920);
-    const ang = isRoof ? 0.32 * Math.cos(uP * 9.5) : Math.PI * 0.5;
-    T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
+  // 3. Sculpted Twin Cordeville Cottages with Pitched Gables, Moss-Thatch Roofs, Chimneys & Casement Windows (HOUSE, WINDOW)
+  for (let i = 0; i < 8600; i++) {
+    const uP = rng.range(0.16, 0.86);
+    const inLeftCottage = uP < 0.54;
+    const gablePeak = inLeftCottage
+      ? 0.69 - 0.85 * Math.abs(uP - 0.35) + 0.018 * Math.sin(uP * 18.0)
+      : 0.62 - 0.78 * Math.abs(uP - 0.69) + 0.015 * Math.sin(uP * 18.0);
+    const eaveV = inLeftCottage ? 0.485 : 0.465;
+    const v = rng.range(0.35, Math.max(eaveV + 0.03, gablePeak));
+    const isRoof = v > eaveV;
+    const d = clamp(505 + 340 * (uP - 0.16), 485, 880);
+    const slopeAng = isRoof
+      ? (inLeftCottage ? (uP < 0.35 ? 0.62 : -0.62) : (uP < 0.69 ? 0.56 : -0.56))
+      : Math.PI * 0.5;
+    T_DIR.set(Math.cos(slopeAng), Math.sin(slopeAng), 0).normalize();
+    const isShadowWall = !isRoof && ((inLeftCottage && uP > 0.42) || (!inLeftCottage && uP > 0.75));
+    const cA = isRoof
+      ? shadeHex(mixHex(THATCH_GOLD, (i % 3 === 0) ? THATCH_MOSS : 0xc86428, rng.range(0.2, 0.72)), rng.range(0.88, 1.12))
+      : isShadowWall
+        ? mixHex(WALL_LIME, P.cobalt, 0.32)
+        : shadeHex(WALL_LIME, rng.range(0.92, 1.08));
     emitSurfaceStroke(
       sink, COTTAGES_ASPECT, StrokeClass.HOUSE, uP, v, d,
-      rng.range(0.016, 0.032), rng.range(0.005, 0.0095), T_DIR, N_FRONT,
-      isRoof ? mixHex(THATCH_GOLD, THATCH_MOSS, rng.range(0.2, 0.7)) : WALL_LIME,
-      0xc85428, rng, { flags: StrokeFlag.OUTLINE },
+      rng.range(0.015, 0.030), rng.range(0.005, 0.009), T_DIR, N_FRONT,
+      cA, 0x8e4220, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Glowing cottage windows (WINDOW [485..780 m]) & Wind-whipped dark trees (CYPRESS [152..236 m])
-  for (const [wu, wv] of [[0.28, 0.44], [0.42, 0.44], [0.64, 0.42]]) {
-    for (let j = 0; j < 240; j++) {
+  // Brick chimneys jutting from the thatched roof ridges
+  for (const [cu, cv0, cv1, cd] of [[0.34, 0.66, 0.74, 540], [0.68, 0.59, 0.67, 680]]) {
+    emitPathStrokes(
+      sink, COTTAGES_ASPECT, StrokeClass.HOUSE,
+      [[cu, cv0], [cu, cv1]],
+      cd, 75, 0.015, 0.0055, 0xc84c28, P.ochre, rng, { spread: 0.012 },
+    );
+  }
+  // Cloisonnist dark timber eaves, gable ridges & wall corner contours
+  emitPathStrokes(
+    sink, COTTAGES_ASPECT, StrokeClass.HOUSE,
+    [[0.155, 0.485], [0.35, 0.69], [0.54, 0.485], [0.69, 0.62], [0.865, 0.465]],
+    495, 240, 0.016, 0.005, 0x241c18, THATCH_GOLD, rng, { spread: 0.004 },
+  );
+  emitPathStrokes(
+    sink, COTTAGES_ASPECT, StrokeClass.HOUSE,
+    [[0.16, 0.485], [0.54, 0.485], [0.86, 0.465]],
+    492, 180, 0.015, 0.0048, 0x241c18, WALL_LIME, rng, { spread: 0.003 },
+  );
+  // Dark-framed cottage casement windows & wooden door (low emissive so daytime cottages don't blow out)
+  for (const [wu, wv, wd] of [[0.25, 0.42, 500], [0.36, 0.42, 520], [0.35, 0.56, 515], [0.62, 0.41, 640], [0.73, 0.41, 680]]) {
+    for (let j = 0; j < 110; j++) {
       T_DIR.set(0, 1, 0);
       emitSurfaceStroke(
-        sink, COTTAGES_ASPECT, StrokeClass.WINDOW, wu + rng.range(-0.02, 0.02), wv + rng.range(-0.025, 0.025), 500,
-        0.015, 0.005, T_DIR, N_FRONT, P.lemon, P.chrome, rng, { emissive: 1.1 },
+        sink, COTTAGES_ASPECT, StrokeClass.WINDOW, wu + rng.range(-0.018, 0.018), wv + rng.range(-0.024, 0.024), wd,
+        0.013, 0.0045, T_DIR, N_FRONT, (j & 1) ? 0x243448 : P.ochre, P.lemon, rng, { emissive: 0.22 },
       );
     }
-  }
-  for (let i = 0; i < 3200; i++) {
-    const s = rng.next();
-    const uP = (i < 1600 ? 0.12 : 0.78) + 0.04 * Math.sin(s * 7.0) + rng.range(-0.04, 0.04);
-    const v = 0.32 + 0.56 * s;
-    emitCanvasStroke(
-      sink, COTTAGES_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(155, 232),
-      rng.range(0.020, 0.038), 1.45 + 0.35 * Math.cos(s * 7.0), rng.range(0.005, 0.0095),
-      P.cypressGreen, THATCH_MOSS, rng, { flags: StrokeFlag.OUTLINE },
+    emitPathStrokes(
+      sink, COTTAGES_ASPECT, StrokeClass.HOUSE,
+      [[wu - 0.019, wv - 0.025], [wu - 0.019, wv + 0.025], [wu + 0.019, wv + 0.025], [wu + 0.019, wv - 0.025], [wu - 0.019, wv - 0.025]],
+      wd - 4, 60, 0.012, 0.0038, 0x1c1814, WALL_LIME, rng, { spread: 0.0018 },
     );
+  }
+  // Wooden cottage door at uP = 0.47, v = 0.35..0.46
+  emitPathStrokes(
+    sink, COTTAGES_ASPECT, StrokeClass.HOUSE,
+    [[0.47, 0.35], [0.47, 0.455]],
+    535, 95, 0.015, 0.0055, 0x5c341c, 0x241810, rng, { spread: 0.012 },
+  );
+
+  // 4. Wind-Tossed Auvers Trees & Billowy Foliage Framing Left & Right (CYPRESS [152..236 m])
+  for (const [tu, tv0, tv1] of [[0.11, 0.30, 0.86], [0.82, 0.32, 0.84]]) {
+    // Writhing dark trunk & branches
+    emitPathStrokes(
+      sink, COTTAGES_ASPECT, StrokeClass.CYPRESS,
+      [[tu, tv0], [tu + 0.02, (tv0 + tv1) * 0.5], [tu - 0.015, tv1 - 0.08]],
+      168, 220, 0.018, 0.006, 0x2e2018, P.cypressGreen, rng, { spread: 0.014 },
+    );
+    // Swirling wind-tossed leaf crown
+    for (let j = 0; j < 1350; j++) {
+      const th = rng.range(0, Math.PI * 2);
+      const r = Math.pow(rng.next(), 0.72);
+      const uP = tu + r * 0.095 * Math.cos(th);
+      const v = (tv0 + tv1) * 0.56 + r * 0.24 * Math.sin(th);
+      const curl = th + Math.PI * 0.5 + 0.3 * Math.sin(v * 9.0);
+      emitCanvasStroke(
+        sink, COTTAGES_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(155, 228),
+        rng.range(0.018, 0.036), curl, rng.range(0.005, 0.009),
+        (j % 4 === 0) ? THATCH_MOSS : P.cypressGreen, P.cerulean, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
   }
 
   const underlays = new Group();
@@ -459,8 +592,8 @@ export function generateDaubignyChapter(
     );
   }
   for (let i = 0; i < 15500; i++) {
-    const uP = rng.range(-0.06, 1.06);
-    const v = rng.range(0.62, 1.04);
+    const uP = rng.range(-0.10, 1.10);
+    const v = rng.range(0.58, 1.04);
     emitCanvasStroke(
       sink, DAUBIGNY_ASPECT, StrokeClass.SKY_BAND, uP, v, rng.range(98000, 168000),
       rng.range(0.015, 0.030), rng.range(-0.18, 0.18), rng.range(0.005, 0.0095),
@@ -468,49 +601,155 @@ export function generateDaubignyChapter(
     );
   }
 
-  // 2. Sweeping 2:1 Garden Lawn, Rose Flowerbeds & Ochre Gravel Paths (GROUND [205..1650 m])
+  // 2. Sweeping 2:1 Garden Lawn, Rose Flowerbeds & Curving Ochre Gravel Paths (GROUND [205..1650 m])
   for (let i = 0; i < 23500; i++) {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.15);
     const v = 0.002 + 0.58 * t;
     const d = clamp(208 + 1400 * (t * t), 205, 1620);
-    const inRoseBed = Math.hypot((uP - 0.54) * 1.4, v - 0.28) < 0.18 || Math.hypot((uP - 0.18) * 1.4, v - 0.24) < 0.14;
-    const cA = inRoseBed
-      ? ((i & 1) ? ROSE_BED : P.lemon)
-      : shadeHex(mixHex(LAWN_CELADON, VILLA_CREAM, rng.range(0.15, 0.55)), rng.range(0.88, 1.12));
+    const inCentralBed = Math.hypot((uP - 0.52) * 1.4, v - 0.27) < 0.16;
+    const inLeftBed = Math.hypot((uP - 0.18) * 1.4, v - 0.23) < 0.12;
+    const onGravelPath = Math.abs(Math.hypot((uP - 0.52) * 1.35, v - 0.27) - 0.21) < 0.048
+      || Math.abs(uP - (0.76 - 0.18 * v)) < 0.045;
+    const cA = (inCentralBed || inLeftBed)
+      ? ((i % 3 === 0) ? ROSE_BED : (i % 3 === 1) ? P.lemon : 0x3b7842)
+      : onGravelPath
+        ? shadeHex(mixHex(VILLA_CREAM, 0xd8b478, rng.range(0.25, 0.65)), rng.range(0.92, 1.08))
+        : shadeHex(mixHex(LAWN_CELADON, VILLA_CREAM, rng.range(0.12, 0.45)), rng.range(0.88, 1.12));
     emitCanvasStroke(
       sink, DAUBIGNY_ASPECT, StrokeClass.GROUND, uP, v, d,
       rng.range(0.013, 0.026), rng.range(-0.35, 0.35), rng.range(0.004, 0.0075),
       cA, 0x3b7842, rng, { q1: N_UP.x, q2: N_UP.y, q3: N_UP.z },
     );
   }
+  // Cloisonnist border around the circular central rosebed
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.GROVE,
+    [[0.40, 0.24], [0.45, 0.37], [0.52, 0.41], [0.59, 0.37], [0.64, 0.24], [0.58, 0.14], [0.46, 0.14], [0.40, 0.24]],
+    420, 180, 0.014, 0.0048, 0x2e6438, ROSE_BED, rng, { spread: 0.006 },
+  );
 
-  // 3. Daubigny's Villa, Romanesque Belfry & Garden Trees (HOUSE, CHURCH, GROVE) + Foreground Black Cat (CYPRESS)
-  for (let i = 0; i < 7200; i++) {
-    const isVilla = i < 3600;
-    const uP = isVilla ? rng.range(0.36, 0.68) : rng.range(0.04, 0.96);
-    const v = isVilla ? rng.range(0.54, 0.82) : rng.range(0.46, 0.78);
-    const d = isVilla ? rng.range(720, 980) : rng.range(420, 880);
-    const cls = isVilla ? StrokeClass.HOUSE : StrokeClass.GROVE;
-    const cA = isVilla ? (v > 0.70 ? 0x3b485c : VILLA_CREAM) : mixHex(0x2e6e3e, LAWN_CELADON, rng.range(0.2, 0.7));
-    T_DIR.set(0, 1, 0);
+  // 3. Daubigny's Villa with Steep Slate Roof, Turret, Shutters & Auvers Church Belfry (HOUSE, CHURCH)
+  // Main villa walls & steep mansard slate roof (uP = 0.36..0.64, v = 0.54..0.85, d = 780 m)
+  for (let i = 0; i < 3600; i++) {
+    const uP = rng.range(0.36, 0.64);
+    const roofPeak = uP < 0.43 ? 0.87 - 1.2 * Math.abs(uP - 0.395) : 0.83 - 0.35 * Math.abs(uP - 0.52);
+    const v = rng.range(0.54, roofPeak);
+    const isRoof = v > 0.71;
+    T_DIR.set(isRoof ? 1 : 0, isRoof ? -0.15 : 1, 0).normalize();
+    const cA = isRoof
+      ? shadeHex(0x34465e, rng.range(0.86, 1.14))
+      : shadeHex(mixHex(VILLA_CREAM, 0xe8c4b0, 0.35), rng.range(0.92, 1.08));
     emitSurfaceStroke(
-      sink, DAUBIGNY_ASPECT, cls, uP, v, d,
-      rng.range(0.015, 0.030), rng.range(0.005, 0.009), T_DIR, N_FRONT,
+      sink, DAUBIGNY_ASPECT, StrokeClass.HOUSE, uP, v, rng.range(760, 860),
+      rng.range(0.014, 0.026), rng.range(0.0045, 0.008), T_DIR, N_FRONT,
       cA, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Iconic little black cat prowling across the foreground lawn at (0.32, 0.18) + Foreground rosebushes (CYPRESS)
-  for (let i = 0; i < 1600; i++) {
-    const isCat = i < 350;
-    const uP = isCat ? 0.32 + rng.range(-0.025, 0.025) : (i < 950 ? 0.12 : 0.86) + rng.range(-0.06, 0.06);
-    const v = isCat ? 0.18 + rng.range(-0.02, 0.02) : rng.range(0.08, 0.42);
-    emitCanvasStroke(
-      sink, DAUBIGNY_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(155, 222),
-      rng.range(0.014, 0.026), isCat ? 0.15 : 1.48, rng.range(0.004, 0.008),
-      isCat ? 0x0c1018 : 0x265c34, ROSE_BED, rng, { flags: StrokeFlag.OUTLINE },
+  // Villa roof ridge, turret spire, red brick chimneys & green-shuttered windows
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.HOUSE,
+    [[0.358, 0.71], [0.395, 0.87], [0.43, 0.74], [0.60, 0.74], [0.642, 0.71]],
+    745, 160, 0.014, 0.0045, 0x1c2838, 0x34465e, rng, { spread: 0.003 },
+  );
+  for (const cu of [0.46, 0.57]) {
+    emitPathStrokes(
+      sink, DAUBIGNY_ASPECT, StrokeClass.HOUSE,
+      [[cu, 0.80], [cu, 0.86]],
+      748, 45, 0.013, 0.0048, 0xc84c28, P.ochre, rng, { spread: 0.006 },
     );
   }
+  for (const wu of [0.395, 0.455, 0.515, 0.575, 0.615]) {
+    for (const wv of [0.60, 0.67]) {
+      for (let j = 0; j < 28; j++) {
+        T_DIR.set(0, 1, 0);
+        emitSurfaceStroke(
+          sink, DAUBIGNY_ASPECT, StrokeClass.HOUSE, wu + rng.range(-0.009, 0.009), wv + rng.range(-0.018, 0.018), 742,
+          0.011, 0.0038, T_DIR, N_FRONT, (j & 1) ? 0x265c3e : 0x243044, VILLA_CREAM, rng, { flags: StrokeFlag.OUTLINE },
+        );
+      }
+    }
+  }
+  // Distant Romanesque church belfry on the left (uP = 0.16..0.20, v = 0.56..0.78, d = 920 m)
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.CHURCH,
+    [[0.18, 0.56], [0.18, 0.70], [0.18, 0.79]],
+    920, 160, 0.015, 0.0055, 0xc8bca0, 0x48586e, rng, { spread: 0.012 },
+  );
+
+  // 4. Billowy Garden Trees & Weeping Willows Framing the Horizon (GROVE [380..860 m])
+  const gardenTrees = [
+    { u: 0.08, v: 0.62, rx: 0.075, ry: 0.16, d: 480, c: 0x265e38 },
+    { u: 0.25, v: 0.60, rx: 0.085, ry: 0.15, d: 560, c: 0x3b7844 },
+    { u: 0.70, v: 0.62, rx: 0.080, ry: 0.16, d: 540, c: 0x2e6e3e },
+    { u: 0.82, v: 0.64, rx: 0.090, ry: 0.18, d: 460, c: 0x48884e },
+    { u: 0.93, v: 0.60, rx: 0.075, ry: 0.16, d: 420, c: 0x265e38 },
+  ];
+  for (const gt of gardenTrees) {
+    // Trunk
+    emitPathStrokes(
+      sink, DAUBIGNY_ASPECT, StrokeClass.GROVE,
+      [[gt.u, gt.v - gt.ry * 0.95], [gt.u, gt.v - gt.ry * 0.2]],
+      gt.d + 10, 75, 0.015, 0.005, 0x3b281c, gt.c, rng, { spread: 0.008 },
+    );
+    // Rounded billowy foliage crown
+    for (let j = 0; j < 780; j++) {
+      const th = rng.range(0, Math.PI * 2);
+      const r = Math.pow(rng.next(), 0.68);
+      const uP = gt.u + r * gt.rx * Math.cos(th);
+      const v = gt.v + r * gt.ry * Math.sin(th);
+      const tang = th + Math.PI * 0.5 + rng.range(-0.2, 0.2);
+      T_DIR.set(Math.cos(tang), Math.sin(tang), 0).normalize();
+      emitSurfaceStroke(
+        sink, DAUBIGNY_ASPECT, StrokeClass.GROVE, uP, v, gt.d + rng.range(-25, 25),
+        rng.range(0.015, 0.028), rng.range(0.005, 0.0085), T_DIR, N_FRONT,
+        shadeHex(mixHex(gt.c, LAWN_CELADON, rng.range(0.15, 0.65)), rng.range(0.88, 1.12)), P.lemon, rng,
+      );
+    }
+  }
+  // Madame Daubigny strolling in dark dress & straw hat on the right path (0.74, 0.36..0.50)
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.HOUSE,
+    [[0.74, 0.36], [0.74, 0.44], [0.74, 0.485]],
+    520, 95, 0.013, 0.0048, P.prussian, P.cobalt, rng, { spread: 0.009 },
+  );
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.HOUSE,
+    [[0.728, 0.495], [0.74, 0.508], [0.752, 0.495]],
+    516, 40, 0.012, 0.004, P.chrome, VILLA_CREAM, rng, { spread: 0.003 },
+  );
+
+  // 5. Foreground Flowering Rosebushes & Sculpted Black Cat (CYPRESS [155..225 m])
+  for (const [bu, bv, brx, bry] of [[0.12, 0.22, 0.065, 0.14], [0.86, 0.24, 0.075, 0.15]]) {
+    for (let j = 0; j < 650; j++) {
+      const th = rng.range(0, Math.PI * 2);
+      const r = Math.pow(rng.next(), 0.7);
+      const uP = bu + r * brx * Math.cos(th);
+      const v = bv + r * bry * Math.sin(th);
+      const isRose = j % 4 === 0;
+      emitCanvasStroke(
+        sink, DAUBIGNY_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(160, 222),
+        rng.range(0.014, 0.026), th + Math.PI * 0.5, rng.range(0.0045, 0.008),
+        isRose ? ROSE_BED : 0x265c34, LAWN_CELADON, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+  }
+  // Iconic black cat prowling across the foreground lawn at (0.32, 0.18): arched back, legs, head & raised tail
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.CYPRESS,
+    [[0.295, 0.18], [0.315, 0.192], [0.335, 0.182]],
+    158, 95, 0.013, 0.0048, 0x0c1018, 0x243044, rng, { spread: 0.008 },
+  );
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.CYPRESS,
+    [[0.295, 0.182], [0.282, 0.215], [0.278, 0.242]],
+    156, 45, 0.011, 0.0038, 0x0c1018, 0x243044, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, DAUBIGNY_ASPECT, StrokeClass.CYPRESS,
+    [[0.302, 0.175], [0.298, 0.145], [0.330, 0.175], [0.336, 0.145]],
+    157, 50, 0.011, 0.0038, 0x0c1018, LAWN_CELADON, rng, { spread: 0.003 },
+  );
 
   const underlays = new Group();
   underlays.name = 'underlays:daubigny';

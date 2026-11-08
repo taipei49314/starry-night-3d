@@ -11,7 +11,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -222,28 +222,56 @@ function genStrawHatAndFace(sink: StrokeSink, rng: Rng): void {
       const uP = eye.u0 + Math.cos(ang) * r;
       const v = eye.v0 + Math.sin(ang) * r * 0.68;
       const d = 456 + rng.range(0, 6);
-      const isCatchlight = r < 0.007;
+      const isCatchlight = r < 0.006;
       const cA = isCatchlight ? P.zincWhite : r < 0.016 ? EYE_EMERALD : P.prussian;
-      const cB = isCatchlight ? P.lemon : STRAW_GOLD;
+      const cB = isCatchlight ? P.lemon : P.cobalt;
       emitSurfaceStroke(
         sink, SELFPORTRAIT_ASPECT, StrokeClass.WINDOW, uP, v, d,
         0.008, 0.0032,
         tHoriz, nFront, cA, cB, rng,
-        { emissive: isCatchlight ? 3.2 : 1.65 },
+        { emissive: isCatchlight ? 0.45 : 0.18 },
       );
     }
+    // Upper & lower eyelid contour around each eye
+    emitPathStrokes(
+      sink, SELFPORTRAIT_ASPECT, StrokeClass.HOUSE,
+      [[eye.u0 - 0.026, eye.v0], [eye.u0, eye.v0 + 0.015], [eye.u0 + 0.026, eye.v0]],
+      455, 40, 0.009, 0.0032, P.prussian, BEARD_VERMILION, rng, { spread: 0.0015 },
+    );
   }
+  // Cloisonnist contours along nose bridge, straw hat brim, and jacket lapels
+  emitPathStrokes(
+    sink, SELFPORTRAIT_ASPECT, StrokeClass.HOUSE,
+    [[0.482, 0.58], [0.476, 0.485], [0.495, 0.475]],
+    456, 65, 0.011, 0.0038, BEARD_VERMILION, FLESH_PEACH, rng, { spread: 0.002 },
+  );
+  emitPathStrokes(
+    sink, SELFPORTRAIT_ASPECT, StrokeClass.HOUSE,
+    [[0.15, 0.62], [0.32, 0.84], [0.52, 0.89], [0.72, 0.82], [0.85, 0.60]],
+    508, 180, 0.015, 0.005, STRAW_OCHRE, STRAW_GOLD, rng, { spread: 0.004 },
+  );
 }
 
 function buildSelfPortraitUnderlays(mat: UnderlayMaterialFactory): Group {
   const g = new Group();
   g.name = 'underlays:selfportrait';
+  // Full-canvas turquoise-cobalt aura backing placed behind SKY_BAND (98-166 km) so the 20,000 divisionist aura strokes shine
   g.add(buildCanvasQuadMesh(
     SELFPORTRAIT_ASPECT,
-    [[-0.08, -0.02, 590], [1.08, -0.02, 590], [1.08, 1.04, 590], [-0.08, 1.04, 590]],
+    [[-0.08, -0.02, 220000], [1.08, -0.02, 220000], [1.08, 1.04, 220000], [-0.08, 1.04, 220000]],
     mat,
     0x33536e,
     'selfportrait-backing',
+    220000,
+  ));
+  // Painter's cobalt jacket torso backing (confined strictly inside the lower torso so no dark corners protrude behind the straw hat)
+  g.add(buildCanvasQuadMesh(
+    SELFPORTRAIT_ASPECT,
+    [[0.14, 0.0, 520], [0.86, 0.0, 520], [0.68, 0.31, 560], [0.32, 0.31, 560]],
+    mat,
+    0x243e6e,
+    'selfportrait-figure-core',
+    610,
   ));
   return g;
 }

@@ -12,7 +12,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -72,13 +72,13 @@ function genVermilionTableAndFoxglove(sink: StrokeSink, rng: Rng): void {
   const nFront = new Vector3(0, 0, 1);
   const tHoriz = new Vector3(1, 0.22, 0).normalize();
 
-  // Tilted vermilion-crimson tabletop occupying the lower-left diagonal (uP < 0.64, v < 0.45 - 0.28 * uP, GROUND [201..510 m])
+  // Tilted vermilion-crimson tabletop occupying the lower-left diagonal (uP < 0.64, v < 0.45 - 0.28 * uP, GROUND [508..710 m])
   for (let i = 0; i < 12500; i++) {
     const uP = rng.range(-0.04, 0.66);
     const vMax = 0.44 - 0.30 * Math.max(0, uP);
     const t = rng.next();
     const v = 0.002 + vMax * t;
-    const d = clamp(206 + 298 * t + rng.range(-5, 5), 201, 510);
+    const d = clamp(515 + 180 * t + rng.range(-5, 5), 508, 710);
     const cA = shadeHex(mixHex(TABLE_VERMILION, TABLE_CRIMSON, rng.range(0.2, 0.75)), rng.range(0.88, 1.14));
     const cB = mixHex(P.ochre, BOOK_YELLOW, 0.35);
 
@@ -100,34 +100,45 @@ function genVermilionTableAndFoxglove(sink: StrokeSink, rng: Rng): void {
       sink, GACHET_ASPECT, StrokeClass.HOUSE, uP, v, d,
       rng.range(0.012, 0.022), rng.range(0.0042, 0.0076),
       tHoriz, nUp, cA, P.ochre, rng,
-      { emissive: 0.48 },
+      { emissive: 0.28 },
     );
   }
 
-  // Sprig of Medicinal Foxglove (Digitalis purpurea): emerald stem/leaves (GROVE) & bell-shaped purple blossoms (WINDOW)
+  // Sprig of Medicinal Foxglove (Digitalis purpurea): emerald stem/leaves & bell-shaped purple blossoms (HOUSE [444..462 m])
   for (let i = 0; i < 1400; i++) {
     const s = rng.next();
     const uP = 0.24 + 0.18 * s + rng.range(-0.025, 0.025);
     const v = 0.18 + 0.28 * s + 0.03 * Math.sin(s * 6.0) + rng.range(-0.02, 0.02);
-    const d = 458 + 18 * (1 - s);
-    const isBlossom = s > 0.38 && (i % 3 !== 0);
+    const d = 444 + 16 * (1 - s);
+    const isBlossom = s > 0.36 && (i % 3 !== 0);
     if (isBlossom) {
       const cA = shadeHex(mixHex(FOXGLOVE_PURPLE, CAP_WHITE, rng.range(0.15, 0.55)), rng.range(0.90, 1.15));
       emitSurfaceStroke(
-        sink, GACHET_ASPECT, StrokeClass.WINDOW, uP, v, d,
-        0.011, 0.0042,
+        sink, GACHET_ASPECT, StrokeClass.HOUSE, uP, v, d,
+        0.012, 0.0045,
         tHoriz, nFront, cA, TABLE_VERMILION, rng,
-        { emissive: 1.55 },
+        { emissive: 0.18 },
       );
     } else {
-      emitCanvasStroke(
-        sink, GACHET_ASPECT, StrokeClass.GROVE, uP, v, d,
-        0.014, 0.85 + rng.range(-0.2, 0.2), 0.0045,
-        P.groveLight, P.grove, rng,
-        { emissive: 0.25 },
+      emitSurfaceStroke(
+        sink, GACHET_ASPECT, StrokeClass.HOUSE, uP, v, d + 3,
+        0.014, 0.0045,
+        tHoriz, nFront, P.groveLight, P.grove, rng,
+        { emissive: 0.10 },
       );
     }
   }
+  // Cloisonnist dark outlines around the two yellow novels and the tilted red table edge
+  emitPathStrokes(
+    sink, GACHET_ASPECT, StrokeClass.HOUSE,
+    [[0.12, 0.12], [0.38, 0.09], [0.38, 0.25], [0.12, 0.28], [0.12, 0.12]],
+    458, 95, 0.013, 0.0042, COAT_PRUSSIAN, BOOK_YELLOW, rng, { spread: 0.0025 },
+  );
+  emitPathStrokes(
+    sink, GACHET_ASPECT, StrokeClass.HOUSE,
+    [[-0.02, 0.44], [0.32, 0.34], [0.64, 0.24]],
+    495, 110, 0.015, 0.0048, COAT_PRUSSIAN, TABLE_VERMILION, rng, { spread: 0.003 },
+  );
 }
 
 /** 3. Dr. Gachet: Prussian-Blue Coat, Leaning Hand, Melancholic Face & White Peaked Cap (HOUSE & WINDOW). */
@@ -264,7 +275,7 @@ function genDoctorGachetFigure(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // Dr. Gachet's Melancholic Cobalt Eyes & Coat Buttons (WINDOW [455..465 m])
+  // Dr. Gachet's Melancholic Cobalt Eyes & Coat Buttons (HOUSE [440..445 m], strictly in front of face at 461 m)
   const accents = [
     { u0: 0.52, v0: 0.60, r: 0.020, eye: true },
     { u0: 0.61, v0: 0.61, r: 0.020, eye: true },
@@ -277,28 +288,66 @@ function genDoctorGachetFigure(sink: StrokeSink, rng: Rng): void {
       const rad = rng.range(0.002, ac.r);
       const uP = ac.u0 + Math.cos(ang) * rad;
       const v = ac.v0 + Math.sin(ang) * rad * 0.72;
-      const d = 456 + rng.range(0, 5);
-      const cA = ac.eye ? (rad < 0.006 ? CAP_WHITE : P.cobalt) : BOOK_YELLOW;
-      const cB = ac.eye ? P.cerulean : P.lemon;
+      const d = 442 + rng.range(0, 3);
+      const cA = ac.eye ? (rad < 0.005 ? CAP_WHITE : rad < 0.013 ? P.cobalt : COAT_PRUSSIAN) : BOOK_YELLOW;
+      const cB = ac.eye ? COAT_PRUSSIAN : P.ochre;
       emitSurfaceStroke(
-        sink, GACHET_ASPECT, StrokeClass.WINDOW, uP, v, d,
+        sink, GACHET_ASPECT, StrokeClass.HOUSE, uP, v, d,
         0.008, 0.0032,
         tHoriz, nFront, cA, cB, rng,
-        { emissive: ac.eye && rad < 0.006 ? 2.8 : 1.55 },
+        { emissive: ac.eye && rad < 0.005 ? 0.32 : 0.14 },
       );
     }
   }
+  // Furrowed melancholic eyebrows above both eyes
+  emitPathStrokes(
+    sink, GACHET_ASPECT, StrokeClass.HOUSE,
+    [[0.495, 0.615], [0.52, 0.625], [0.542, 0.618]],
+    440, 35, 0.010, 0.0035, COAT_PRUSSIAN, TABLE_CRIMSON, rng, { spread: 0.0018 },
+  );
+  emitPathStrokes(
+    sink, GACHET_ASPECT, StrokeClass.HOUSE,
+    [[0.588, 0.625], [0.612, 0.632], [0.635, 0.620]],
+    440, 35, 0.010, 0.0035, COAT_PRUSSIAN, TABLE_CRIMSON, rng, { spread: 0.0018 },
+  );
+  // Expressive Cloisonnist portrait contours: cap visor, nose bridge, leaning wrist/hand & coat lapels
+  emitPathStrokes(
+    sink, GACHET_ASPECT, StrokeClass.HOUSE,
+    [[0.46, 0.72], [0.58, 0.85], [0.71, 0.73]],
+    458, 120, 0.014, 0.0045, COAT_PRUSSIAN, CAP_WHITE, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, GACHET_ASPECT, StrokeClass.HOUSE,
+    [[0.45, 0.71], [0.56, 0.72], [0.68, 0.69]],
+    456, 95, 0.014, 0.0048, 0x0a1428, P.cobalt, rng, { spread: 0.0025 },
+  );
+  emitPathStrokes(
+    sink, GACHET_ASPECT, StrokeClass.HOUSE,
+    [[0.555, 0.63], [0.54, 0.54], [0.56, 0.52]],
+    441, 65, 0.011, 0.0038, TABLE_CRIMSON, FLESH_PALE, rng, { spread: 0.002 },
+  );
 }
 
 function buildGachetUnderlays(mat: UnderlayMaterialFactory): Group {
   const g = new Group();
   g.name = 'underlays:gachet';
+  // Undulating blue Auvers backdrop placed behind SKY_BAND (98-166 km) so the 19,500 wave strokes are never occluded
   g.add(buildCanvasQuadMesh(
     GACHET_ASPECT,
-    [[-0.08, -0.02, 590], [1.08, -0.02, 590], [1.08, 1.04, 590], [-0.08, 1.04, 590]],
+    [[-0.08, -0.02, 220000], [1.08, -0.02, 220000], [1.08, 1.04, 220000], [-0.08, 1.04, 220000]],
     mat,
     0x1e3c73,
     'gachet-backing',
+    220000,
+  ));
+  // Vermilion table & Prussian coat torso backing (confined strictly below the shoulders so no dark corner protrudes beside the white cap or foxglove)
+  g.add(buildCanvasQuadMesh(
+    GACHET_ASPECT,
+    [[-0.04, 0.0, 520], [0.88, 0.0, 520], [0.68, 0.43, 560], [0.46, 0.43, 540]],
+    mat,
+    0x1c2f5c,
+    'gachet-figure-core',
+    585,
   ));
   return g;
 }

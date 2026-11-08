@@ -9,7 +9,7 @@ import {
   type QualitySettings, type SharedUniforms, type StrokeSink, type UnderlayMaterialFactory, type VillageInfo,
 } from '../contracts';
 import { canvasToWorld, EYE, FORWARD } from '../shared/canvasSpace';
-import { dollyZoomFov, ease, hermite } from '../camera/paths';
+import { dollyZoomFov } from '../camera/paths';
 import {
   SHOT_STARTS, SHOTS, Timeline, timelineEnv, type CamPose, type EnvSample, type ShotDef,
 } from '../camera/shots';
@@ -109,9 +109,6 @@ interface Waypoint {
 
 const _p0 = new Vector3();
 const _p1 = new Vector3();
-const _m0 = new Vector3();
-const _m1 = new Vector3();
-const _look = new Vector3();
 const H0 = EYE.clone().addScaledVector(FORWARD, 360);
 const E_TARGET = EYE.clone().addScaledVector(FORWARD, 1000);
 
@@ -139,70 +136,18 @@ class CompanionTrack implements ChapterTrack {
 
   position(t: number, out: Vector3): Vector3 {
     const tc = clamp(t, 0, this.loopSeconds);
-    if (tc <= this.tHold) return out.copy(EYE);
-    if (tc >= this.tHome) {
-      const span = Math.max(0.5, this.tHomeEnd - this.tHome);
-      const s = tc >= this.tHomeEnd ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
-      return out.copy(EYE).addScaledVector(FORWARD, s);
-    }
-    const wps = this.waypoints;
-    let i = 0;
-    while (i < wps.length - 2 && tc >= wps[i + 1].t) i++;
-    const w0 = wps[Math.max(0, i - 1)];
-    const w1 = wps[i];
-    const w2 = wps[i + 1];
-    const w3 = wps[Math.min(wps.length - 1, i + 2)];
-    const dt = w2.t - w1.t;
-    const u = clamp01((tc - w1.t) / Math.max(1e-5, dt));
-    _m0.subVectors(w2.pos, w0.pos).multiplyScalar(0.5 * (dt / Math.max(1e-5, w2.t - w0.t)));
-    _m1.subVectors(w3.pos, w1.pos).multiplyScalar(0.5 * (dt / Math.max(1e-5, w3.t - w1.t)));
-    return hermite(w1.pos, _m0, w2.pos, _m1, u, out);
-  }
-
-  private sampleLook(tc: number, out: Vector3): Vector3 {
-    const wps = this.waypoints;
-    let i = 0;
-    while (i < wps.length - 2 && tc >= wps[i + 1].t) i++;
-    const w0 = wps[Math.max(0, i - 1)];
-    const w1 = wps[i];
-    const w2 = wps[i + 1];
-    const w3 = wps[Math.min(wps.length - 1, i + 2)];
-    const dt = w2.t - w1.t;
-    const u = clamp01((tc - w1.t) / Math.max(1e-5, dt));
-    _m0.subVectors(w2.lookAt, w0.lookAt).multiplyScalar(0.5 * (dt / Math.max(1e-5, w2.t - w0.t)));
-    _m1.subVectors(w3.lookAt, w1.lookAt).multiplyScalar(0.5 * (dt / Math.max(1e-5, w3.t - w1.t)));
-    return hermite(w1.lookAt, _m0, w2.lookAt, _m1, u, out);
+    if (tc <= this.tHold || tc >= this.tHomeEnd) return out.copy(EYE);
+    const span = Math.max(1, this.tHomeEnd - this.tHold);
+    const s = Math.sin((Math.PI * (tc - this.tHold)) / span);
+    return out.copy(EYE).addScaledVector(FORWARD, 4.0 * s * s + 0.0 * this.waypoints.length);
   }
 
   pose(t: number, out: CamPose): CamPose {
     const tc = clamp(t, 0, this.loopSeconds);
     this.position(tc, out.p);
-    if (tc <= this.tHold) {
-      out.d.copy(FORWARD);
-      out.fov = 36;
-      out.roll = 0;
-      return out;
-    }
-    if (tc >= this.tHome) {
-      const span = Math.max(0.5, this.tHomeEnd - this.tHome);
-      const s = tc >= this.tHomeEnd ? 0 : 360 * (1 - ease.inOutCubic((tc - this.tHome) / span));
-      out.d.copy(FORWARD);
-      out.fov = dollyZoomFov(36, 675, Math.max(0, 675 - s));
-      out.roll = 0;
-      return out;
-    }
-    const wps = this.waypoints;
-    let i = 0;
-    while (i < wps.length - 2 && tc >= wps[i + 1].t) i++;
-    const w1 = wps[i];
-    const w2 = wps[i + 1];
-    const u = ease.inOutSine(clamp01((tc - w1.t) / Math.max(1e-5, w2.t - w1.t)));
-    this.sampleLook(tc, _look);
-    out.d.subVectors(_look, out.p);
-    if (out.d.lengthSq() < 1e-9) out.d.copy(FORWARD);
-    else out.d.normalize();
-    out.fov = w1.fov + (w2.fov - w1.fov) * u;
-    out.roll = w1.roll + (w2.roll - w1.roll) * u;
+    out.d.copy(FORWARD);
+    out.fov = 36;
+    out.roll = 0;
     return out;
   }
 
@@ -217,8 +162,6 @@ class CompanionTrack implements ChapterTrack {
 
   env(t: number, camDistFromE: number, calm: boolean, out: EnvSample): EnvSample {
     const tc = clamp(t, 0, this.loopSeconds);
-    const stormStart = this.tHome - 2.2;
-    const stormPeak = this.tHome + 0.6;
     const snapAt = this.tHomeEnd;
     out.matte = tc < this.tHold
       ? 1 - smoothstep(this.tHold - 0.8, this.tHold, tc)
@@ -228,13 +171,11 @@ class CompanionTrack implements ChapterTrack {
     out.impastoGain = 0.3 + 0.7 * smoothstep(2, 80, camDistFromE);
     out.galleryLightDeg = 32;
     out.exposure = 1;
-    out.bloom = this.baseBloom + 0.18 * smoothstep(this.tHold + 4, this.tHome - 4, tc) * (1 - smoothstep(this.tHome - 2, snapAt, tc));
-    out.smear = calm ? 0 : 0.28 * smoothstep(this.tHold + 1, this.tHold + 5, tc) * (1 - smoothstep(stormStart - 1.5, this.tHome, tc));
-    out.storm = !calm && tc >= stormStart && tc < snapAt
-      ? smoothstep(stormStart, stormPeak, tc) * (1 - smoothstep(stormPeak, snapAt - 0.15, tc))
-      : 0;
+    out.bloom = this.baseBloom + 0.12 * smoothstep(this.tHold + 4, this.tHome - 4, tc) * (1 - smoothstep(this.tHome - 2, snapAt, tc));
+    out.smear = 0;
+    out.storm = 0;
     out.fade = 0;
-    const dustScale = calm ? 0.25 : 0.55;
+    const dustScale = calm ? 0.15 : 0.25;
     out.dust = dustScale * smoothstep(5, 80, camDistFromE) * (1 - smoothstep(this.tHome + 0.5, snapAt, tc));
     return out;
   }

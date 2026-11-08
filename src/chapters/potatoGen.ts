@@ -292,12 +292,23 @@ function genPeasantFigures(sink: StrokeSink, rng: Rng): void {
 function buildPotatoUnderlays(mat: UnderlayMaterialFactory): Group {
   const g = new Group();
   g.name = 'underlays:potato';
+  // Dark Nuenen cottage rafter & wall backing placed behind SKY_BAND (98-165 km)
   g.add(buildCanvasQuadMesh(
     POTATO_ASPECT,
-    [[-0.04, 0.0, 160], [1.04, 0.0, 160], [0.96, 0.68, 550], [0.04, 0.68, 550]],
+    [[-0.06, 0.32, 220000], [1.06, 0.32, 220000], [1.06, 1.04, 220000], [-0.06, 1.04, 220000]],
+    mat,
+    0x1f1812,
+    'potato-cottage-walls',
+    220000,
+  ));
+  // Foreground beaten-earth floor & peasant table backing (below v = 0.38)
+  g.add(buildCanvasQuadMesh(
+    POTATO_ASPECT,
+    [[-0.04, 0.0, 160], [1.04, 0.0, 160], [0.98, 0.38, 520], [0.02, 0.38, 520]],
     mat,
     0x18130e,
     'potato-cottage',
+    540,
   ));
   return g;
 }

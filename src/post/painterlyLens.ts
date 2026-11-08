@@ -100,6 +100,7 @@ uniform float uLensAlign;
 uniform float uLensSmear;
 uniform float uLensFade;
 uniform float uLensExposure;  // = renderer.toneMappingExposure applied by OutputPass
+uniform float uLensPigmentPull; // 1.0 for Starry Night (12-pigment snap), gentler for companion palettes
 varying vec2 vUv;
 
 float snCbrt(float x) { return sign(x) * pow(abs(x), 1.0 / 3.0); }
@@ -127,7 +128,7 @@ vec3 snPigmentPull(vec3 c, float lum) {
     if (dd < best) { best = dd; q = SN_PIG_CHR[k]; }
   }
   vec3 target = vec3(L, L * q);   // the nearest pigment at the pixel's own lightness
-  float w = mix(0.25, 0.12, smoothstep(0.95, 1.05, lum));
+  float w = uLensPigmentPull * mix(0.25, 0.12, smoothstep(0.95, 1.05, lum));
   return max(snOklabToLin(mix(p, target, w)), 0.0);
 }
 
@@ -302,6 +303,7 @@ export function createPainterlyLens(u: SharedUniforms, q: QualitySettings, opts:
       uLensSmear: { value: 0 },
       uLensFade: { value: 0 },
       uLensExposure: { value: 1 },
+      uLensPigmentPull: { value: 1 },
     },
     vertexShader: lensVert,
     fragmentShader: lensFrag,

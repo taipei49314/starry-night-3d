@@ -69,24 +69,32 @@ void main() {
   if (alpha < 0.004) discard;
 #endif
 
-  // impasto height h = (0.3 + exp(-2.2 s)) (1 - w^2) (0.62 + 0.38 bristle(w)) imp, analytic partials
+  // impasto height h = (0.3 + exp(-2.2 s)) ((1 - w^2) (0.62 + 0.38 bristle(w)) + 0.24 w^2 (1 - w^2)) imp, analytic partials
+  // The w^2(1 - w^2) lateral ridge bead models oil paint pushed to the outer edges of the brush by hog-bristle pressure.
   float imp = vStkB.w;
   float e22 = exp(-2.2 * s);
   float prof = 0.3 + e22;
   float bri = 0.62 + 0.38 * br;
   float cosA = cos(arg);
   float dbr = 0.5 * bAmp * cosA * SN_PI * nb;
-  float omw = 1.0 - w * w;
-  float dhdw = prof * imp * (-2.0 * w * bri + omw * 0.38 * dbr);
-  float dhds = -2.2 * e22 * omw * bri * imp;
+  float w2 = w * w;
+  float omw = 1.0 - w2;
+  float bead = under ? 0.0 : 0.24 * w2 * omw;
+  float dBeadDw = under ? 0.0 : 0.48 * w * (1.0 - 2.0 * w2);
+  float dhdw = prof * imp * (-2.0 * w * bri + omw * 0.38 * dbr + dBeadDw);
+  float dhds = -2.2 * e22 * (omw * bri + bead) * imp;
   // interpolated frame vectors are within a few 1e-3 of unit length; only n is renormalised
-  vec3 n = normalize(vStkBi.xyz * (-1.4 * dhdw) + vStkT.xyz * (-1.4 * dhds) + vStkN.xyz);
+  vec3 n = normalize(vStkBi.xyz * (-1.45 * dhdw) + vStkT.xyz * (-1.45 * dhds) + vStkN.xyz);
 
   vec3 L = normalize(vStkL.xyz);
   vec3 V = normalize(vStkV.xyz);
   float ndl = max(dot(n, L), 0.0);
-  float diffuse = mix(0.55 + 0.45 * ndl, 0.72 + 0.28 * ndl, uAlign);
-  float spec = min(uSpecular * 0.16 * pow(max(dot(reflect(-L, n), V), 0.0), 28.0) * imp, 4.0) * min(vStkV.w, 1.0);
+  float ndv = max(dot(n, V), 0.0);
+  // Subtle micro-ambient-occlusion inside deep bristle valleys, balanced by ridge highlights so mean luminance is preserved
+  float valleyAo = under ? 1.0 : mix(1.0, 0.92 + 0.14 * smoothstep(0.15, 0.85, br), clamp(imp * 0.6, 0.0, 1.0));
+  float diffuse = mix(0.55 + 0.45 * ndl, 0.72 + 0.28 * ndl, uAlign) * valleyAo;
+  float fresnel = 1.0 + 0.35 * pow(1.0 - ndv, 3.0);
+  float spec = min(uSpecular * 0.17 * fresnel * pow(max(dot(reflect(-L, n), V), 0.0), 28.0) * imp, 4.0) * min(vStkV.w, 1.0);
 
   // bristle(w + 0.37) by angle addition (per-stroke constant phase step)
   float c37 = SN_PI * nb * 0.37;

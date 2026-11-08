@@ -10,7 +10,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -62,7 +62,7 @@ function genStudioBackdrop(sink: StrokeSink, rng: Rng): void {
   }
 }
 
-/** 2. Earthen studio floor planks & cast shadows beneath the boots (GROUND [155..520 m]). */
+/** 2. Earthen studio floor planks & cast shadows beneath the boots (GROUND [530..930 m]). */
 function genEarthenStudioFloor(sink: StrokeSink, rng: Rng): void {
   const nUp = new Vector3(0, 1, 0.16).normalize();
 
@@ -70,11 +70,11 @@ function genEarthenStudioFloor(sink: StrokeSink, rng: Rng): void {
     const uP = rng.range(-0.04, 1.04);
     const t = Math.pow(rng.next(), 1.12);
     const v = 0.002 + 0.46 * t;
-    const d = clamp(156 + 350 * t + rng.range(-6, 6), 154, 515);
+    const d = clamp(540 + 380 * t + rng.range(-6, 6), 530, 930);
 
     // Deep grounding shadow directly under the two boots
-    const inLeftShadow = Math.hypot((uP - 0.36) * 1.3, (v - 0.24) * 2.4) < 0.20;
-    const inRightShadow = Math.hypot((uP - 0.61) * 1.2, (v - 0.22) * 2.4) < 0.22;
+    const inLeftShadow = Math.hypot((uP - 0.36) * 1.3, (v - 0.21) * 2.4) < 0.22;
+    const inRightShadow = Math.hypot((uP - 0.61) * 1.2, (v - 0.19) * 2.4) < 0.24;
     const isShadow = inLeftShadow || inRightShadow;
 
     const cA = isShadow
@@ -179,7 +179,7 @@ function genLeatherBootsAndLaces(sink: StrokeSink, rng: Rng): void {
     );
   }
 
-  // Untied leather shoelaces snaking across the foreground floor & brass eyelets (WINDOW [456..505 m])
+  // Untied leather shoelaces snaking across the foreground floor & brass eyelets (HOUSE [442..470 m])
   for (let i = 0; i < 1600; i++) {
     const s = i / 1600;
     const isLeftLace = (i & 1) === 0;
@@ -189,26 +189,58 @@ function genLeatherBootsAndLaces(sink: StrokeSink, rng: Rng): void {
     const v = isLeftLace
       ? 0.42 - 0.26 * s + 0.02 * Math.cos(s * 7.0) + rng.range(-0.005, 0.005)
       : 0.38 - 0.22 * s + 0.02 * Math.sin(s * 10.0) + rng.range(-0.005, 0.005);
-    const d = 456 + 32 * (1 - s);
+    const d = 442 + 25 * (1 - s);
     const cA = mixHex(LACE_CREAM, BURLAP_GOLD, rng.range(0.25, 0.75));
     emitSurfaceStroke(
-      sink, SHOES_ASPECT, StrokeClass.WINDOW, uP, v, d,
+      sink, SHOES_ASPECT, StrokeClass.HOUSE, uP, v, d,
       0.012, 0.0038,
       tHoriz, nFront, cA, SIENNA_WARM, rng,
-      { emissive: 1.45 },
+      { emissive: 0.22 },
     );
   }
+  // Cloisonnist dark umber & copper-sole contours around both peasant leather boots + trailing laces
+  emitPathStrokes(
+    sink, SHOES_ASPECT, StrokeClass.HOUSE,
+    [[0.27, 0.63], [0.26, 0.38], [0.22, 0.24], [0.26, 0.19], [0.45, 0.20], [0.46, 0.62]],
+    452, 180, 0.015, 0.0052, UMBER_DARK, SOLE_COPPER, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, SHOES_ASPECT, StrokeClass.HOUSE,
+    [[0.51, 0.55], [0.49, 0.22], [0.54, 0.16], [0.74, 0.20], [0.72, 0.34], [0.66, 0.55]],
+    450, 180, 0.015, 0.0052, UMBER_DARK, SOLE_COPPER, rng, { spread: 0.003 },
+  );
+  emitPathStrokes(
+    sink, SHOES_ASPECT, StrokeClass.HOUSE,
+    [[0.42, 0.40], [0.47, 0.28], [0.44, 0.18], [0.54, 0.12]],
+    440, 85, 0.012, 0.0038, LACE_CREAM, UMBER_DARK, rng, { spread: 0.002 },
+  );
+  emitPathStrokes(
+    sink, SHOES_ASPECT, StrokeClass.HOUSE,
+    [[0.58, 0.36], [0.68, 0.26], [0.77, 0.16], [0.72, 0.11]],
+    440, 85, 0.012, 0.0038, LACE_CREAM, UMBER_DARK, rng, { spread: 0.002 },
+  );
 }
 
 function buildShoesUnderlays(mat: UnderlayMaterialFactory): Group {
   const g = new Group();
   g.name = 'underlays:shoes';
+  // Warm burlap studio wall backing placed behind SKY_BAND (98-166 km) so the golden portal backdrop shines
   g.add(buildCanvasQuadMesh(
     SHOES_ASPECT,
-    [[-0.04, 0.0, 158], [1.04, 0.0, 158], [0.98, 0.64, 540], [0.02, 0.64, 540]],
+    [[-0.06, 0.40, 220000], [1.06, 0.40, 220000], [1.06, 1.04, 220000], [-0.06, 1.04, 220000]],
     mat,
-    0x1d1610,
+    0x3b2a1c,
+    'shoes-wall',
+    220000,
+  ));
+  // Earthen studio floor backing below v = 0.46 (behind GROUND 530..930 m)
+  g.add(buildCanvasQuadMesh(
+    SHOES_ASPECT,
+    [[-0.04, 0.0, 540], [1.04, 0.0, 540], [1.02, 0.45, 940], [-0.02, 0.45, 940]],
+    mat,
+    0x261c14,
     'shoes-floor',
+    960,
   ));
   return g;
 }

@@ -8,11 +8,11 @@
 //  - 'epilogue': RM25 unsent draft & Theo + Jo van Gogh-Bonger's preservation of his letters and canvases (1891–1914).
 import { Vector3 } from 'three';
 import { CANVAS_ASPECT } from '../contracts';
-import { canvasToWorld, EYE, FORWARD, RIGHT, UP } from '../shared/canvasSpace';
+import { EYE, FORWARD, RIGHT, UP } from '../shared/canvasSpace';
 import { ease } from '../camera/paths';
 import { type CamPose, type EnvSample, type ShotDef } from '../camera/shots';
 import { getPaintingSpec, type ChapterTrack } from './suite';
-import { clamp, clamp01, smoothstep, uFromPaint, type ChapterId, type MotifId, type PaintingId } from './types';
+import { clamp, clamp01, smoothstep, type ChapterId, type MotifId, type PaintingId } from './types';
 import { resolveTransitionEdge } from './worldGraph';
 import { getTraceById, getTraceForPainting, type EpistolaryTrace } from './letters';
 
@@ -571,7 +571,7 @@ function evalWitnessBeatPose(beat: WitnessBeatSpec, tau: number, out: CamPose): 
       // Map 14..44 s smoothly onto the ground-to-cosmos ascent of the Starry Night track (t = 8..68 s)
       const starT = 8.0 + ((tau - 14.0) / 30.0) * 58.0;
       spec.track.pose(starT, out);
-      out.roll *= 0.35; // Keep the camera composed and human
+      out.roll = 0;
       return out;
     }
     const uHome = ease.inOutCubic(clamp01((tau - 44.0) / 6.5));
@@ -583,49 +583,24 @@ function evalWitnessBeatPose(beat: WitnessBeatSpec, tau: number, out: CamPose): 
     return out;
   }
 
-  if (beat.profile === 'sanctuary-still') {
-    // Sanctuary Stillness (e.g., The Bedroom in Arles 44 s, Sunflowers, Almond Blossom, Dr. Gachet):
-    // Strictly no high-speed fly-through! Gentle micro-parallax breathing within 0.4–2.8 m of E so the viewer
-    // dwells inside the quiet light of the room.
-    const entry = smoothstep(0.0, 0.16, p);
-    const exit = 1 - smoothstep(0.76, 0.90, p);
-    const env = entry * exit;
-    const maxRadius = beat.paintingId === 'bedroom' ? 2.2 : 1.6;
-    const rX = maxRadius * 0.55 * Math.sin(p * Math.PI * 1.4) * env;
-    const rY = maxRadius * 0.28 * Math.cos(p * Math.PI * 1.1) * env;
-    const rZ = maxRadius * 1.15 * Math.sin(p * Math.PI) * env;
-    stagePt(rX, rY, rZ, out.p);
-    canvasToWorld(uFromPaint(0.5 + 0.02 * Math.sin(p * Math.PI * 2), spec.aspect), 0.48 + 0.02 * Math.cos(p * Math.PI), 680, _lookPt);
-    if (env <= 1e-3) {
+  if (beat.profile === 'sanctuary-still' || beat.profile === 'observational-walk') {
+    // Pure, zero-rotation axial contemplation along FORWARD so the painting never swings or causes motion sickness
+    const walkHoldEnd = 0.84 * dur;
+    if (tau >= walkHoldEnd) {
       out.p.copy(EYE);
       out.d.copy(FORWARD);
-    } else {
-      out.d.subVectors(_lookPt, out.p).normalize();
-      out.d.lerp(FORWARD, 1 - 0.65 * env).normalize();
+      out.fov = 36;
+      out.roll = 0;
+      return out;
     }
-    out.fov = 36;
-    out.roll = 0;
-    return out;
-  }
-
-  // 'observational-walk': Calm, pedestrian-paced observation (scaling down the companion track's deep dive)
-  const walkHoldEnd = 0.84 * dur;
-  if (tau >= walkHoldEnd) {
-    out.p.copy(EYE);
+    const s = Math.sin((Math.PI * tau) / walkHoldEnd);
+    out.p.copy(EYE).addScaledVector(FORWARD, 3.2 * s * s);
     out.d.copy(FORWARD);
     out.fov = 36;
     out.roll = 0;
     return out;
   }
-  const mappedT = (tau / walkHoldEnd) * 45.5;
-  spec.track.pose(mappedT, out);
-  // Attenuate extreme distance excursions so observational beats feel like walking, not rocket flight
-  const distFromE = out.p.distanceTo(EYE);
-  if (distFromE > 48) {
-    const dampedDist = 48 + Math.pow(distFromE - 48, 0.55);
-    out.p.sub(EYE).normalize().multiplyScalar(dampedDist).add(EYE);
-  }
-  out.roll *= 0.25;
+
   return out;
 }
 

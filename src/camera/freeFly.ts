@@ -41,6 +41,13 @@ export class PilotInput {
   warpK = 1;
   /** active stir pointer position (client px) or null */
   stirAt: { x: number; y: number } | null = null;
+  /** passive pointer hover state for subtle E-point micro-parallax & brush wake */
+  hoverClientX = 0;
+  hoverClientY = 0;
+  hoverNX = 0;
+  hoverNY = 0;
+  hoverSpeed = 0;
+  lastHoverMs = -10_000;
   /** on-screen touch flight thrust (-1 backward, 0 idle, +1 forward) */
   touchThrust = 0;
 
@@ -137,7 +144,22 @@ export class PilotInput {
 
   private move(e: PointerEvent): void {
     const p = this.ptrs.get(e.pointerId);
-    if (!p) return;
+    if (!p) {
+      if (e.pointerType !== 'touch') {
+        const r = this.el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          const nx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1));
+          const ny = Math.max(-1, Math.min(1, -(((e.clientY - r.top) / r.height) * 2 - 1)));
+          this.hoverSpeed = Math.min(1, Math.hypot(nx - this.hoverNX, ny - this.hoverNY) * 14);
+          this.hoverNX = nx;
+          this.hoverNY = ny;
+          this.hoverClientX = e.clientX;
+          this.hoverClientY = e.clientY;
+          this.lastHoverMs = performance.now();
+        }
+      }
+      return;
+    }
     this.cb.onActivity();
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;

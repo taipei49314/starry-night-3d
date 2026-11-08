@@ -31,10 +31,10 @@ const CSS = `
   pointer-events:auto;cursor:pointer;transition:box-shadow .18s ease,border-color .18s ease}
 .pn-ring:hover{border-color:#fff;box-shadow:0 0 16px rgba(242,194,48,.95),inset 0 0 8px rgba(242,194,48,.65)}
 .pn-ring::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#f2c230}
-.pn-suite{position:absolute;left:50%;top:10px;transform:translateX(-50%);pointer-events:auto;display:flex;align-items:center;gap:2px;
-  padding:4px 6px;border-radius:999px;background:rgba(5,10,24,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.14);max-width:calc(100% - 14px);
-  transition:opacity .35s ease}
+.pn-suite{position:absolute;left:50%;top:12px;transform:translateX(-50%);pointer-events:auto;display:flex;align-items:center;gap:4px;
+  padding:4px 8px;border-radius:999px;background:rgba(5,10,24,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 4px 20px rgba(0,0,0,.35),0 0 0 1px rgba(232,237,240,.11);max-width:calc(100% - 14px);
+  transition:opacity .45s ease}
 .pn-suite-nav{appearance:none;border:0;background:rgba(232,237,240,.06);color:rgba(232,237,240,.75);width:20px;height:22px;border-radius:999px;
   font:600 12px/1 system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
   transition:background .16s ease,color .16s ease}
@@ -48,8 +48,8 @@ const CSS = `
 .pn-suite-btn[data-inseq="0"]{opacity:.48}
 .pn-suite-btn[data-active="1"]{opacity:1;color:#f5e27a;background:rgba(242,194,48,.18);box-shadow:inset 0 0 0 1px rgba(242,194,48,.52)}
 .pn-ch-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.pn-suite-sep{width:1px;height:14px;background:rgba(232,237,240,.16);margin:0 2px;flex-shrink:0}
-.pn-odyssey-btn{appearance:none;border:0;background:rgba(232,237,240,.07);color:rgba(232,237,240,.74);padding:4px 8px;border-radius:999px;
+.pn-suite-sep{width:1px;height:14px;background:rgba(232,237,240,.14);margin:0 2px;flex-shrink:0}
+.pn-odyssey-btn{appearance:none;border:0;background:rgba(232,237,240,.06);color:rgba(232,237,240,.78);padding:4px 10px;border-radius:999px;
   font:500 11px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.02em;cursor:pointer;
   white-space:nowrap;transition:background .18s ease,color .18s ease,box-shadow .18s ease;flex-shrink:0}
 .pn-odyssey-btn:hover{color:#fff;background:rgba(232,237,240,.14)}
@@ -74,66 +74,69 @@ const CSS = `
   font:500 10.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;
   transition:background .16s ease,color .16s ease,box-shadow .16s ease;text-align:left}
 .pn-nb-btn:hover{color:#f5e27a;background:rgba(242,194,48,.18);box-shadow:inset 0 0 0 1px rgba(242,194,48,.45)}
-.pn-card{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);text-align:center;pointer-events:none;
-  padding:10px 22px 11px;border-radius:14px;background:rgba(5,10,24,.68);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  box-shadow:0 8px 28px rgba(0,0,0,.48),0 0 0 1px rgba(242,194,48,.24);opacity:0;transition:opacity .45s ease;max-width:calc(100% - 28px)}
-.pn-card-sub{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#f2c230;margin-bottom:3px;opacity:.92}
-.pn-card-title{font-size:15px;font-weight:600;letter-spacing:.04em;color:#f4f7f9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
-.pn-card-portal{font-size:11.5px;color:rgba(245,226,122,.86);margin-top:4px;letter-spacing:.02em}
-.pn-letter{position:absolute;left:50%;bottom:106px;transform:translateX(-50%);width:min(680px,calc(100% - 32px));box-sizing:border-box;
-  padding:14px 20px 15px;border-radius:14px;background:rgba(18,14,10,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  box-shadow:0 10px 34px rgba(0,0,0,.62),0 0 0 1px rgba(232,198,128,.32),inset 0 0 28px rgba(212,168,92,.08);
-  color:#f4ecdc;pointer-events:none;display:none;opacity:0;transition:opacity .45s ease;z-index:26}
-.pn-letter[data-kind="interlude"],.pn-letter[data-kind="epilogue"]{bottom:50%;transform:translate(-50%,50%);
-  background:rgba(16,13,10,.88);box-shadow:0 14px 44px rgba(0,0,0,.74),0 0 0 1px rgba(236,202,132,.42),inset 0 0 36px rgba(212,168,92,.12)}
-.pn-letter-beat{font-size:11px;letter-spacing:.10em;color:#e8c268;margin-bottom:4px;font-weight:600}
-.pn-letter-head{font-size:11px;color:rgba(244,236,220,.78);margin-bottom:8px;border-bottom:1px solid rgba(232,198,128,.18);padding-bottom:5px;
-  display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
-.pn-letter-src{color:#d8b46a;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.5px}
-.pn-letter-summary{font-size:14px;line-height:1.65;color:#fbf6ec;letter-spacing:.02em;margin-bottom:6px;text-shadow:0 1px 2px rgba(0,0,0,.85)}
-.pn-letter-summary-en{font-size:11.5px;line-height:1.45;color:rgba(244,236,220,.68);margin-bottom:6px;
-  font-family:Georgia,"Times New Roman",serif}
-.pn-letter-links{font-size:10.5px;line-height:1.4;margin-bottom:7px}
-.pn-letter-links a{color:#e8c268;pointer-events:auto;text-decoration:underline;text-underline-offset:2px;margin-right:12px}
-.pn-letter-note{font-size:11.5px;line-height:1.5;color:rgba(236,214,162,.88)}
-.pn-letter-recon{margin-top:8px;padding-top:6px;border-top:1px dashed rgba(232,198,128,.20);font-size:10px;line-height:1.4;color:rgba(232,222,202,.62)}
-.pn-enter-odyssey{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);pointer-events:auto;display:none;
-  align-items:center;gap:8px;padding:8px 20px;border-radius:999px;border:0;
-  background:rgba(5,10,24,.84);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  box-shadow:0 6px 26px rgba(0,0,0,.55),0 0 18px rgba(242,194,48,.38),inset 0 0 0 1.2px rgba(242,194,48,.72);
-  color:#f5e27a;font:600 13px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.04em;
-  cursor:pointer;white-space:nowrap;transition:transform .18s ease,background .18s ease,box-shadow .18s ease,bottom .3s ease;z-index:25}
+.pn-card{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);text-align:center;pointer-events:none;
+  padding:8px 20px 9px;border-radius:999px;background:rgba(5,10,24,.52);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 6px 24px rgba(0,0,0,.38),0 0 0 1px rgba(242,194,48,.18);opacity:0;transition:opacity .55s ease;max-width:calc(100% - 28px)}
+.pn-card-sub{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#f2c230;margin-bottom:2px;opacity:.88}
+.pn-card-title{font-size:14px;font-weight:600;letter-spacing:.04em;color:#f4f7f9;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+.pn-card-portal{display:none}
+.pn-letter{position:absolute;left:50%;bottom:54px;transform:translateX(-50%);width:min(680px,calc(100% - 32px));box-sizing:border-box;
+  padding:8px 20px 10px;border-radius:14px;background:linear-gradient(180deg,rgba(12,9,6,0) 0%,rgba(12,9,6,.68) 35%,rgba(12,9,6,.82) 100%);
+  text-align:center;color:#f4ecdc;pointer-events:none;display:none;opacity:0;transition:opacity .5s ease;z-index:26}
+.pn-letter[data-kind="interlude"],.pn-letter[data-kind="epilogue"]{bottom:50%;transform:translate(-50%,50%);padding:18px 24px;
+  background:rgba(16,13,10,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 14px 44px rgba(0,0,0,.72),0 0 0 1px rgba(236,202,132,.35)}
+.pn-letter-beat{font-size:10.5px;letter-spacing:.12em;color:#e8c268;margin-bottom:3px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.95)}
+.pn-letter-head{font-size:10.5px;color:rgba(244,236,220,.78);margin-bottom:5px;
+  display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px;text-shadow:0 1px 3px rgba(0,0,0,.95)}
+.pn-letter-src{color:#d8b46a;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10px}
+.pn-letter-summary{font-size:14.5px;line-height:1.65;color:#fbf6ec;letter-spacing:.03em;margin-bottom:4px;text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 14px rgba(0,0,0,.75)}
+.pn-letter-summary-en{display:none}
+.pn-letter[data-kind="interlude"] .pn-letter-summary-en,.pn-letter[data-kind="epilogue"] .pn-letter-summary-en{
+  display:block;font-size:11.5px;line-height:1.45;color:rgba(244,236,220,.68);margin-bottom:6px;font-family:Georgia,"Times New Roman",serif}
+.pn-letter-links{font-size:10px;line-height:1.3;margin-top:2px}
+.pn-letter-links a{color:rgba(232,194,104,.85);pointer-events:auto;text-decoration:none;border-bottom:1px dotted rgba(232,194,104,.45);margin:0 6px}
+.pn-letter-note{display:none}
+.pn-letter[data-kind="interlude"] .pn-letter-note,.pn-letter[data-kind="epilogue"] .pn-letter-note{
+  display:block;font-size:11.5px;line-height:1.5;color:rgba(236,214,162,.88);margin-top:4px}
+.pn-letter-recon{display:none}
+.pn-enter-odyssey{position:absolute;left:50%;bottom:60px;transform:translateX(-50%);pointer-events:auto;display:none;
+  align-items:center;gap:8px;padding:7px 18px;border-radius:999px;border:0;
+  background:rgba(5,10,24,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 6px 26px rgba(0,0,0,.55),0 0 18px rgba(242,194,48,.32),inset 0 0 0 1px rgba(242,194,48,.65);
+  color:#f5e27a;font:600 12.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;letter-spacing:.04em;
+  cursor:pointer;white-space:nowrap;transition:transform .18s ease,background .18s ease,box-shadow .18s ease,opacity .45s ease;z-index:25}
 .pn-enter-odyssey:hover{background:rgba(242,194,48,.24);color:#fff;transform:translateX(-50%) scale(1.03);
   box-shadow:0 8px 30px rgba(0,0,0,.65),0 0 24px rgba(242,194,48,.75),inset 0 0 0 1.5px #fff}
-.pn-tl{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(900px,calc(100% - 20px));box-sizing:border-box;
-  padding:7px 14px 8px;border-radius:14px;background:rgba(5,10,24,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 20px rgba(0,0,0,.45),0 0 0 1px rgba(232,237,240,.13);pointer-events:auto;display:none;
-  transition:opacity .35s ease}
+.pn-tl{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:min(540px,calc(100% - 24px));box-sizing:border-box;
+  padding:6px 14px 7px;border-radius:999px;background:rgba(5,10,24,.56);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 4px 20px rgba(0,0,0,.35),0 0 0 1px rgba(232,237,240,.11);pointer-events:auto;display:none;
+  transition:opacity .45s ease}
 .pn-ui[data-clean-eye="1"] .pn-suite,
 .pn-ui[data-clean-eye="1"] .pn-pathbar,
 .pn-ui[data-clean-eye="1"] .pn-tl,
 .pn-ui[data-clean-eye="1"] .pn-neighbors,
-.pn-ui[data-clean-eye="1"] .pn-card,
 .pn-ui[data-clean-eye="1"] .pn-beacon,
 .pn-ui[data-clean-eye="1"] .pn-enter-odyssey{opacity:0 !important;pointer-events:none !important}
-.pn-tl-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;font-size:11.5px;letter-spacing:.02em;flex-wrap:wrap}
-.pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44%}
-.pn-tl-controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pn-tl-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;font-size:11px;letter-spacing:.02em;flex-wrap:nowrap}
+.pn-tl-shot{color:#f5e27a;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
+.pn-tl-controls{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
 .pn-ctl-btn{appearance:none;border:0;background:rgba(232,237,240,.08);color:rgba(232,237,240,.84);padding:2px 8px;border-radius:999px;
   font:500 10.5px/1.3 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;cursor:pointer;white-space:nowrap;
   transition:background .15s ease,color .15s ease,box-shadow .15s ease,opacity .15s ease}
 .pn-ctl-btn:hover{color:#fff;background:rgba(232,237,240,.16)}
 .pn-ctl-btn[data-on="1"]{color:#f5e27a;background:rgba(242,194,48,.20);box-shadow:inset 0 0 0 1px rgba(242,194,48,.48)}
 .pn-ctl-btn[data-ready="1"]{box-shadow:inset 0 0 0 1px rgba(242,194,48,.42);color:#f5e27a}
-.pn-tl-time{color:rgba(232,237,240,.72);font:11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;flex-shrink:0}
-.pn-tl-track{position:relative;height:7px;border-radius:999px;background:rgba(232,237,240,.15);cursor:pointer;touch-action:none}
+.pn-tl-time{color:rgba(232,237,240,.68);font:10.5px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;flex-shrink:0}
+.pn-tl-track{position:relative;height:3.5px;border-radius:999px;background:rgba(232,237,240,.16);cursor:pointer;touch-action:none;transition:height .15s ease}
+.pn-tl:hover .pn-tl-track{height:5.5px}
 .pn-tl-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#c8964e,#7eb8da,#f2c230,#5eb2bc,#d85e24);width:0%}
-.pn-tl-thumb{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#f5e27a;
+.pn-tl-thumb{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#f5e27a;
   box-shadow:0 0 8px rgba(242,194,48,.85),0 0 0 1.5px #050a18;left:0%}
-.pn-tl-mark{position:absolute;top:-1px;bottom:-1px;width:1px;background:rgba(5,10,24,.88);z-index:1}
+.pn-tl-mark{position:absolute;top:0;bottom:0;width:1px;background:rgba(5,10,24,.65);z-index:1}
 .pn-suite[data-strip-open="0"] .pn-suite-nav,
 .pn-suite[data-strip-open="0"] .pn-suite-scroll{display:none}
-.pn-tl-acts{display:grid;margin-top:4px;font-size:9.5px;color:rgba(232,237,240,.58);overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.pn-tl-acts{display:none}
 .pn-tl-acts::-webkit-scrollbar{display:none}
 .pn-tl-act{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px;cursor:pointer;transition:color .15s ease;min-width:26px}
 .pn-tl-act:hover{color:#fff}
@@ -519,7 +522,7 @@ export class DirectorUI {
   private beaconTargetId: PaintingId = 'weaver';
   private cardTimer: number | null = null;
   private hudText = '';
-  private lastUiActivityMs = 0;
+  private lastUiActivityMs = -10_000;
   private completedFirstSingleLoop = false;
   private last = {
     hud: false,
@@ -533,7 +536,7 @@ export class DirectorUI {
     tlTime: '',
     ctlKey: '',
     shotIdx: -1,
-    cleanEye: '',
+    cleanEye: '1',
     inviteVis: false,
     letterKey: '',
   };
@@ -565,6 +568,7 @@ export class DirectorUI {
     input.classList.add('pn-focusable');
     this.root = doc.createElement('div');
     this.root.className = 'pn-ui';
+    this.root.dataset.cleanEye = '1';
 
     const markUiActivity = () => {
       this.lastUiActivityMs = performance.now();
@@ -665,6 +669,7 @@ export class DirectorUI {
     this.topPauseBtn.textContent = '⏸ 暫停';
     this.topPauseBtn.title = '暫停 / 繼續運鏡 (快捷鍵 P)';
     this.topPauseBtn.dataset.on = '0';
+    this.topPauseBtn.style.display = 'none';
     this.topPauseBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onAction?.('pause');
@@ -689,6 +694,7 @@ export class DirectorUI {
     this.starrySingleBtn.textContent = '◎ 單幅星夜 96s';
     this.starrySingleBtn.title = '切換至單幅《星夜》96 秒十鏡頭完整 3D 筆觸巡禮 (快捷鍵 O)';
     this.starrySingleBtn.dataset.on = '0';
+    this.starrySingleBtn.style.display = 'none';
     this.starrySingleBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onSelectMode?.('theme', 'single-starry');
@@ -701,6 +707,7 @@ export class DirectorUI {
     this.odysseyBtn.textContent = '∞ 五章三十幕';
     this.odysseyBtn.title = '模式 A：五大章 30 幕完整長篇 Odyssey (快捷鍵 O 切換單幅/史詩)';
     this.odysseyBtn.dataset.on = '0';
+    this.odysseyBtn.style.display = 'none';
     this.odysseyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onSelectMode?.('odyssey', 'odyssey');
@@ -713,6 +720,7 @@ export class DirectorUI {
     this.themeBtn.textContent = '⟁ 主題路徑';
     this.themeBtn.title = '模式 C：依六大母題編排主題路徑（光與夜 / 道路 / 居所 / 繁花 / 凝視 / 智能編織 / 單幅循環）';
     this.themeBtn.dataset.on = '0';
+    this.themeBtn.style.display = 'none';
     this.themeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const nextPath = this.currentPathId === 'odyssey' || this.currentPathId === 'single' || this.currentPathId === 'witness' ? 'nights' : this.currentPathId;
@@ -723,8 +731,8 @@ export class DirectorUI {
     this.atlasBtn = doc.createElement('button');
     this.atlasBtn.type = 'button';
     this.atlasBtn.className = 'pn-odyssey-btn';
-    this.atlasBtn.textContent = '🌌 宇宙星圖';
-    this.atlasBtn.title = '模式 B：開啟梵谷世界系統星圖（五大章 · 30幅巨作 · 六大母題 · 任意門鄰居探索，快捷鍵 U）';
+    this.atlasBtn.textContent = '🌌 星圖';
+    this.atlasBtn.title = '開啟梵谷世界星圖與策展模式選單（五大章 · 30幅巨作 · 六大母題，快捷鍵 U）';
     this.atlasBtn.dataset.on = '0';
     this.atlasBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -740,7 +748,7 @@ export class DirectorUI {
     this.soundBtn = doc.createElement('button');
     this.soundBtn.type = 'button';
     this.soundBtn.className = 'pn-odyssey-btn';
-    this.soundBtn.textContent = '♪ 點擊開啟聲景';
+    this.soundBtn.textContent = '♪ 聲景';
     this.soundBtn.title = '切換程序化空間聲景 / 靜音 (快捷鍵 V)';
     this.soundBtn.dataset.on = '0';
     this.soundBtn.addEventListener('click', (e) => {
@@ -828,6 +836,71 @@ export class DirectorUI {
     });
     atlasTop.append(atlasTitle, atlasClose);
 
+    // Curatorial Journey & Mode selector inside Atlas so the main HUD remains zero-clutter
+    const atlasModesBar = doc.createElement('div');
+    atlasModesBar.className = 'pn-atlas-motifs';
+    const atlasModeItems: Array<{ label: string; title: string; run: () => void }> = [
+      {
+        label: '✦ 陪他走過一生 (五章見證)',
+        title: '跟隨梵谷走過荷蘭、巴黎、亞爾、聖雷米、奧維爾五大人生章節與書信痕跡',
+        run: () => this.onSelectMode?.('witness', 'witness'),
+      },
+      {
+        label: '◎ 單幅《星夜》 18s',
+        title: '切換至單幅《星夜》18 秒畫展精煉展示',
+        run: () => this.onSelectMode?.('theme', 'single-starry'),
+      },
+      {
+        label: '∞ 三十幅畫展輪播 (4分)',
+        title: '五大章 30 幅巨作畫展自動輪播（每幅 8 秒，總長 4 分鐘）',
+        run: () => this.onSelectMode?.('odyssey', 'odyssey'),
+      },
+      {
+        label: '⟁ 光與夜之路',
+        title: '主題路徑：荷蘭油燈 → 隆河星波 → 聖雷米星夜 → 麥田風暴',
+        run: () => this.onSelectMode?.('theme', 'nights'),
+      },
+      {
+        label: '⟁ 道路與橋樑',
+        title: '主題路徑：一雙舊鞋 → 塞納河鐵橋 → 絲柏夜路 → 麥田三岔路',
+        run: () => this.onSelectMode?.('theme', 'roads'),
+      },
+      {
+        label: '⌂ 居所與聖殿',
+        title: '主題路徑：食薯者餐桌 → 亞爾黃色小屋 → 亞爾臥室 → 奧維爾教堂',
+        run: () => this.onSelectMode?.('theme', 'dwellings'),
+      },
+      {
+        label: '❀ 黑土繁花',
+        title: '主題路徑：向日葵 → 播種者 → 鳶尾花 → 盛開杏花 → 麥田群鴉',
+        run: () => this.onSelectMode?.('theme', 'flora'),
+      },
+      {
+        label: '❖ 凝視與靈魂',
+        title: '主題路徑：食薯者 → 唐吉老爹 → 自畫像 → 嘉舍醫師 → 星夜渦流',
+        run: () => this.onSelectMode?.('theme', 'gaze'),
+      },
+      {
+        label: '✨ 智能編織 (6幕)',
+        title: '從當前畫作與母題出發，沿任意門自動編織 6 幕連貫旅程',
+        run: () => this.onWeavePath?.(this.currentActive, this.activeMotifFilter === 'all' ? undefined : this.activeMotifFilter),
+      },
+    ];
+    for (const mi of atlasModeItems) {
+      const mb = doc.createElement('button');
+      mb.type = 'button';
+      mb.className = 'pn-motif-pill';
+      mb.textContent = mi.label;
+      mb.title = mi.title;
+      mb.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.atlasModal.style.display = 'none';
+        mi.run();
+        this.input.focus();
+      });
+      atlasModesBar.appendChild(mb);
+    }
+
     // 6 Motif filter bar inside Atlas
     const motifsBar = doc.createElement('div');
     motifsBar.className = 'pn-atlas-motifs';
@@ -900,7 +973,7 @@ export class DirectorUI {
 
     this.atlasDetail = doc.createElement('div');
     this.atlasDetail.className = 'pn-atlas-detail';
-    this.atlasModal.append(atlasTop, motifsBar, chGrid, this.atlasDetail);
+    this.atlasModal.append(atlasTop, atlasModesBar, motifsBar, chGrid, this.atlasDetail);
 
     // Bottom Scrubber Timeline Bar + Interactive Action Dock
     this.tlRoot = doc.createElement('div');
@@ -952,10 +1025,15 @@ export class DirectorUI {
     this.dwellBtn.addEventListener('lostpointercapture', releaseDwell);
 
     this.modeToggleBtn = makeCtl('🕊️ 自由探索', '鎖定自由探索模式 / 返回電影運鏡 (快捷鍵 F / C，WASD+拖曳飛行，右鍵/Alt攪動星空)', 'freelock');
-    this.eyeBtn = makeCtl('👁️ 歸位 E', '沿對數螺線飛回畫家唯一凝視點 E (快捷鍵 Space)', 'return');
+    this.modeToggleBtn.style.display = 'none';
+    this.eyeBtn = makeCtl('◎ 歸位 E', '沿對數螺線飛回畫家唯一凝視點 E (快捷鍵 Space)', 'return');
+    this.eyeBtn.style.display = 'none';
     this.stormBtn = makeCtl('🌪️ 暴風', '觸發 3D 筆觸暴風漩渦解構與彈簧重組 (快捷鍵 G)', 'storm');
+    this.stormBtn.style.display = 'none';
     this.warpBtn = makeCtl('🔭 景深 1.0×', '切換 250 km 非線性景深壓縮/深空延展 (或按住 Shift + 滾輪)', 'warp');
+    this.warpBtn.style.display = 'none';
     this.singleLoopBtn = makeCtl('◎ 單幅巡禮', '在「單幅多鏡頭深度巡禮 (如星夜 96s 十鏡頭)」與「五章三十幕史詩」間切換 (快捷鍵 O)', 'singleToggle');
+    this.singleLoopBtn.style.display = 'none';
 
     this.tlControls.append(
       this.playPauseBtn,
@@ -1387,13 +1465,13 @@ export class DirectorUI {
   setSoundState(enabled: boolean, active = false): void {
     if (!enabled) {
       this.soundBtn.dataset.on = '0';
-      this.soundBtn.textContent = '♪ 聲景：靜音';
+      this.soundBtn.textContent = '♪ 靜音';
     } else if (!active) {
       this.soundBtn.dataset.on = '0';
-      this.soundBtn.textContent = '♪ 點擊開啟聲景';
+      this.soundBtn.textContent = '♪ 聲景';
     } else {
       this.soundBtn.dataset.on = '1';
-      this.soundBtn.textContent = '♪ 聲景：開';
+      this.soundBtn.textContent = '♪ 聲景 · 開';
     }
   }
 
@@ -1452,13 +1530,13 @@ export class DirectorUI {
 
     const isSingle = opts.pathId === 'single';
     const isWitness = opts.mode === 'witness' || opts.pathId === 'witness';
-    const stripOpen = (!isSingle && !isWitness) || this.stripUserExpanded;
+    const stripOpen = this.stripUserExpanded;
     this.suiteBar.dataset.stripOpen = stripOpen ? '1' : '0';
     const activeItem = SUITE_ITEM_MAP.get(opts.active);
     this.drawerToggleBtn.dataset.on = stripOpen ? '1' : '0';
     this.drawerToggleBtn.textContent = activeItem
-      ? `🎨 ${activeItem.roman}·${activeItem.shortZh} (30幅) ${stripOpen ? '▴' : '▾'}`
-      : `🎨 30 幅畫作 ${stripOpen ? '▴' : '▾'}`;
+      ? `🎨 《${activeItem.shortZh}》 ${stripOpen ? '▴' : '▾'}`
+      : `🎨 畫作 ${stripOpen ? '▴' : '▾'}`;
 
     this.witnessBtn.dataset.on = isWitness ? '1' : '0';
     this.starrySingleBtn.dataset.on = isSingle && opts.active === 'starry' ? '1' : '0';
@@ -1470,9 +1548,9 @@ export class DirectorUI {
     this.singleLoopBtn.textContent = isSingle ? '◎ 單幅循環中' : '◎ 單幅巡禮';
 
     const showBar = this.suiteBar.style.display !== 'none';
-    this.pathBar.style.display = showBar && opts.mode === 'theme' && !isSingle ? 'flex' : 'none';
+    this.pathBar.style.display = 'none';
     this.atlasModal.style.display = showBar && opts.mode === 'atlas' ? 'block' : 'none';
-    this.neighborsBox.style.display = showBar && opts.mode === 'theme' && !isSingle ? 'flex' : 'none';
+    this.neighborsBox.style.display = 'none';
     if (!isWitness) {
       this.letterBox.style.display = 'none';
       this.letterBox.style.opacity = '0';
@@ -1501,11 +1579,9 @@ export class DirectorUI {
         this.cardPortal.textContent = `✦ ${item.portalZh}`;
         this.card.style.opacity = '1';
         if (this.cardTimer !== null) window.clearTimeout(this.cardTimer);
-        // Long enough to outlast the opening hold at E (6 s in the Starry loop), where clean-eye hides the card, so it
-        // is still seen for a few seconds as the camera departs.
         this.cardTimer = window.setTimeout(() => {
           this.card.style.opacity = '0';
-        }, 9500);
+        }, 4200);
       }
     } else if (isWitness) {
       this.card.style.opacity = '0';
@@ -1645,14 +1721,15 @@ export class DirectorUI {
       this.odysseyInviteBtn.style.display = showInvite ? 'flex' : 'none';
     }
 
-    const userRecentlyActive = performance.now() - this.lastUiActivityMs < 2400;
-    const cleanEye = (s.align ?? 0) > 0.72 && this.currentMode !== 'atlas' && !s.paused && !userRecentlyActive ? '1' : '0';
+    const userRecentlyActive = performance.now() - this.lastUiActivityMs < 2200;
+    const cleanEye = this.currentMode !== 'atlas' && !s.paused && !userRecentlyActive && !this.stripUserExpanded ? '1' : '0';
     if (cleanEye !== this.last.cleanEye) {
       this.last.cleanEye = cleanEye;
       this.root.dataset.cleanEye = cleanEye;
     }
 
-    const ctlKey = `${s.mode ?? ''}|${s.paused ? 1 : 0}|${s.freeLocked ? 1 : 0}|${(s.warpK ?? 1).toFixed(1)}|${s.witnessMode ? 1 : 0}|${s.dwellHeld ? 1 : 0}|${s.canDwell ? 1 : 0}`;
+    const offEye = (s.align ?? 1) < 0.90;
+    const ctlKey = `${s.mode ?? ''}|${s.paused ? 1 : 0}|${s.freeLocked ? 1 : 0}|${(s.warpK ?? 1).toFixed(1)}|${s.witnessMode ? 1 : 0}|${s.dwellHeld ? 1 : 0}|${s.canDwell ? 1 : 0}|${offEye ? 1 : 0}`;
     if (ctlKey !== this.last.ctlKey) {
       this.last.ctlKey = ctlKey;
       const paused = !!s.paused;
@@ -1661,27 +1738,27 @@ export class DirectorUI {
       this.topPauseBtn.dataset.on = paused ? '1' : '0';
       this.topPauseBtn.textContent = paused ? '▶ 繼續' : '⏸ 暫停';
 
+      this.eyeBtn.style.display = offEye ? 'inline-block' : 'none';
+
       const inWitness = !!s.witnessMode;
       this.dwellBtn.style.display = inWitness ? 'inline-block' : 'none';
-      this.stormBtn.style.display = inWitness ? 'none' : 'inline-block';
+      this.stormBtn.style.display = 'none';
       if (inWitness) {
         const dwelling = !!(s.dwellHeld && s.canDwell);
         this.dwellBtn.dataset.on = dwelling ? '1' : '0';
         this.dwellBtn.dataset.ready = s.canDwell ? '1' : '0';
-        this.dwellBtn.style.opacity = s.canDwell ? '1' : '0.52';
+        this.dwellBtn.style.opacity = s.canDwell ? '1' : '0.45';
         this.dwellBtn.textContent = dwelling
-          ? '⏳ 駐足凝視中…'
+          ? '⏳ 駐足中…'
           : s.canDwell
-            ? '⏳ 按住駐足停留'
-            : '⏳ 伴隨梵谷前行';
+            ? '⏳ 按住駐足'
+            : '⏳ 伴行中';
       }
 
       const inFree = s.mode === 'free';
       this.modeToggleBtn.dataset.on = inFree ? '1' : '0';
       this.modeToggleBtn.textContent = s.freeLocked ? '🔒 自由飛行中' : inFree ? '🕊️ 自由探索中' : '🕊️ 自由探索';
-      if (showBar && this.currentMode !== 'atlas') {
-        this.neighborsBox.style.display = inFree || (this.currentMode === 'theme' && !isSingle) ? 'flex' : 'none';
-      }
+      this.neighborsBox.style.display = 'none';
 
       const wk = s.warpK ?? 1;
       const warped = Math.abs(wk - 1) > 0.04;

@@ -154,17 +154,13 @@ export const KEYFRAME_CHECKS: readonly KeyframeCheck[] = [
 export type EnvKey = readonly [number, number, EaseName?];
 export type EnvChannel = 'bloom' | 'exposure' | 'matte' | 'smear' | 'storm' | 'dust' | 'galleryLightDeg';
 export const ENV_KEYS: Record<EnvChannel, readonly EnvKey[]> = {
-  bloom: [[0, 0.45], [6, 0.45], [7, 0.5], [12, 0.5], [13, 0.6], [20, 0.6], [20.5, 0.7], [30, 0.9], [32, 0.9], [37.5, 1.6],
-    [38, 1.3], [42, 1.3], [43, 0.9], [64, 0.9], [65, 1.0], [73, 1.0], [74, 0.9], [87.5, 0.9], [88.3, 0.45], [96, 0.45]],
-  exposure: [[0, 1], [37.3, 1], [37.55, 0.5], [37.85, 0.5], [38.6, 1], [64, 1], [65, 1.1], [73, 1.1], [74, 1], [96, 1]],
+  bloom: [[0, 0.45], [6, 0.45], [7, 0.5], [12, 0.5], [13, 0.58], [20, 0.58], [30, 0.65], [42, 0.68], [64, 0.68], [88, 0.52], [96, 0.45]],
+  exposure: [[0, 1], [96, 1]],
   matte: [[0, 1], [6, 1], [8, 0, 'inOutCubic'], [93, 0], [95.5, 1, 'inOutCubic'], [96, 1]],
-  smear: [[0, 0], [12, 0], [12.5, 0.2], [20, 0.2], [20.5, 0.3], [30, 0.5], [32, 0.5], [32.5, 0.8], [37.5, 0.8], [38, 0.6],
-    [42, 0.6], [42.5, 0.4], [52, 0], [52.5, 0.7], [64, 0.7], [64.5, 0], [73, 0], [73.5, 0.6], [88, 0.2], [88.5, 0], [96, 0]],
-  // stays 1 until 88.5 so the snap (|C-E| first < 360 m, just after 88.0) fires while the storm is armed
-  storm: [[0, 0], [70, 0], [73, 1, 'smoothstep'], [88.5, 1], [89, 0], [96, 0]],
-  // 64-73.5: dip to 0.25 in the calm vortex eye so foreground dust does not speckle the telephoto village;
-  // 88-96: 0.3 * smoothstep(0.5, 40, |C-E|) (follows uOff), evaluated in timelineEnv
-  dust: [[0, 0], [6, 0], [12, 1], [64, 1], [67, 0.25, 'inOutSine'], [72.5, 0.25], [73.5, 1, 'inOutSine'], [88, 0.3], [96, 0.3]],
+  smear: [[0, 0], [96, 0]],
+  // Disabled automatic storm scatter during standard loop playback to prevent visual fatigue and disorientation
+  storm: [[0, 0], [96, 0]],
+  dust: [[0, 0], [6, 0], [12, 0.25], [88, 0.15], [96, 0]],
   galleryLightDeg: [[0, -15], [2, -15], [6, 15, 'inOutSine'], [92, 15], [96, -15, 'inOutSine']],
 };
 /** Bloom pulse +0.4 during 88.6-88.9 (sine bump). */
@@ -203,14 +199,13 @@ export function aspectFov(fovDeg: number, aspect: number, canvasAspect?: number)
   return (2 * Math.atan(k * Math.tan((fovDeg * DEG) / 2))) / DEG;
 }
 
-/** Comfort caps (§4.8, §8 risk 9) applied after path evaluation: roll <= 30 deg (x0.5 calm), FOV <= 80 (70 calm). */
-export function applyComfort(pose: CamPose, aspect: number, calm: boolean, canvasAspect?: number): CamPose {
-  let roll = pose.roll * (calm ? COMFORT.calmRollScale : 1);
-  roll = Math.max(-COMFORT.rollMaxDeg, Math.min(COMFORT.rollMaxDeg, roll));
-  pose.roll = roll;
+/** Comfort caps applied after path evaluation: zero horizon roll (0 deg) and stabilized human-eye FOV around 36 deg to eliminate motion sickness. */
+export function applyComfort(pose: CamPose, aspect: number, _calm: boolean, canvasAspect?: number): CamPose {
+  pose.roll = 0;
+  const gentleRefFov = Math.max(35, Math.min(42, 36 + (pose.fov - 36) * 0.18));
   const canvasFov = canvasPoseFovDeg(aspect, canvasAspect);
-  const cap = Math.max(calm ? COMFORT.calmFovMaxDeg : COMFORT.fovMaxDeg, canvasFov);
-  pose.fov = Math.min(cap, aspectFov(pose.fov, aspect, canvasAspect));
+  const cap = Math.max(44, canvasFov);
+  pose.fov = Math.min(cap, aspectFov(gentleRefFov, aspect, canvasAspect));
   return pose;
 }
 
@@ -266,31 +261,27 @@ export class Timeline {
   }
 
   // ------------------------------------------------------------ public evaluation
-  /** Wrapped loop time; 96 maps to 96 (end of shot 10), not 0, so tests can sample the closing pose. */
+  /** Wrapped loop time; 96 maps to 96 (end of shot 10), not 0, so tests can sample the closing pose.
+   *  Pure axial breathing along FORWARD (0..4.5 m, zero lateral swing, zero rotation) so viewing is 100% free of motion sickness. */
   position(t: number, out: Vector3): Vector3 {
     const bl = this.blendAt(t);
     if (bl) {
       const s = (t - bl.tb) / bl.w;
-      return hermite(bl.p0, tA.copy(bl.v0).multiplyScalar(bl.w), bl.p1, tB.copy(bl.v1).multiplyScalar(bl.w), s, out);
+      hermite(bl.p0, tA.copy(bl.v0).multiplyScalar(bl.w), bl.p1, tB.copy(bl.v1).multiplyScalar(bl.w), s, out);
+    } else {
+      this.seg(t).pos(t, out);
     }
-    return this.seg(t).pos(t, out);
+    if (t <= 6 || t >= 95.5) return out.copy(EYE);
+    const s = Math.sin((Math.PI * (t - 6)) / 89.5);
+    return out.copy(EYE).addScaledVector(FORWARD, 4.5 * s * s);
   }
 
-  /** Full pose at loop time t in [0, 96] (reference FOV, raw roll; apply `applyComfort` for output). */
+  /** Full pose at loop time t in [0, 96]: view direction locked strictly to FORWARD, roll = 0, fov = 36. */
   pose(t: number, out: CamPose): CamPose {
-    const bl = this.blendAt(t);
-    if (bl) {
-      const s = (t - bl.tb) / bl.w;
-      const w = bl.w;
-      hermite(bl.p0, tA.copy(bl.v0).multiplyScalar(w), bl.p1, tB.copy(bl.v1).multiplyScalar(w), s, out.p);
-      hermite(bl.d0, tA.copy(bl.dd0).multiplyScalar(w), bl.d1, tB.copy(bl.dd1).multiplyScalar(w), s, out.d).normalize();
-      out.roll = hermite1(bl.r0, bl.rr0 * w, bl.r1, bl.rr1 * w, s);
-      out.fov = hermite1(bl.f0, bl.ff0 * w, bl.f1, bl.ff1 * w, s);
-      return out;
-    }
-    const sg = this.seg(t);
-    sg.pos(t, out.p);
-    sg.orient(t, out);
+    this.position(t, out.p);
+    out.d.copy(FORWARD);
+    out.roll = 0;
+    out.fov = 36;
     return out;
   }
 

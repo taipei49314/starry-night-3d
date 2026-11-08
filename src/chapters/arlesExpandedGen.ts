@@ -11,7 +11,7 @@ import {
 import { canvasToWorld } from '../shared/canvasSpace';
 import { forkRng } from '../shared/rng';
 import {
-  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitSurfaceStroke,
+  buildCanvasQuadMesh, clamp, emitCanvasStroke, emitCustomStar, emitPathStrokes, emitSurfaceStroke,
   mixHex, shadeHex, uFromPaint,
 } from './types';
 
@@ -87,7 +87,7 @@ export function generateYellowHouseChapter(
       cA, 0xb87832, rng, { q1: N_UP.x, q2: N_UP.y, q3: N_UP.z },
     );
   }
-  // Foreground trench sand mounds & workmen/pedestrian figures (CYPRESS [156..232 m] & GROVE [280..440 m])
+  // Foreground curving trench sand mounds & workmen/pedestrian figures (CYPRESS [156..232 m] & GROVE [280..440 m])
   for (let i = 0; i < 2400; i++) {
     const isPedestrian = i >= 1850;
     if (isPedestrian) {
@@ -101,12 +101,15 @@ export function generateYellowHouseChapter(
         pIdx === 1 ? P.zincWhite : P.prussian, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
       );
     } else {
-      const uP = rng.range(0.18, 0.68);
-      const v = rng.range(0.06, 0.24);
+      const s = rng.next();
+      const uCenter = 0.22 + 0.44 * s;
+      const vCenter = 0.14 + 0.08 * Math.sin(s * Math.PI * 1.4);
+      const uP = uCenter + rng.range(-0.045, 0.045);
+      const v = vCenter + rng.range(-0.04, 0.04);
       emitCanvasStroke(
         sink, YELLOWHOUSE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(158, 228),
-        rng.range(0.016, 0.032), rng.range(-0.35, 0.35), rng.range(0.005, 0.009),
-        P.ochre, HOUSE_CHROME, rng,
+        rng.range(0.016, 0.032), 0.25 * Math.cos(s * Math.PI * 1.4) + rng.range(-0.28, 0.28), rng.range(0.005, 0.009),
+        (i & 3) === 0 ? 0xa86424 : P.ochre, HOUSE_CHROME, rng, { flags: StrokeFlag.OUTLINE },
       );
     }
   }
@@ -144,13 +147,25 @@ export function generateYellowHouseChapter(
       shadeHex(cA, rng.range(0.88, 1.12)), P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Place Lamartine avenue plane trees & train steam puff over the right railway bridge (GROVE [380..980 m])
+  // Cloisonnist architectural contours of the Yellow House V-corner, roof eaves, café awning & green front door
+  emitPathStrokes(sink, YELLOWHOUSE_ASPECT, StrokeClass.HOUSE, [[0.32, 0.36], [0.32, 0.70], [0.48, 0.76], [0.68, 0.70], [0.68, 0.36]], 470, 14, 0.022, 0.006, 0x2c1e12, ROOF_TERRACOTTA, rng);
+  emitPathStrokes(sink, YELLOWHOUSE_ASPECT, StrokeClass.HOUSE, [[0.485, 0.36], [0.485, 0.75]], 470, 18, 0.022, 0.006, 0x6e4814, HOUSE_CHROME, rng);
+  emitPathStrokes(sink, YELLOWHOUSE_ASPECT, StrokeClass.HOUSE, [[0.14, 0.46], [0.32, 0.46]], 535, 14, 0.022, 0.0065, P.zincWhite, PINK_CAFE, rng);
+  // Place Lamartine avenue rounded plane tree crowns & train steam puff over the right railway bridge (GROVE [380..980 m])
+  const yhTrees = [
+    { u: 0.09, v: 0.48, rx: 0.055, ry: 0.09 },
+    { u: 0.71, v: 0.48, rx: 0.055, ry: 0.09 },
+    { u: 0.78, v: 0.45, rx: 0.048, ry: 0.075 },
+  ];
   for (let i = 0; i < 1600; i++) {
     const isSteam = i >= 1200;
-    const uP = isSteam ? rng.range(0.76, 0.92) : (i < 600 ? rng.range(0.04, 0.16) : rng.range(0.66, 0.78));
-    const v = isSteam ? rng.range(0.51, 0.58) : rng.range(0.38, 0.62);
+    const tc = yhTrees[i % yhTrees.length];
+    const th = rng.range(0, Math.PI * 2);
+    const r = Math.pow(rng.next(), 0.65);
+    const uP = isSteam ? 0.84 + r * 0.065 * Math.cos(th) : tc.u + r * tc.rx * Math.cos(th);
+    const v = isSteam ? 0.54 + r * 0.035 * Math.sin(th) : tc.v + r * tc.ry * Math.sin(th);
     const d = isSteam ? rng.range(860, 980) : rng.range(420, 740);
-    const ang = rng.range(0, Math.PI * 2);
+    const ang = th + Math.PI * 0.5;
     T_DIR.set(Math.cos(ang), Math.sin(ang), 0).normalize();
     emitSurfaceStroke(
       sink, YELLOWHOUSE_ASPECT, StrokeClass.GROVE, uP, v, d,
@@ -259,31 +274,106 @@ export function generateHarvestChapter(
     );
   }
 
-  // 3. Golden Haystacks, Farmhouse & Famous Blue Cart (HOUSE [480..1450 m]) + Foreground Fence (CYPRESS)
+  // 3. Field Boundary Hedges, Farmhouse, Haystacks & Sculpted Blue Cart (HOUSE, GROVE, CYPRESS)
+  // Stone walls & hedgerow paths dividing the La Crau plain
+  emitPathStrokes(
+    sink, HARVEST_ASPECT, StrokeClass.GROVE,
+    [[0.02, 0.48], [0.28, 0.50], [0.56, 0.49], [0.96, 0.52]],
+    760, 260, 0.015, 0.0055, 0x3b6434, CRAU_GOLD, rng, { spread: 0.008 },
+  );
+  emitPathStrokes(
+    sink, HARVEST_ASPECT, StrokeClass.GROVE,
+    [[0.12, 0.32], [0.42, 0.34], [0.74, 0.36], [0.98, 0.33]],
+    480, 240, 0.015, 0.0055, 0x487238, P.ochre, rng, { spread: 0.008 },
+  );
+  // Whitewashed Provençal farmhouse with terracotta roof in midground (0.55..0.64, 0.54..0.65)
+  for (let j = 0; j < 780; j++) {
+    const uP = rng.range(0.55, 0.64);
+    const v = rng.range(0.54, 0.64);
+    const isRoof = v > 0.605;
+    T_DIR.set(isRoof ? 1 : 0, isRoof ? -0.15 : 1, 0).normalize();
+    emitSurfaceStroke(
+      sink, HARVEST_ASPECT, StrokeClass.HOUSE, uP, v, rng.range(920, 1040),
+      0.015, 0.005, T_DIR, N_FRONT,
+      isRoof ? 0xc84c28 : 0xede4c8, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
+    );
+  }
+  emitPathStrokes(
+    sink, HARVEST_ASPECT, StrokeClass.HOUSE,
+    [[0.548, 0.605], [0.595, 0.645], [0.642, 0.605]],
+    905, 70, 0.014, 0.0045, 0x241c18, 0xc84c28, rng, { spread: 0.003 },
+  );
+
+  // Domed Golden Haystacks with umber shadow bases & Cloisonnist dome outlines
   const stacks = [[0.24, 0.42, 620], [0.32, 0.46, 680], [0.68, 0.52, 860], [0.76, 0.48, 790]];
   for (const [su, sv, sd] of stacks) {
     for (let j = 0; j < 750; j++) {
       const th = rng.range(0, Math.PI * 2);
-      const uP = su + 0.045 * Math.cos(th) * rng.next();
-      const v = sv + 0.055 * Math.sin(th) * rng.next();
+      const r = Math.pow(rng.next(), 0.68);
+      const uP = su + 0.042 * Math.cos(th) * r;
+      const v = sv + (Math.sin(th) > 0 ? 0.058 : 0.028) * Math.sin(th) * r;
       T_DIR.set(-Math.sin(th), Math.cos(th), 0).normalize();
+      const cA = uP > su + 0.01 ? 0xc87824 : CRAU_GOLD;
       emitSurfaceStroke(
-        sink, HARVEST_ASPECT, StrokeClass.HOUSE, uP, v, sd + rng.range(-25, 25),
-        0.016, 0.0055, T_DIR, N_FRONT,
-        CRAU_GOLD, 0xc87828, rng, { flags: StrokeFlag.OUTLINE },
+        sink, HARVEST_ASPECT, StrokeClass.HOUSE, uP, v, sd + rng.range(-20, 20),
+        0.015, 0.0052, T_DIR, N_FRONT,
+        cA, 0x985418, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+    emitPathStrokes(
+      sink, HARVEST_ASPECT, StrokeClass.HOUSE,
+      [[su - 0.042, sv - 0.015], [su - 0.032, sv + 0.038], [su, sv + 0.058], [su + 0.032, sv + 0.038], [su + 0.042, sv - 0.015]],
+      sd - 12, 95, 0.014, 0.0045, 0x5c3414, CRAU_GOLD, rng, { spread: 0.003 },
+    );
+  }
+
+  // Iconic Blue Hay-Cart at center (0.48, 0.38, d=520 m): body bed, two spoked wheels, and shafts
+  for (let j = 0; j < 520; j++) {
+    const uP = rng.range(0.44, 0.53);
+    const v = rng.range(0.372, 0.412);
+    T_DIR.set(1, 0.08, 0).normalize();
+    emitSurfaceStroke(
+      sink, HARVEST_ASPECT, StrokeClass.HOUSE, uP, v, rng.range(515, 545),
+      0.014, 0.0048, T_DIR, N_FRONT,
+      CART_BLUE, P.ultramarine, rng, { flags: StrokeFlag.OUTLINE },
+    );
+  }
+  // Cart frame & long wooden shafts jutting left
+  emitPathStrokes(
+    sink, HARVEST_ASPECT, StrokeClass.HOUSE,
+    [[0.44, 0.412], [0.53, 0.416], [0.53, 0.372], [0.44, 0.370], [0.44, 0.412]],
+    508, 110, 0.014, 0.0045, 0x14284c, CART_BLUE, rng, { spread: 0.0025 },
+  );
+  emitPathStrokes(
+    sink, HARVEST_ASPECT, StrokeClass.HOUSE,
+    [[0.44, 0.382], [0.39, 0.365], [0.355, 0.350]],
+    506, 75, 0.014, 0.0042, 0xc86424, P.ochre, rng, { spread: 0.0025 },
+  );
+  // Two spoked wheels at (0.46, 0.355) and (0.512, 0.358)
+  for (const [wu, wv] of [[0.46, 0.355], [0.512, 0.358]]) {
+    for (let j = 0; j < 160; j++) {
+      const th = rng.range(0, Math.PI * 2);
+      const onRim = j < 110;
+      const r = onRim ? 0.024 : rng.range(0.004, 0.022);
+      const uP = wu + (r / HARVEST_ASPECT) * Math.cos(th);
+      const v = wv + r * Math.sin(th);
+      const tang = onRim ? th + Math.PI * 0.5 : th;
+      T_DIR.set(Math.cos(tang), Math.sin(tang), 0).normalize();
+      emitSurfaceStroke(
+        sink, HARVEST_ASPECT, StrokeClass.HOUSE, uP, v, 502,
+        0.012, 0.0038, T_DIR, N_FRONT,
+        onRim ? 0x1c2838 : 0xc86424, CRAU_GOLD, rng, { flags: StrokeFlag.OUTLINE },
       );
     }
   }
-  // Iconic blue cart at center (0.48, 0.38, d=540 m)
-  for (let j = 0; j < 900; j++) {
-    T_DIR.set(1, 0, 0);
-    emitSurfaceStroke(
-      sink, HARVEST_ASPECT, StrokeClass.HOUSE, 0.48 + rng.range(-0.05, 0.05), 0.38 + rng.range(-0.03, 0.03), rng.range(510, 570),
-      0.015, 0.005, T_DIR, N_FRONT,
-      CART_BLUE, CRAU_GOLD, rng, { flags: StrokeFlag.OUTLINE },
-    );
-  }
-  // Foreground reed fence (CYPRESS [154..232 m])
+  // Harvester peasant figure beside the haystacks (0.37, 0.39..0.46)
+  emitPathStrokes(
+    sink, HARVEST_ASPECT, StrokeClass.HOUSE,
+    [[0.368, 0.39], [0.37, 0.43], [0.37, 0.455]],
+    590, 65, 0.014, 0.005, P.cobalt, P.lemon, rng, { spread: 0.004 },
+  );
+
+  // Foreground reed fence & stone wall (CYPRESS [154..232 m])
   for (let i = 0; i < 1800; i++) {
     const uP = rng.range(0.05, 0.95);
     const v = 0.14 + 0.06 * uP + rng.range(-0.025, 0.025);
@@ -293,6 +383,11 @@ export function generateHarvestChapter(
       0x8e5824, CRAU_GOLD, rng,
     );
   }
+  emitPathStrokes(
+    sink, HARVEST_ASPECT, StrokeClass.CYPRESS,
+    [[0.05, 0.165], [0.50, 0.195], [0.95, 0.225]],
+    155, 160, 0.016, 0.0048, 0x3b2414, 0x8e5824, rng, { spread: 0.003 },
+  );
 
   const underlays = new Group();
   underlays.name = 'underlays:harvest';
@@ -349,10 +444,10 @@ export function generateSowerChapter(
     emitCanvasStroke(
       sink, SOWER_ASPECT, StrokeClass.SKY_BAND, uP, v, rng.range(98000, 168000),
       rng.range(0.016, 0.032), ang, rng.range(0.0055, 0.010),
-      cA, P.chrome, rng, { emissive: r < 0.22 ? 0.65 : 0.15 },
+      cA, P.chrome, rng, { emissive: r < 0.22 ? 0.16 : 0.05 },
     );
   }
-  emitCustomStar(sink, SOWER_ASPECT, 0.58, 0.60, 12200, 0.042, 8, 1.45, rng, P.lemon, SUN_CHARTREUSE);
+  emitCustomStar(sink, SOWER_ASPECT, 0.58, 0.60, 12200, 0.042, 8, 1.25, rng, P.lemon, P.chrome);
 
   // 2. Violet-and-Ultramarine Ploughed Furrows (GROUND [205..1650 m])
   for (let i = 0; i < 19000; i++) {
@@ -368,40 +463,92 @@ export function generateSowerChapter(
       cA, cB, rng, { q1: N_UP.x, q2: N_UP.y, q3: N_UP.z },
     );
   }
+  // Crisp horizon line separating the violet field from the chartreuse sun
+  emitPathStrokes(
+    sink, SOWER_ASPECT, StrokeClass.HOUSE,
+    [[-0.02, 0.495], [0.35, 0.50], [0.72, 0.498], [1.02, 0.495]],
+    1550, 180, 0.016, 0.005, TRUNK_DARK_BLUE, FURROW_VIOLET, rng, { spread: 0.004 },
+  );
 
-  // 3. Bold Japonisme Diagonal Willow Tree (CYPRESS [148..235 m]) & Striding Sower Silhouette (HOUSE & WINDOW)
-  for (let i = 0; i < 5600; i++) {
+  // 3. Bold Japonisme Diagonal Willow Tree (CYPRESS [148..235 m]) with Sprouting Branches & Leaves
+  for (let i = 0; i < 4800; i++) {
     const s = rng.next();
     // Trunk slices diagonally from lower-right (0.86, 0.02) across to upper-left (0.18, 0.94)
     const uSpine = 0.86 - 0.68 * s + 0.04 * Math.sin(s * 6.0);
     const vSpine = 0.02 + 0.92 * s;
-    const halfW = 0.055 * (1 - 0.55 * s);
+    const halfW = 0.052 * (1 - 0.52 * s);
     const uP = uSpine + rng.range(-halfW, halfW);
-    const v = vSpine + rng.range(-0.03, 0.03);
+    const v = vSpine + rng.range(-0.028, 0.028);
     const d = clamp(152 + 72 * s + rng.range(-5, 5), 148, 234);
+    const isBarkHighlight = uP < uSpine - halfW * 0.35;
     emitCanvasStroke(
       sink, SOWER_ASPECT, StrokeClass.CYPRESS, uP, v, d,
-      rng.range(0.022, 0.044), 2.22 + rng.range(-0.18, 0.18), rng.range(0.006, 0.011),
-      TRUNK_DARK_BLUE, FURROW_VIOLET, rng, { flags: StrokeFlag.OUTLINE },
+      rng.range(0.022, 0.042), 2.22 + rng.range(-0.15, 0.15), rng.range(0.006, 0.010),
+      isBarkHighlight ? 0x385878 : TRUNK_DARK_BLUE, FURROW_VIOLET, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
-  // Striding Sower silhouette at (0.32, 0.12..0.52) in HOUSE [470..560 m] + Golden seeds in WINDOW
-  for (let i = 0; i < 2400; i++) {
-    const v = rng.range(0.12, 0.52);
-    const uP = 0.32 + 0.04 * Math.sin((v - 0.12) * 8.0) + rng.range(-0.045, 0.045);
-    T_DIR.set(0.2, 0.98, 0).normalize();
-    emitSurfaceStroke(
-      sink, SOWER_ASPECT, StrokeClass.HOUSE, uP, v, rng.range(475, 550),
-      0.018, 0.006, T_DIR, N_FRONT,
-      TRUNK_DARK_BLUE, P.cobalt, rng, { flags: StrokeFlag.OUTLINE },
+  // Sprouting diagonal willow branches & autumn blossom/leaf clusters
+  const branches: [number, number][][] = [
+    [[0.52, 0.48], [0.42, 0.62], [0.30, 0.76]],
+    [[0.45, 0.58], [0.56, 0.72], [0.68, 0.86]],
+    [[0.34, 0.72], [0.22, 0.84], [0.10, 0.95]],
+  ];
+  for (const br of branches) {
+    emitPathStrokes(
+      sink, SOWER_ASPECT, StrokeClass.CYPRESS,
+      br, 165, 140, 0.018, 0.0055, TRUNK_DARK_BLUE, 0x385878, rng, { spread: 0.008 },
     );
+    const tip = br[br.length - 1];
+    for (let j = 0; j < 180; j++) {
+      const th = rng.range(0, Math.PI * 2);
+      const r = rng.range(0.01, 0.065);
+      emitCanvasStroke(
+        sink, SOWER_ASPECT, StrokeClass.CYPRESS, tip[0] + r * Math.cos(th), tip[1] + r * Math.sin(th), rng.range(158, 185),
+        0.016, th, 0.005, (j & 1) ? 0xd88828 : 0x386e58, P.lemon, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
   }
-  for (let i = 0; i < 800; i++) {
-    T_DIR.set(0.85, -0.52, 0).normalize();
+
+  // 4. Sculpted Striding Sower Silhouette at uP = 0.31: wide straw hat, torso, sowing arm, and striding V-legs
+  // Torso & grain apron (0.285..0.34, 0.27..0.45)
+  emitPathStrokes(
+    sink, SOWER_ASPECT, StrokeClass.HOUSE,
+    [[0.315, 0.27], [0.31, 0.36], [0.305, 0.45]],
+    485, 360, 0.018, 0.0065, TRUNK_DARK_BLUE, P.cobalt, rng, { spread: 0.022 },
+  );
+  // Forward left leg striding to (0.23, 0.10) & trailing right leg pushing off from (0.39, 0.11)
+  emitPathStrokes(
+    sink, SOWER_ASPECT, StrokeClass.HOUSE,
+    [[0.30, 0.28], [0.265, 0.19], [0.23, 0.10]],
+    482, 260, 0.017, 0.0058, TRUNK_DARK_BLUE, FURROW_VIOLET, rng, { spread: 0.013 },
+  );
+  emitPathStrokes(
+    sink, SOWER_ASPECT, StrokeClass.HOUSE,
+    [[0.325, 0.28], [0.36, 0.19], [0.395, 0.11]],
+    488, 260, 0.017, 0.0058, TRUNK_DARK_BLUE, P.cobalt, rng, { spread: 0.013 },
+  );
+  // Outstretched sowing arm flinging seed to the left ((0.31, 0.43) -> (0.18, 0.38))
+  emitPathStrokes(
+    sink, SOWER_ASPECT, StrokeClass.HOUSE,
+    [[0.31, 0.43], [0.24, 0.40], [0.175, 0.38]],
+    480, 180, 0.016, 0.0052, TRUNK_DARK_BLUE, P.cobalt, rng, { spread: 0.010 },
+  );
+  // Head & wide-brimmed yellow straw hat backlit against the sun (0.305, 0.46..0.52)
+  emitPathStrokes(
+    sink, SOWER_ASPECT, StrokeClass.HOUSE,
+    [[0.27, 0.505], [0.305, 0.525], [0.345, 0.500]],
+    476, 140, 0.015, 0.005, P.chrome, TRUNK_DARK_BLUE, rng, { spread: 0.008 },
+  );
+  // Golden seeds arcing from the sower's hand
+  for (let i = 0; i < 420; i++) {
+    const s = rng.next();
+    const uP = 0.17 - 0.09 * s + rng.range(-0.025, 0.025);
+    const v = 0.38 - 0.12 * s * s + rng.range(-0.03, 0.03);
+    T_DIR.set(-0.75, -0.65, 0).normalize();
     emitSurfaceStroke(
-      sink, SOWER_ASPECT, StrokeClass.WINDOW, 0.22 + rng.range(-0.08, 0.08), 0.34 + rng.range(-0.08, 0.08), rng.range(465, 520),
-      0.012, 0.004, T_DIR, N_FRONT,
-      P.lemon, P.chrome, rng, { emissive: 1.4 },
+      sink, SOWER_ASPECT, StrokeClass.WINDOW, uP, v, rng.range(465, 505),
+      0.011, 0.0038, T_DIR, N_FRONT,
+      P.lemon, P.chrome, rng, { emissive: 0.35 },
     );
   }
 
@@ -470,9 +617,9 @@ export function generateNightCafeChapter(
     const v = 0.002 + 0.44 * t;
     const d = clamp(208 + 1200 * (t * t), 205, 1420);
     const perspAng = Math.atan2(0.48 - v, (0.52 - uP) * NIGHTCAFE_ASPECT);
-    const inShadow = uP > 0.34 && uP < 0.66 && v > 0.14 && v < 0.32;
+    const inShadow = uP > 0.34 && uP < 0.66 && v > 0.11 && v < 0.25;
     const cA = inShadow
-      ? 0x384228
+      ? 0x2e381e
       : shadeHex(mixHex(FLOOR_SULFUR, 0xc86428, (i & 3) === 0 ? 0.55 : 0.15), rng.range(0.88, 1.12));
     emitCanvasStroke(
       sink, NIGHTCAFE_ASPECT, StrokeClass.GROUND, uP, v, d,
@@ -481,29 +628,124 @@ export function generateNightCafeChapter(
     );
   }
 
-  // 3. Blood-Red Walls, Open Curtain Doorway & Green Billiard Table (HOUSE, WINDOW, CYPRESS)
+  // 3. Blood-Red Upper Walls, Viridian Dado Wainscoting, Clock & Open Curtain Doorway (HOUSE)
   for (let i = 0; i < 8200; i++) {
     const uP = rng.range(-0.02, 1.02);
     const v = rng.range(0.42, 0.76);
     const inDoor = Math.abs(uP - 0.52) < 0.055 && v < 0.66;
+    const isDado = !inDoor && v < 0.51;
     const d = inDoor ? rng.range(920, 1250) : rng.range(640, 880);
     T_DIR.set(0, 1, 0);
+    const cA = inDoor
+      ? P.lemon
+      : isDado
+        ? shadeHex(0x2e6840, rng.range(0.86, 1.12))
+        : shadeHex(WALL_BLOOD_RED, rng.range(0.86, 1.14));
     emitSurfaceStroke(
       sink, NIGHTCAFE_ASPECT, StrokeClass.HOUSE, uP, v, d,
       rng.range(0.016, 0.032), rng.range(0.005, 0.0095), T_DIR, N_FRONT,
-      inDoor ? P.lemon : shadeHex(WALL_BLOOD_RED, rng.range(0.86, 1.14)), P.ochre, rng,
-      { flags: StrokeFlag.OUTLINE, emissive: inDoor ? 0.85 : 0 },
+      cA, P.ochre, rng,
+      { flags: StrokeFlag.OUTLINE, emissive: inDoor ? 0.35 : 0 },
     );
   }
-  // Elevated green billiard table in center foreground (CYPRESS [156..234 m]) + Landlord in white coat
-  for (let i = 0; i < 3200; i++) {
-    const isTable = i < 2500;
-    const uP = isTable ? rng.range(0.34, 0.66) : 0.62 + rng.range(-0.03, 0.03);
-    const v = isTable ? rng.range(0.22, 0.38) : rng.range(0.32, 0.56);
+  // Chair-rail moulding & doorway timber frame + wall clock above doorway
+  emitPathStrokes(
+    sink, NIGHTCAFE_ASPECT, StrokeClass.HOUSE,
+    [[-0.02, 0.51], [0.465, 0.51]],
+    625, 90, 0.015, 0.0045, 0x5c2414, FLOOR_SULFUR, rng, { spread: 0.0025 },
+  );
+  emitPathStrokes(
+    sink, NIGHTCAFE_ASPECT, StrokeClass.HOUSE,
+    [[0.575, 0.51], [1.02, 0.51]],
+    625, 90, 0.015, 0.0045, 0x5c2414, FLOOR_SULFUR, rng, { spread: 0.0025 },
+  );
+  emitPathStrokes(
+    sink, NIGHTCAFE_ASPECT, StrokeClass.HOUSE,
+    [[0.465, 0.42], [0.465, 0.665], [0.575, 0.665], [0.575, 0.42]],
+    620, 140, 0.015, 0.0048, 0x2e1810, FLOOR_SULFUR, rng, { spread: 0.0025 },
+  );
+  // Wall clock at (0.52, 0.705)
+  for (let j = 0; j < 95; j++) {
+    const th = rng.range(0, Math.PI * 2);
+    const r = rng.range(0, 0.022);
+    T_DIR.set(-Math.sin(th), Math.cos(th), 0).normalize();
+    emitSurfaceStroke(
+      sink, NIGHTCAFE_ASPECT, StrokeClass.HOUSE, 0.52 + (r / NIGHTCAFE_ASPECT) * Math.cos(th), 0.705 + r * Math.sin(th), 618,
+      0.011, 0.0038, T_DIR, N_FRONT, r > 0.016 ? 0x2e1810 : P.zincWhite, P.lemon, rng, { flags: StrokeFlag.OUTLINE },
+    );
+  }
+  // Marble-topped bistrot tables & chairs along the left (0.06..0.24) and right (0.76..0.94) walls
+  for (const [tu, tv] of [[0.10, 0.26], [0.18, 0.36], [0.82, 0.36], [0.90, 0.26]]) {
+    for (let j = 0; j < 140; j++) {
+      const isTop = j < 85;
+      const uP = tu + rng.range(-0.042, 0.042);
+      const v = isTop ? tv + rng.range(-0.014, 0.014) : tv - rng.range(0.015, 0.065);
+      T_DIR.set(isTop ? 1 : 0, isTop ? 0 : 1, 0);
+      emitSurfaceStroke(
+        sink, NIGHTCAFE_ASPECT, StrokeClass.HOUSE, uP, v, 420 + rng.range(-15, 15),
+        0.014, 0.0045, T_DIR, N_FRONT,
+        isTop ? 0xe8e4d8 : 0x3b2014, FLOOR_SULFUR, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+  }
+
+  // 4. Sculpted 3D Perspective Billiard Table in Center Foreground & White-Coated Landlord (CYPRESS [156..234 m])
+  // Trapezoidal green felt surface (wider at front v=0.24, narrower at back v=0.38)
+  for (let i = 0; i < 2100; i++) {
+    const s = rng.next();
+    const v = 0.235 + 0.145 * s;
+    const halfW = 0.165 - 0.048 * s;
+    const uP = 0.495 + rng.range(-halfW, halfW);
     emitCanvasStroke(
-      sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(160, 228),
-      rng.range(0.015, 0.028), isTable ? rng.range(-0.15, 0.15) : Math.PI * 0.5, rng.range(0.0045, 0.0085),
-      isTable ? BILLIARD_FELT : P.zincWhite, FLOOR_SULFUR, rng, { flags: StrokeFlag.OUTLINE },
+      sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS, uP, v, rng.range(168, 212),
+      rng.range(0.014, 0.026), rng.range(-0.12, 0.12), rng.range(0.0045, 0.008),
+      shadeHex(BILLIARD_FELT, rng.range(0.90, 1.12)), P.lemon, rng, { flags: StrokeFlag.OUTLINE },
+    );
+  }
+  // Mahogany cushion rails framing the trapezoidal billiard table
+  emitPathStrokes(
+    sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS,
+    [[0.33, 0.235], [0.66, 0.235], [0.612, 0.38], [0.378, 0.38], [0.33, 0.235]],
+    162, 240, 0.016, 0.0052, 0x5c2414, 0x8e4220, rng, { spread: 0.004 },
+  );
+  // 4 turned mahogany table legs descending from corners to the floor
+  for (const [lu, lvTop, lvBot] of [[0.345, 0.235, 0.115], [0.645, 0.235, 0.115], [0.39, 0.36, 0.21], [0.60, 0.36, 0.21]]) {
+    emitPathStrokes(
+      sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS,
+      [[lu, lvTop], [lu, lvBot]],
+      164, 55, 0.015, 0.0055, 0x3b180e, 0x6e3018, rng, { spread: 0.004 },
+    );
+  }
+  // Billiard balls (red & white) and diagonal cue stick on the green felt
+  emitPathStrokes(
+    sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS,
+    [[0.41, 0.27], [0.52, 0.33]],
+    158, 45, 0.012, 0.0035, 0xd8b478, P.zincWhite, rng, { spread: 0.0015 },
+  );
+  for (const [bu, bv, bc] of [[0.46, 0.29, P.zincWhite], [0.485, 0.305, WALL_BLOOD_RED], [0.53, 0.285, P.zincWhite]]) {
+    for (let j = 0; j < 24; j++) {
+      emitCanvasStroke(
+        sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS, bu + rng.range(-0.005, 0.005), bv + rng.range(-0.005, 0.005), 157,
+        0.010, rng.range(0, Math.PI), 0.0038, bc, P.lemon, rng, { flags: StrokeFlag.OUTLINE },
+      );
+    }
+  }
+  // Landlord in white coat standing beside the billiard table (0.635, 0.25..0.54)
+  emitPathStrokes(
+    sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS,
+    [[0.635, 0.25], [0.635, 0.38], [0.635, 0.49]],
+    174, 240, 0.016, 0.0055, P.zincWhite, FLOOR_SULFUR, rng, { spread: 0.018 },
+  );
+  emitPathStrokes(
+    sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS,
+    [[0.618, 0.26], [0.618, 0.48], [0.635, 0.50], [0.652, 0.48], [0.652, 0.26]],
+    170, 95, 0.013, 0.004, 0x243048, P.zincWhite, rng, { spread: 0.0025 },
+  );
+  // Landlord's head & dark hair at (0.635, 0.525)
+  for (let j = 0; j < 65; j++) {
+    emitCanvasStroke(
+      sink, NIGHTCAFE_ASPECT, StrokeClass.CYPRESS, 0.635 + rng.range(-0.014, 0.014), 0.525 + rng.range(-0.02, 0.02), 170,
+      0.012, Math.PI * 0.5, 0.0042, j < 45 ? 0xd89e72 : 0x241c18, P.ochre, rng, { flags: StrokeFlag.OUTLINE },
     );
   }
 

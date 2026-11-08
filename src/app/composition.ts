@@ -298,7 +298,7 @@ export async function boot(container: HTMLElement): Promise<void> {
   const stageSystem = new ChapterStageSystem();
   masterScene.add(masterBackdrop, masterDust, masterPortalVortex.points, stageSystem.root);
 
-  const MAX_CACHED_WORLDS = 4;
+  const MAX_CACHED_WORLDS = 8;
   const worldCache = new Map<PaintingId, BuiltWorld>();
   // Ids whose generator threw: never rebuilt every frame, only stood in for by a cached world.
   const brokenWorlds = new Set<PaintingId>();
@@ -755,6 +755,11 @@ export async function boot(container: HTMLElement): Promise<void> {
 
     engine.beginFrame();
     const f = director.update(dt);
+    // In hands-free Exhibition Display mode, after the 18s opening of standalone Starry Night wraps,
+    // automatically flow into the 30-painting Exhibition cycle (8s per painting, 4m00s total)
+    if (!isHarnessPin && pathId === 'single' && f.wrapped && f.mode === 'cinematic') {
+      selectModeAndPath('odyssey', 'odyssey');
+    }
 
     // Determine primary & secondary visible worlds and their 6-Motif 3D brushstroke cross-dissolve parameters
     let primaryId: PaintingId = activeId;
@@ -775,7 +780,7 @@ export async function boot(container: HTMLElement): Promise<void> {
     let witnessColorAwakening = 1;
     let witnessSuppressEffects = false;
     let witnessNonPaintingBeat = false;
-    const calmScatterScale = f.calm ? 0.35 : 1.0;
+    const calmScatterScale = 0.05;
 
     if (manualMorph) {
       stageSystem.setHidden();
@@ -806,11 +811,11 @@ export async function boot(container: HTMLElement): Promise<void> {
       const activeSpec = p >= 0.55 ? specB : specA;
       portalUV = [activeSpec.moonUVD[0], activeSpec.moonUVD[1]];
       if (!f.calm) {
-        morphSmear = g.smearBoost * bell;
-        morphBloom = g.bloomBoost * bell;
-        morphDust = g.dustBoost * bell;
-        morphWarpOffset = g.warpCurve * bell;
-        morphStirPulse = g.stirAmp * bell;
+        morphSmear = 0;
+        morphBloom = g.bloomBoost * bell * 0.45;
+        morphDust = g.dustBoost * bell * 0.35;
+        morphWarpOffset = g.warpCurve * bell * 0.25;
+        morphStirPulse = g.stirAmp * bell * 0.35;
         morphStirRadiusH = g.stirRadiusH;
       }
       if (p >= 1) {
@@ -874,11 +879,11 @@ export async function boot(container: HTMLElement): Promise<void> {
       displayAspect = ms.displayAspect;
       portalUV = ms.portalUV;
       if (ms.secondaryId && !f.calm) {
-        morphSmear = ms.smearBoost;
-        morphBloom = ms.bloomBoost;
-        morphDust = ms.dustBoost;
-        morphWarpOffset = ms.warpOffset;
-        morphStirPulse = ms.stirPulse;
+        morphSmear = 0;
+        morphBloom = ms.bloomBoost * 0.45;
+        morphDust = ms.dustBoost * 0.35;
+        morphWarpOffset = ms.warpOffset * 0.25;
+        morphStirPulse = ms.stirPulse * 0.35;
         morphStirRadiusH = resolveTransitionEdge(ms.primaryId, ms.secondaryId).grammar.stirRadiusH;
       }
       if (ms.snapIncoming && ms.secondaryId) {
@@ -1110,6 +1115,9 @@ export async function boot(container: HTMLElement): Promise<void> {
     }
 
     const matte = f.mode === 'free' ? u.uAlign.value : f.env.matte;
+    const pigmentPull = primaryId === 'starry'
+      ? (secondaryId && secondaryId !== 'starry' ? 1.0 - 0.82 * atmoMix : 1.0)
+      : (secondaryId === 'starry' ? 0.18 + 0.82 * atmoMix : 0.18);
     const pf: PostFrame = {
       bloom: f.env.bloom + morphBloom,
       exposure: f.env.exposure,
@@ -1119,6 +1127,7 @@ export async function boot(container: HTMLElement): Promise<void> {
       fade: f.env.fade,
       time: u.uTime.value,
       canvasRectPx: canvasRect(bufW, bufH, displayAspect),
+      pigmentPull,
     };
     post.render(masterScene, engine.camera, pf);
     engine.endFrame();
